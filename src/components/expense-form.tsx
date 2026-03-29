@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useMembers } from '@/lib/hooks/use-members'
 import { useExpenses } from '@/lib/hooks/use-expenses'
+import { useCategories } from '@/lib/hooks/use-categories'
 import { addExpense, updateExpense, type ExpenseInput } from '@/lib/services/expense-service'
 import { useAuth } from '@/lib/auth'
 import { toDate } from '@/lib/utils'
 import type { Expense, SplitMethod, PaymentMethod, SplitDetail } from '@/lib/types'
 
-const defaultCategories = ['餐飲', '交通', '購物', '房租', '水電', '醫療', '娛樂', '孝親', '子女教育', '日用品', '通訊', '其他']
+const FALLBACK_CATEGORIES = ['餐飲', '交通', '購物', '房租', '水電', '醫療', '娛樂', '孝親', '子女教育', '日用品', '通訊', '其他']
 
 interface Props {
   existingExpense?: Expense
@@ -21,6 +22,10 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved }: Props) 
   const { group } = useGroup()
   const members = useMembers(group?.id)
   const { expenses } = useExpenses(group?.id)
+  const firestoreCategories = useCategories(group?.id)
+  const categoryList = firestoreCategories.length > 0
+    ? firestoreCategories.filter((c) => c.isActive).map((c) => c.name)
+    : FALLBACK_CATEGORIES
   const { user } = useAuth()
   const isEditing = !!existingExpense
 
@@ -189,7 +194,7 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved }: Props) 
         <label className="text-sm font-medium mb-1 block">類別</label>
         <select value={category} onChange={(e) => setCategory(e.target.value)}
           className="w-full h-11 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm">
-          {defaultCategories.map((c) => <option key={c} value={c}>{c}</option>)}
+          {categoryList.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
       </div>
 
