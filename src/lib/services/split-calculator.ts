@@ -1,5 +1,4 @@
-import type { Expense, Settlement, SplitDetail } from '@/lib/types'
-import { toDate } from '@/lib/utils'
+import type { Expense, Settlement } from '@/lib/types'
 
 interface Debt {
   from: string
