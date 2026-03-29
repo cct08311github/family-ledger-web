@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useExpenses } from '@/lib/hooks/use-expenses'
+import { deleteExpense } from '@/lib/services/expense-service'
 import { currency, toDate, fmtDateFull, paymentLabel } from '@/lib/utils'
 import type { Expense } from '@/lib/types'
 
@@ -68,8 +70,8 @@ export default function RecordsPage() {
                 </div>
                 <div className="space-y-2">
                   {items.map((e) => (
-                    <div key={e.id} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg" style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 85%)' }}>
+                    <div key={e.id} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 flex items-center gap-3 group">
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0" style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 85%)' }}>
                         {e.isShared ? '👥' : '👤'}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -80,7 +82,17 @@ export default function RecordsPage() {
                           {(e.receiptPaths?.length ?? 0) > 0 && ` · 📷${e.receiptPaths.length}`}
                         </div>
                       </div>
-                      <div className="font-semibold">{currency(e.amount)}</div>
+                      <div className="font-semibold shrink-0">{currency(e.amount)}</div>
+                      <div className="hidden group-hover:flex gap-1 shrink-0">
+                        <Link href={`/expense/${e.id}?groupId=${group?.id}`}
+                          className="p-1.5 rounded-md hover:bg-[var(--muted)] text-[var(--muted-foreground)]" title="編輯">✏️</Link>
+                        <button onClick={() => {
+                          if (confirm(`確定要刪除「${e.description}」嗎？`)) {
+                            group?.id && deleteExpense(group.id, e.id)
+                          }
+                        }} className="p-1.5 rounded-md hover:bg-[var(--muted)]" title="刪除"
+                          style={{ color: 'var(--destructive)' }}>🗑️</button>
+                      </div>
                     </div>
                   ))}
                 </div>
