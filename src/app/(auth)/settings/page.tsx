@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { writeBatch, doc } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 import { useTheme } from 'next-themes'
 import { useAuth } from '@/lib/auth'
 import { useGroup } from '@/lib/hooks/use-group'
@@ -60,12 +62,14 @@ function MembersSection({ groupId }: { groupId: string }) {
 
   async function handleToggleCurrent(member: FamilyMember) {
     const next = !member.isCurrentUser
-    // If marking as current, un-mark previous current user first
+    const batch = writeBatch(db)
+    // Atomically update both members in one batch to avoid intermediate inconsistent state
     if (next) {
       const prev = members.find((m) => m.isCurrentUser && m.id !== member.id)
-      if (prev) await updateMember(groupId, prev.id, { isCurrentUser: false } as { isCurrentUser: boolean })
+      if (prev) batch.update(doc(db, 'groups', groupId, 'members', prev.id), { isCurrentUser: false })
     }
-    await updateMember(groupId, member.id, { isCurrentUser: next } as { isCurrentUser: boolean })
+    batch.update(doc(db, 'groups', groupId, 'members', member.id), { isCurrentUser: next })
+    await batch.commit()
   }
 
   return (
@@ -252,10 +256,13 @@ function ThemeSection() {
 const GEMINI_KEY = 'gemini-api-key'
 
 function ApiKeySection() {
-  const [key, setKey] = useState(() =>
-    typeof window !== 'undefined' ? (localStorage.getItem(GEMINI_KEY) ?? '') : ''
-  )
+  const [key, setKey] = useState('')
   const [show, setShow] = useState(false)
+
+  // Hydrate from localStorage after mount to avoid SSR hydration mismatch
+  useEffect(() => {
+    setKey(localStorage.getItem(GEMINI_KEY) ?? '')
+  }, [])
   const [saved, setSaved] = useState(false)
 
   function handleSave() {

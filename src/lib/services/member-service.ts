@@ -1,10 +1,8 @@
 import { addDoc, collection, deleteDoc, doc, Timestamp, updateDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { auth } from '@/lib/firebase'
 import type { MemberRole } from '@/lib/types'
 
 export async function addMember(groupId: string, name: string, role: MemberRole = 'member'): Promise<string> {
-  auth.currentUser // referenced for side-effect: ensure Firebase auth is initialized
   const ref = await addDoc(collection(db, 'groups', groupId, 'members'), {
     groupId,
     name,
