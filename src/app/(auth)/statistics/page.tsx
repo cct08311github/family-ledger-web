@@ -5,6 +5,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
   BarChart, Bar,
+  type PieLabelRenderProps,
 } from 'recharts'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useMembers } from '@/lib/hooks/use-members'
@@ -29,6 +30,7 @@ function lastNMonths(n: number): { year: number; month: number }[] {
 
 function filterByMonth(expenses: Expense[], year: number, month: number) {
   return expenses.filter((e) => {
+    if (!e.date) return false
     const d = toDate(e.date)
     return d.getFullYear() === year && d.getMonth() === month
   })
@@ -82,7 +84,7 @@ function TrendChart({ expenses }: { expenses: Expense[] }) {
         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
         <XAxis dataKey="label" tick={{ fontSize: 12 }} />
         <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => v >= 1000 ? `${v / 1000}k` : String(v)} />
-        <Tooltip formatter={(value) => [`NT$ ${Number(value).toLocaleString()}`, '支出']} />
+        <Tooltip formatter={(value) => [`NT$ ${Number(value).toLocaleString()}`, '支出'] as [string, string]} />
         <Line type="monotone" dataKey="total" stroke="var(--primary)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
       </LineChart>
     </ResponsiveContainer>
@@ -108,13 +110,13 @@ function CategoryPieChart({ expenses }: { expenses: Expense[] }) {
     <ResponsiveContainer width="100%" height={260}>
       <PieChart>
         <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="45%" outerRadius={90}
-          label={({ name, percent }: { name?: string; percent?: number }) =>
-            (percent ?? 0) > 0.04 ? `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%` : ''}>
+          label={(props: PieLabelRenderProps) =>
+            (props.percent ?? 0) > 0.04 ? `${props.name ?? ''} ${((props.percent ?? 0) * 100).toFixed(0)}%` : ''}>
           {data.map((_, i) => (
             <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
           ))}
         </Pie>
-        <Tooltip formatter={(value) => [`NT$ ${Number(value).toLocaleString()}`, '金額']} />
+        <Tooltip formatter={(value) => [`NT$ ${Number(value).toLocaleString()}`, '金額'] as [string, string]} />
         <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
       </PieChart>
     </ResponsiveContainer>
@@ -126,14 +128,15 @@ function MemberBarChart({ expenses, memberNames }: { expenses: Expense[]; member
   const data = useMemo(() => {
     const map: Record<string, number> = {}
     for (const e of expenses) {
-      // Count each participant's share amount
-      for (const s of e.splits) {
-        if (s.isParticipant) {
-          map[s.memberId] = (map[s.memberId] ?? 0) + s.shareAmount
+      if (e.isShared) {
+        // Shared: distribute by each participant's share amount
+        for (const s of e.splits) {
+          if (s.isParticipant) {
+            map[s.memberId] = (map[s.memberId] ?? 0) + s.shareAmount
+          }
         }
-      }
-      // For personal expenses, count full amount to payer
-      if (!e.isShared) {
+      } else {
+        // Personal: full amount attributed to the payer only
         map[e.payerId] = (map[e.payerId] ?? 0) + e.amount
       }
     }
@@ -150,7 +153,7 @@ function MemberBarChart({ expenses, memberNames }: { expenses: Expense[]; member
         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
         <XAxis dataKey="name" tick={{ fontSize: 12 }} />
         <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => v >= 1000 ? `${v / 1000}k` : String(v)} />
-        <Tooltip formatter={(value) => [`NT$ ${Number(value).toLocaleString()}`, '分攤金額']} />
+        <Tooltip formatter={(value) => [`NT$ ${Number(value).toLocaleString()}`, '分攤金額'] as [string, string]} />
         <Bar dataKey="amount" fill="var(--primary)" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
@@ -213,8 +216,10 @@ export default function StatisticsPage() {
   const { expenses, loading: expLoading } = useExpenses(group?.id)
   const members = useMembers(group?.id)
 
-  const now = new Date()
-  const [selectedMonth, setSelectedMonth] = useState({ year: now.getFullYear(), month: now.getMonth() })
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date()
+    return { year: now.getFullYear(), month: now.getMonth() }
+  })
 
   const memberNames = useMemo(
     () => Object.fromEntries(members.map((m) => [m.id, m.name])),
