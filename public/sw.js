@@ -1,16 +1,27 @@
+// Service Worker — family-ledger
+// Strategy: cache-first for immutable static assets only; network-first for everything else
+// App Router HTML pages are NOT cached to avoid stale RSC payloads after deploys
+
 const CACHE_NAME = 'family-ledger-v1'
-const STATIC_ASSETS = [
-  '/',
-  '/records',
-  '/split',
-  '/statistics',
-  '/settings',
-  '/notifications',
+
+// Only cache truly immutable assets (Next.js adds content hash to filenames)
+const PRECACHE_PATTERNS = [
+  /^\/_next\/static\//,
+  /^\/icons\//,
+  /^\/manifest\.json$/,
 ]
 
+function shouldCache(url) {
+  const path = new URL(url).pathname
+  return PRECACHE_PATTERNS.some((re) => re.test(path))
+}
+
 self.addEventListener('install', (event) => {
+  // Minimal precache — only the manifest and icons, not HTML routes
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.addAll(['/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png'])
+    )
   )
   self.skipWaiting()
 })
@@ -26,18 +37,24 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return
-  if (event.request.url.includes('/api/')) return
+  const url = event.request.url
+  // Never intercept API calls — always go to network
+  if (url.includes('/api/')) return
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetched = fetch(event.request).then((res) => {
-        if (res.ok) {
-          const clone = res.clone()
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
-        }
-        return res
-      }).catch(() => cached)
-      return cached || fetched
-    })
-  )
+  if (shouldCache(url)) {
+    // Cache-first for immutable static assets
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached
+        return fetch(event.request).then((res) => {
+          if (res.ok) {
+            const clone = res.clone()
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
+          }
+          return res
+        }).catch(() => new Response('', { status: 503 }))
+      })
+    )
+  }
+  // For HTML pages and other resources: let the browser handle normally (network-first by default)
 })
