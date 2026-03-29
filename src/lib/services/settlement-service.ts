@@ -11,8 +11,8 @@ export interface NewSettlement {
   date: Date
 }
 
-export async function addSettlement(groupId: string, data: NewSettlement): Promise<void> {
-  await addDoc(collection(db, 'groups', groupId, 'settlements'), {
+export async function addSettlement(groupId: string, data: NewSettlement): Promise<string> {
+  const ref = await addDoc(collection(db, 'groups', groupId, 'settlements'), {
     fromMemberId: data.fromMemberId,
     fromMemberName: data.fromMemberName,
     toMemberId: data.toMemberId,
@@ -22,4 +22,5 @@ export async function addSettlement(groupId: string, data: NewSettlement): Promi
     date: Timestamp.fromDate(data.date),
     createdAt: serverTimestamp(),
   })
+  return ref.id
 }

@@ -8,7 +8,6 @@ import { useMembers } from '@/lib/hooks/use-members'
 import { calculateNetBalances, simplifyDebts } from '@/lib/services/split-calculator'
 import { addSettlement } from '@/lib/services/settlement-service'
 import { currency, signedCurrency, toDate, fmtDateFull } from '@/lib/utils'
-import type { FamilyMember } from '@/lib/types'
 
 // ── Settlement dialog ─────────────────────────────────────────
 
@@ -16,7 +15,6 @@ interface SettleDialogProps {
   fromName: string
   toName: string
   suggested: number
-  members: FamilyMember[]
   onClose: () => void
   onConfirm: (amount: number, note: string) => Promise<void>
 }
@@ -27,7 +25,7 @@ function SettleDialog({ fromName, toName, suggested, onClose, onConfirm }: Settl
   const [saving, setSaving] = useState(false)
 
   async function handleSubmit() {
-    const n = parseInt(amount)
+    const n = Math.round(parseFloat(amount))
     if (!n || n <= 0) return
     setSaving(true)
     await onConfirm(n, note)
@@ -76,7 +74,7 @@ function SettleDialog({ fromName, toName, suggested, onClose, onConfirm }: Settl
           </button>
           <button
             onClick={handleSubmit}
-            disabled={saving || !amount || parseInt(amount) <= 0}
+            disabled={saving || !amount || Math.round(parseFloat(amount)) <= 0}
             className="flex-1 rounded-lg py-2 text-sm font-semibold text-white transition-colors disabled:opacity-50"
             style={{ backgroundColor: 'var(--primary)' }}
           >
@@ -160,7 +158,6 @@ export default function SplitPage() {
           fromName={settling.fromName}
           toName={settling.toName}
           suggested={settling.amount}
-          members={members}
           onClose={() => setSettling(null)}
           onConfirm={handleSettle}
         />
