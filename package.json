@@ -30,6 +30,7 @@
     "typescript": "^6.0.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@swc/core": "^1.15.21",
     "@swc/jest": "^0.2.39",
     "@types/dom-speech-recognition": "^0.0.8",
