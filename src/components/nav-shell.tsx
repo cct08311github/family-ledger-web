@@ -2,6 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useGroup } from '@/lib/hooks/use-group'
+import { useAuth } from '@/lib/auth'
+import { useNotifications } from '@/lib/hooks/use-notifications'
 
 const navItems = [
   { href: '/', label: '首頁', icon: '🏠' },
@@ -13,14 +16,27 @@ const navItems = [
 
 export function NavShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const { group } = useGroup()
+  const { user } = useAuth()
+  const { unreadCount } = useNotifications(group?.id, user?.uid)
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
       {/* Desktop sidebar */}
       <nav className="hidden md:flex flex-col w-56 border-r border-[var(--border)] bg-[var(--card)] p-4 gap-1 shrink-0">
-        <h1 className="text-xl font-bold px-3 py-4" style={{ color: 'var(--primary)' }}>
-          💰 家計本
-        </h1>
+        <div className="flex items-center justify-between px-3 py-4">
+          <h1 className="text-xl font-bold" style={{ color: 'var(--primary)' }}>
+            💰 家計本
+          </h1>
+          <Link href="/notifications" className="relative p-1.5 rounded-lg hover:bg-[var(--muted)] transition">
+            <span className="text-lg">🔔</span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-[var(--destructive)] text-white text-[10px] font-bold flex items-center justify-center">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </Link>
+        </div>
         {navItems.map((item) => {
           const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
           return (
@@ -70,6 +86,18 @@ export function NavShell({ children }: { children: React.ReactNode }) {
             </Link>
           )
         })}
+        <Link
+          href="/notifications"
+          className="relative flex flex-col items-center gap-0.5 text-xs"
+          style={{ color: pathname.startsWith('/notifications') ? 'var(--primary)' : 'var(--muted-foreground)' }}
+        >
+          <span className="text-lg">🔔</span>
+          {unreadCount > 0 && (
+            <span className="absolute -top-0.5 right-1 min-w-[14px] h-3.5 px-1 rounded-full bg-[var(--destructive)] text-white text-[9px] font-bold flex items-center justify-center">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+        </Link>
       </nav>
 
       {/* Mobile FAB */}
