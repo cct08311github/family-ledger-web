@@ -88,12 +88,14 @@ export function NavShell({ children }: { children: React.ReactNode }) {
         })}
         <Link
           href="/notifications"
+          aria-label={unreadCount > 0 ? `通知，${unreadCount} 則未讀` : '通知'}
           className="relative flex flex-col items-center gap-0.5 text-xs"
           style={{ color: pathname.startsWith('/notifications') ? 'var(--primary)' : 'var(--muted-foreground)' }}
         >
-          <span className="text-lg">🔔</span>
+          <span className="text-lg" aria-hidden="true">🔔</span>
+          <span>通知</span>
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 right-1 min-w-[14px] h-3.5 px-1 rounded-full bg-[var(--destructive)] text-white text-[9px] font-bold flex items-center justify-center">
+            <span className="absolute -top-0.5 right-1 min-w-[14px] h-3.5 px-1 rounded-full bg-[var(--destructive)] text-white text-[9px] font-bold flex items-center justify-center" aria-hidden="true">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
