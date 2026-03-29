@@ -105,7 +105,7 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
     const nameMap = Object.fromEntries(members.map((m) => [m.id, m.name]))
 
     return participants.map((m, i) => {
-      let share = 0
+      let share: number
       if (splitMethod === 'equal') {
         const per = Math.round(amt / participants.length)
         const remainder = amt - per * participants.length

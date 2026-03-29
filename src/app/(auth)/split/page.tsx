@@ -113,7 +113,7 @@ export default function SplitPage() {
   } | null>(null)
   const [copied, setCopied] = useState(false)
 
-  const netBalances = calculateNetBalances(expenses, settlements, nameMap)
+  const netBalances = calculateNetBalances(expenses, settlements)
   const debts = simplifyDebts(expenses, settlements, nameMap)
 
   // 所有出現過的成員 ID（從支出的 splits 收集）

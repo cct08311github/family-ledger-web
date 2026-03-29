@@ -356,7 +356,6 @@ export default function SettingsPage() {
       <Section title="👤 帳號">
         <div className="flex items-center gap-4">
           {user?.photoURL && (
-            // eslint-disable-next-line @next/next/no-img-element
             <img src={user.photoURL} alt="" className="w-12 h-12 rounded-full" referrerPolicy="no-referrer" />
           )}
           <div className="flex-1 min-w-0">

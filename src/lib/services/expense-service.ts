@@ -1,6 +1,6 @@
 import { collection, doc, setDoc, deleteDoc, Timestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import type { Expense, SplitDetail, SplitMethod, PaymentMethod } from '@/lib/types'
+import type { SplitDetail, SplitMethod, PaymentMethod } from '@/lib/types'
 
 function genId(): string {
   return crypto.randomUUID()

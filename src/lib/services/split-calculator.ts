@@ -12,7 +12,6 @@ interface Debt {
 export function calculateNetBalances(
   expenses: Expense[],
   settlements: Settlement[],
-  nameMap: Record<string, string>,
 ): Record<string, number> {
   const balances: Record<string, number> = {}
 
@@ -41,7 +40,7 @@ export function simplifyDebts(
   settlements: Settlement[],
   nameMap: Record<string, string>,
 ): Debt[] {
-  const balances = calculateNetBalances(expenses, settlements, nameMap)
+  const balances = calculateNetBalances(expenses, settlements)
 
   // 分成債權人（正）和債務人（負）
   const creditors: { id: string; amount: number }[] = []

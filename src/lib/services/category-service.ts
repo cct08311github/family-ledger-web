@@ -1,6 +1,5 @@
 import { addDoc, collection, deleteDoc, doc, Timestamp, updateDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import type { Category } from '@/lib/types'
 
 export interface CategoryInput {
   name: string

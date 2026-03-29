@@ -88,7 +88,7 @@ export default function RecordsPage() {
                           className="p-1.5 rounded-md hover:bg-[var(--muted)] text-[var(--muted-foreground)]" title="編輯">✏️</Link>
                         <button onClick={() => {
                           if (confirm(`確定要刪除「${e.description}」嗎？`)) {
-                            group?.id && deleteExpense(group.id, e.id)
+                            if (group?.id) deleteExpense(group.id, e.id)
                           }
                         }} className="p-1.5 rounded-md hover:bg-[var(--muted)]" title="刪除"
                           style={{ color: 'var(--destructive)' }}>🗑️</button>
