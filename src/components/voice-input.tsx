@@ -27,9 +27,15 @@ type Status = 'idle' | 'listening' | 'processing' | 'error'
 
 export function VoiceInput({ availableCategories, onParsed }: Props) {
   const [status, setStatus] = useState<Status>('idle')
+  const statusRef = useRef<Status>('idle') // mirror for sync reads inside callbacks
   const [transcript, setTranscript] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
   const recognitionRef = useRef<ISpeechRecognition | null>(null)
+
+  const updateStatus = useCallback((s: Status) => {
+    statusRef.current = s
+    setStatus(s)
+  }, [])
 
   const getSpeechRecognition = useCallback((): SpeechRecognitionCtor | null => {
     if (typeof window === 'undefined') return null
@@ -38,34 +44,43 @@ export function VoiceInput({ availableCategories, onParsed }: Props) {
   }, [])
 
   const parseText = useCallback(async (text: string) => {
-    setStatus('processing')
+    updateStatus('processing')
     const apiKey = typeof window !== 'undefined' ? localStorage.getItem(GEMINI_KEY) : null
 
     if (apiKey) {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000)
       try {
         const res = await fetch('/api/parse-expense', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text, apiKey, categories: availableCategories }),
+          headers: {
+            'Content-Type': 'application/json',
+            'x-gemini-key': apiKey,   // key in header, not body
+          },
+          body: JSON.stringify({ text, categories: availableCategories }),
+          signal: controller.signal,
         })
         if (res.ok) {
           const data = await res.json() as ParsedExpense
-          if (data.description) {
+          // Check for error field; fallback if description missing
+          if (!('error' in data) && data.description) {
             onParsed(data)
-            setStatus('idle')
+            updateStatus('idle')
             return
           }
         }
       } catch {
-        // fall through to local parser
+        // network error or timeout — fall through to local parser
+      } finally {
+        clearTimeout(timeoutId)
       }
     }
 
     // Fallback: local parser
     const result = parseExpense(text, availableCategories)
     onParsed(result)
-    setStatus('idle')
-  }, [availableCategories, onParsed])
+    updateStatus('idle')
+  }, [availableCategories, onParsed, updateStatus])
 
   const startListening = useCallback(() => {
     const SpeechRec = getSpeechRecognition()
@@ -77,7 +92,7 @@ export function VoiceInput({ availableCategories, onParsed }: Props) {
 
     setErrorMsg('')
     setTranscript('')
-    setStatus('listening')
+    updateStatus('listening')
 
     const recognition = new SpeechRec()
     recognition.lang = 'zh-TW'
@@ -95,21 +110,22 @@ export function VoiceInput({ availableCategories, onParsed }: Props) {
 
     recognition.onerror = (e) => {
       setErrorMsg(e.error === 'not-allowed' ? '請允許麥克風權限' : `語音辨識錯誤：${e.error}`)
-      setStatus('error')
+      updateStatus('error')
     }
 
     recognition.onend = () => {
-      if (status === 'listening') setStatus('idle')
+      // Use statusRef (not closed-over status) to read the current value synchronously
+      if (statusRef.current === 'listening') updateStatus('idle')
     }
 
     recognitionRef.current = recognition
     recognition.start()
-  }, [getSpeechRecognition, parseText, status])
+  }, [getSpeechRecognition, parseText, updateStatus])
 
   const stopListening = useCallback(() => {
     recognitionRef.current?.stop()
-    setStatus('idle')
-  }, [])
+    updateStatus('idle')
+  }, [updateStatus])
 
   const isListening = status === 'listening'
   const isProcessing = status === 'processing'

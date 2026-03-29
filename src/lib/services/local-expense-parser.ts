@@ -53,24 +53,26 @@ function chineseToNumber(cn: string): number {
 // ── Amount extraction ─────────────────────────────────────────
 
 function extractAmount(text: string): { amount: number; remaining: string } {
-  const arabicRe = /(\d+\.?\d*)[\s]*(元|塊|圓|NT\$?|NTD)?/
+  // Require currency unit for arabic numbers to avoid matching unrelated quantities (e.g. "3個蘋果")
+  const arabicWithUnitRe = /(\d+\.?\d*)[\s]*(元|塊|圓|NT\$?|NTD)/
+  // Bare arabic (no unit) as fallback — only used when no chinese number found
+  const arabicBareRe = /(\d+\.?\d*)/
   const cnRe = /([零〇一壹二貳兩三參四肆五伍六陸七柒八捌九玖十拾百佰千仟萬万]+)[\s]*(元|塊|圓)?/
 
-  const arabicMatch = arabicRe.exec(text)
+  const arabicUnitMatch = arabicWithUnitRe.exec(text)
   const cnMatch = cnRe.exec(text)
 
-  if (arabicMatch && cnMatch) {
-    const arabicAmount = parseFloat(arabicMatch[1])
-    const cnAmount = chineseToNumber(cnMatch[1])
-    if (arabicAmount > 0 && (cnAmount === 0 || arabicMatch.index >= cnMatch.index)) {
-      return { amount: arabicAmount, remaining: text.replace(arabicMatch[0], ' ') }
-    } else if (cnAmount > 0) {
-      return { amount: cnAmount, remaining: text.replace(cnMatch[0], ' ') }
-    }
-  } else if (arabicMatch) {
-    return { amount: parseFloat(arabicMatch[1]) || 0, remaining: text.replace(arabicMatch[0], ' ') }
+  // Prefer: (1) arabic+unit, (2) chinese number, (3) bare arabic
+  if (arabicUnitMatch) {
+    return { amount: parseFloat(arabicUnitMatch[1]) || 0, remaining: text.replace(arabicUnitMatch[0], ' ') }
   } else if (cnMatch) {
-    return { amount: chineseToNumber(cnMatch[1]), remaining: text.replace(cnMatch[0], ' ') }
+    const cnAmount = chineseToNumber(cnMatch[1])
+    if (cnAmount > 0) return { amount: cnAmount, remaining: text.replace(cnMatch[0], ' ') }
+  }
+  // Last resort: bare arabic (e.g. "晚餐250")
+  const bareMatch = arabicBareRe.exec(text)
+  if (bareMatch) {
+    return { amount: parseFloat(bareMatch[1]) || 0, remaining: text.replace(bareMatch[0], ' ') }
   }
   return { amount: 0, remaining: text }
 }

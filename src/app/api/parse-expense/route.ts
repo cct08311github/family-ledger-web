@@ -7,14 +7,15 @@ import { NextRequest, NextResponse } from 'next/server'
  * Returns: { description, amount, category, date } | { error }
  */
 export async function POST(req: NextRequest) {
+  // API key is transmitted via header (not body) to avoid logging in request payloads
+  const apiKey = req.headers.get('x-gemini-key')
   const body = await req.json().catch(() => null)
-  if (!body || typeof body.text !== 'string' || typeof body.apiKey !== 'string') {
-    return NextResponse.json({ error: 'Missing text or apiKey' }, { status: 400 })
+  if (!body || typeof body.text !== 'string' || !apiKey) {
+    return NextResponse.json({ error: 'Missing text or x-gemini-key header' }, { status: 400 })
   }
 
-  const { text, apiKey, categories } = body as {
+  const { text, categories } = body as {
     text: string
-    apiKey: string
     categories?: string[]
   }
 
@@ -55,20 +56,35 @@ export async function POST(req: NextRequest) {
   )
 
   if (!res.ok) {
+    // Log full error server-side only; return generic message to client
     const errText = await res.text().catch(() => '')
-    return NextResponse.json(
-      { error: `Gemini API error ${res.status}: ${errText.slice(0, 200)}` },
-      { status: 502 },
-    )
+    console.error(`[parse-expense] Gemini API error ${res.status}: ${errText}`)
+    return NextResponse.json({ error: `AI 解析服務暫時無法使用（${res.status}）` }, { status: 502 })
   }
 
   const data = await res.json()
   const rawText: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
 
   try {
-    const parsed = JSON.parse(rawText)
-    return NextResponse.json(parsed)
+    const parsed = JSON.parse(rawText) as Record<string, unknown>
+
+    // Validate and sanitize all fields before returning to client
+    const description = typeof parsed.description === 'string'
+      ? parsed.description.slice(0, 200)
+      : ''
+    const amount = typeof parsed.amount === 'number' && isFinite(parsed.amount) && parsed.amount >= 0
+      ? Math.round(parsed.amount)
+      : 0
+    const category = typeof parsed.category === 'string' && catList.includes(parsed.category)
+      ? parsed.category
+      : catList[0]
+    const dateStr = typeof parsed.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date)
+      ? parsed.date
+      : today
+
+    return NextResponse.json({ description, amount, category, date: dateStr })
   } catch {
-    return NextResponse.json({ error: 'Failed to parse Gemini response', raw: rawText }, { status: 502 })
+    console.error('[parse-expense] Failed to parse Gemini response:', rawText)
+    return NextResponse.json({ error: 'AI 解析結果格式錯誤' }, { status: 502 })
   }
 }
