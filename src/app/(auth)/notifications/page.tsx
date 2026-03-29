@@ -3,7 +3,7 @@
 import { useGroup } from '@/lib/hooks/use-group'
 import { useNotifications } from '@/lib/hooks/use-notifications'
 import { useAuth } from '@/lib/auth'
-import { markAllNotificationsRead } from '@/lib/services/notification-service'
+import { markAllNotificationsRead, markNotificationRead } from '@/lib/services/notification-service'
 import { toDate, fmtDateFull } from '@/lib/utils'
 
 const TYPE_ICONS: Record<string, string> = {
@@ -21,6 +21,11 @@ export default function NotificationsPage() {
   async function handleMarkAllRead() {
     if (!group || !user) return
     await markAllNotificationsRead(group.id, user.uid)
+  }
+
+  async function handleMarkOneRead(notifId: string) {
+    if (!group) return
+    await markNotificationRead(group.id, notifId)
   }
 
   return (
@@ -45,10 +50,13 @@ export default function NotificationsPage() {
       ) : (
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
           {notifications.map((notif) => (
-            <div
-              key={notif.id}
-              className={`flex items-start gap-3 px-4 py-3 border-b border-[var(--border)] last:border-b-0 ${
-                !notif.isRead ? 'bg-[var(--primary)]/5' : ''
+            <button
+              key={notif.id ?? notif.title}
+              onClick={() => notif.id && !notif.isRead && handleMarkOneRead(notif.id)}
+              className={`w-full flex items-start gap-3 px-4 py-3 border-b border-[var(--border)] last:border-b-0 text-left transition-colors ${
+                !notif.isRead
+                  ? 'bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 cursor-pointer'
+                  : 'cursor-default'
               }`}
             >
               <div className="w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0"
@@ -63,9 +71,9 @@ export default function NotificationsPage() {
                 </div>
               </div>
               {!notif.isRead && (
-                <div className="w-2 h-2 rounded-full bg-[var(--primary)] flex-shrink-0 mt-1.5" />
+                <div className="w-2 h-2 rounded-full bg-[var(--primary)] flex-shrink-0 mt-1.5" aria-hidden="true" />
               )}
-            </div>
+            </button>
           ))}
         </div>
       )}

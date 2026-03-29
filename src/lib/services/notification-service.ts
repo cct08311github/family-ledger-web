@@ -1,4 +1,4 @@
-import { addDoc, collection, updateDoc, doc, serverTimestamp, query, where, getDocs } from 'firebase/firestore'
+import { addDoc, collection, updateDoc, doc, serverTimestamp, query, where, getDocs, writeBatch } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 
 export interface NotificationInput {
@@ -36,6 +36,10 @@ export async function markAllNotificationsRead(groupId: string, recipientId: str
     where('isRead', '==', false)
   )
   const snap = await getDocs(q)
-  const updates = snap.docs.map((d) => updateDoc(doc(db, 'groups', groupId, 'notifications', d.id), { isRead: true }))
-  await Promise.all(updates)
+  if (snap.empty) return
+
+  // Use writeBatch (max 500 ops) for atomic, efficient bulk update
+  const batch = writeBatch(db)
+  snap.docs.forEach((d) => batch.update(d.ref, { isRead: true }))
+  await batch.commit()
 }
