@@ -41,5 +41,10 @@ export async function markAllNotificationsRead(groupId: string, recipientId: str
   // Use writeBatch (max 500 ops) for atomic, efficient bulk update
   const batch = writeBatch(db)
   snap.docs.forEach((d) => batch.update(d.ref, { isRead: true }))
-  await batch.commit()
+  try {
+    await batch.commit()
+  } catch (err) {
+    console.error('[notification-service] markAllNotificationsRead failed:', err)
+    throw err
+  }
 }
