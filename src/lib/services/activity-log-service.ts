@@ -1,0 +1,45 @@
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
+
+export type LogAction =
+  | 'expense_created'
+  | 'expense_updated'
+  | 'expense_deleted'
+  | 'settlement_created'
+  | 'member_added'
+  | 'member_removed'
+  | 'category_created'
+  | 'category_updated'
+  | 'category_deleted'
+
+const ACTION_LABELS: Record<LogAction, string> = {
+  expense_created: '新增支出',
+  expense_updated: '編輯支出',
+  expense_deleted: '刪除支出',
+  settlement_created: '記錄結算',
+  member_added: '新增成員',
+  member_removed: '移除成員',
+  category_created: '新增類別',
+  category_updated: '編輯類別',
+  category_deleted: '刪除類別',
+}
+
+export interface LogInput {
+  action: LogAction
+  actorName: string
+  actorId: string
+  description: string
+  entityId?: string
+}
+
+export async function addActivityLog(groupId: string, input: LogInput): Promise<void> {
+  await addDoc(collection(db, 'groups', groupId, 'activityLogs'), {
+    groupId,
+    action: input.action,
+    actorName: input.actorName,
+    actorId: input.actorId,
+    description: input.description || (ACTION_LABELS[input.action] ?? input.action),
+    entityId: input.entityId ?? null,
+    createdAt: serverTimestamp(),
+  })
+}
