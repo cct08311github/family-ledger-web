@@ -191,18 +191,19 @@ function SummaryCards({ expenses }: { expenses: Expense[] }) {
 
   const items = [
     { label: '總支出', value: total, color: 'var(--primary)' },
-    { label: '共同支出', value: shared, color: 'oklch(0.55 0.15 220)' },
-    { label: '個人支出', value: personal, color: 'oklch(0.60 0.15 60)' },
+    { label: '共同支出', value: shared, color: 'oklch(0.55 0.15 220)', note: '含分攤' },
+    { label: '個人支出', value: personal, color: 'oklch(0.60 0.15 60)', note: '自行負擔' },
   ]
 
   return (
     <div className="grid grid-cols-3 gap-3">
-      {items.map(({ label, value, color }) => (
+      {items.map(({ label, value, color, note }) => (
         <div key={label} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 text-center">
           <p className="text-xs text-[var(--muted-foreground)] mb-1">{label}</p>
           <p className="text-lg font-bold" style={{ color }}>
             NT$ {value.toLocaleString()}
           </p>
+          {note && <p className="text-[10px] text-[var(--muted-foreground)] mt-0.5">{note}</p>}
         </div>
       ))}
     </div>
