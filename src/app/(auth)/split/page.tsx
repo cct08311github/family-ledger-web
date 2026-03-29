@@ -24,12 +24,21 @@ function SettleDialog({ fromName, toName, suggested, onClose, onConfirm }: Settl
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
 
+  const [error, setError] = useState<string | null>(null)
+
   async function handleSubmit() {
     const n = Math.round(parseFloat(amount))
     if (!n || n <= 0) return
     setSaving(true)
-    await onConfirm(n, note)
-    setSaving(false)
+    setError(null)
+    try {
+      await onConfirm(n, note)
+    } catch (e) {
+      setError('儲存失敗，請重試')
+      console.error('Settlement save error', e)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -64,6 +73,10 @@ function SettleDialog({ fromName, toName, suggested, onClose, onConfirm }: Settl
             />
           </div>
         </div>
+
+        {error && (
+          <p className="text-xs text-[var(--destructive)] -mt-1">{error}</p>
+        )}
 
         <div className="flex gap-3 pt-2">
           <button
@@ -235,9 +248,9 @@ export default function SplitPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {debts.map((d, i) => (
+              {debts.map((d) => (
                 <div
-                  key={i}
+                  key={`${d.from}-${d.to}`}
                   className="flex items-center gap-3 p-3 rounded-xl"
                   style={{ backgroundColor: 'color-mix(in oklch, var(--muted), transparent 30%)' }}
                 >

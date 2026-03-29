@@ -13,6 +13,7 @@ export interface NewSettlement {
 
 export async function addSettlement(groupId: string, data: NewSettlement): Promise<string> {
   const ref = await addDoc(collection(db, 'groups', groupId, 'settlements'), {
+    groupId,
     fromMemberId: data.fromMemberId,
     fromMemberName: data.fromMemberName,
     toMemberId: data.toMemberId,
