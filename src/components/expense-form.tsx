@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type RefObject } from 'react'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useMembers } from '@/lib/hooks/use-members'
 import { useExpenses } from '@/lib/hooks/use-expenses'
@@ -9,6 +9,7 @@ import { addExpense, updateExpense, type ExpenseInput } from '@/lib/services/exp
 import { useAuth } from '@/lib/auth'
 import { toDate } from '@/lib/utils'
 import type { Expense, SplitMethod, PaymentMethod, SplitDetail } from '@/lib/types'
+import type { ParsedExpense } from '@/lib/services/local-expense-parser'
 
 const FALLBACK_CATEGORIES = ['餐飲', '交通', '購物', '房租', '水電', '醫療', '娛樂', '孝親', '子女教育', '日用品', '通訊', '其他']
 
@@ -16,9 +17,11 @@ interface Props {
   existingExpense?: Expense
   duplicateFrom?: Expense
   onSaved: () => void
+  /** Ref to register a setter for voice-parsed results. Parent passes ref, form fills it on mount. */
+  onVoiceParsedRef?: RefObject<((result: ParsedExpense) => void) | null>
 }
 
-export function ExpenseForm({ existingExpense, duplicateFrom, onSaved }: Props) {
+export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoiceParsedRef }: Props) {
   const { group } = useGroup()
   const members = useMembers(group?.id)
   const { expenses } = useExpenses(group?.id)
@@ -48,6 +51,18 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved }: Props) 
   const [customAmounts, setCustomAmounts] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // 語音解析回填：父元件透過 ref 呼叫此函數填入欄位
+  useEffect(() => {
+    if (!onVoiceParsedRef) return
+    onVoiceParsedRef.current = (result: ParsedExpense) => {
+      if (result.description) setDescription(result.description)
+      if (result.amount > 0) setAmount(String(result.amount))
+      if (result.date) setDate(result.date)
+      if (result.category && categoryList.includes(result.category)) setCategory(result.category)
+    }
+    return () => { onVoiceParsedRef.current = null }
+  }, [onVoiceParsedRef, categoryList])
 
   // 最近描述（自動完成）
   const recentDescs = [...new Set(expenses.map((e) => e.description))].slice(0, 20)
