@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+:root {
+  --background: oklch(0.98 0 0);
+  --foreground: oklch(0.15 0 0);
+  --primary: oklch(0.45 0.15 145);
+  --primary-foreground: oklch(0.98 0 0);
+  --muted: oklch(0.95 0 0);
+  --muted-foreground: oklch(0.55 0 0);
+  --border: oklch(0.9 0 0);
+  --card: oklch(1 0 0);
+  --destructive: oklch(0.55 0.2 25);
+}
+
+.dark {
+  --background: oklch(0.15 0 0);
+  --foreground: oklch(0.93 0 0);
+  --primary: oklch(0.6 0.15 145);
+  --primary-foreground: oklch(0.15 0 0);
+  --muted: oklch(0.25 0 0);
+  --muted-foreground: oklch(0.65 0 0);
+  --border: oklch(0.3 0 0);
+  --card: oklch(0.2 0 0);
+  --destructive: oklch(0.65 0.2 25);
+}
+
+/* Theme color overrides */
+[data-theme="blue"] { --primary: oklch(0.5 0.15 250); }
+[data-theme="blue"].dark { --primary: oklch(0.65 0.15 250); }
+[data-theme="purple"] { --primary: oklch(0.5 0.15 300); }
+[data-theme="purple"].dark { --primary: oklch(0.65 0.15 300); }
+[data-theme="orange"] { --primary: oklch(0.6 0.15 60); }
+[data-theme="orange"].dark { --primary: oklch(0.7 0.15 60); }
+[data-theme="pink"] { --primary: oklch(0.6 0.15 350); }
+[data-theme="pink"].dark { --primary: oklch(0.7 0.15 350); }
+[data-theme="teal"] { --primary: oklch(0.55 0.12 185); }
+[data-theme="teal"].dark { --primary: oklch(0.65 0.12 185); }
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Noto Sans TC', system-ui, sans-serif;
+}
