@@ -162,7 +162,7 @@ function MemberBarChart({ expenses, memberNames }: { expenses: Expense[]; member
 
 // ── Month picker ───────────────────────────────────────────────
 
-function MonthPicker({ value, onChange }: { value: { year: number; month: number }; onChange: (v: { year: number; month: number }) => void }) {
+function MonthPicker({ value, onChange }: { value: { year: number; month: number }; onChange: (_v: { year: number; month: number }) => void }) {
   const months = useMemo(() => lastNMonths(12), [])
 
   return (
