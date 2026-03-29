@@ -13,6 +13,8 @@ npm run dev      # Start development server (Turbopack)
 npm run build    # Production build
 npm run start    # Start production server
 npm run lint     # ESLint check
+npm run test     # Jest unit tests (25 tests)
+npx playwright test  # E2E tests (54 tests, 20 passing, 34 require Auth)
 ```
 
 ## Tech Stack
@@ -93,3 +95,16 @@ Tailwind CSS v4 with CSS custom properties defined in `globals.css`. Key variabl
 - Auth: Google OAuth only
 - Database: Firestore (localized in Taiwan)
 - Storage: Receipt image uploads
+
+## Testing
+
+### Unit Tests
+- `__tests__/local-parser.test.ts` - 25 tests for local expense parsing
+- Run: `npm run test`
+
+### E2E Tests (Playwright)
+- `tests/` - 54 test cases covering auth, expense, split, statistics, notifications, settings, voice, PWA
+- 20 passing (smoke, auth flow, PWA, routes)
+- 34 skipped (require Firebase Auth Emulator)
+- Run: `npx playwright test`
+- Config: `playwright.config.ts`
