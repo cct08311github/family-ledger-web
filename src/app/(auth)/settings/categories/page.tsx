@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { addCategory, updateCategory, deleteCategory, reorderCategories } from '@/lib/services/category-service'
-import { addActivityLog } from '@/lib/services/activity-log-service'
 import { useAuth } from '@/lib/auth'
 import type { Category } from '@/lib/types'
 
@@ -42,22 +41,13 @@ export default function CategoriesPage() {
     setSaving(true)
     try {
       if (editing?.id) {
-        await updateCategory(group.id, editing.id, { name: form.name.trim(), icon: form.icon })
+        await updateCategory(group.id, editing.id, { name: form.name.trim(), icon: form.icon }, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
       } else {
-        const newId = await addCategory(group.id, {
+        await addCategory(group.id, {
           name: form.name.trim(),
           icon: form.icon,
           sortOrder: categories.length,
-        })
-        if (user) {
-          await addActivityLog(group.id, {
-            action: 'category_created',
-            actorName: user.displayName ?? '未知',
-            actorId: user.uid,
-            description: `新增類別「${form.name}」`,
-            entityId: newId,
-          })
-        }
+        }, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
       }
       setShowForm(false)
     } catch (e) {
@@ -70,16 +60,7 @@ export default function CategoriesPage() {
   async function handleDelete(cat: Category) {
     if (!group || !cat.id || !confirm(`確定刪除「${cat.name}」？`)) return
     try {
-      await deleteCategory(group.id, cat.id)
-      if (user) {
-        await addActivityLog(group.id, {
-          action: 'category_deleted',
-          actorName: user.displayName ?? '未知',
-          actorId: user.uid,
-          description: `刪除類別「${cat.name}」`,
-          entityId: cat.id,
-        })
-      }
+      await deleteCategory(group.id, cat.id, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined, cat.name)
     } catch (e) {
       console.error(e)
     }

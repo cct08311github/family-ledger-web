@@ -6,6 +6,7 @@ import { useGroup } from '@/lib/hooks/use-group'
 import { useExpenses } from '@/lib/hooks/use-expenses'
 import { deleteExpense } from '@/lib/services/expense-service'
 import { currency, toDate, fmtDateFull, paymentLabel } from '@/lib/utils'
+import { useAuth } from '@/lib/auth'
 import type { Expense } from '@/lib/types'
 
 type FilterType = '全部' | '共同' | '個人'
@@ -13,6 +14,7 @@ type FilterType = '全部' | '共同' | '個人'
 export default function RecordsPage() {
   const { group } = useGroup()
   const { expenses, loading } = useExpenses(group?.id)
+  const { user } = useAuth()
   const [filter, setFilter] = useState<FilterType>('全部')
 
   const filtered = expenses.filter((e) => {
@@ -88,7 +90,7 @@ export default function RecordsPage() {
                           className="p-1.5 rounded-md hover:bg-[var(--muted)] text-[var(--muted-foreground)]" title="編輯">✏️</Link>
                         <button onClick={() => {
                           if (confirm(`確定要刪除「${e.description}」嗎？`)) {
-                            if (group?.id) deleteExpense(group.id, e.id)
+                            if (group?.id) deleteExpense(group.id, e.id, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
                           }
                         }} className="p-1.5 rounded-md hover:bg-[var(--muted)]" title="刪除"
                           style={{ color: 'var(--destructive)' }}>🗑️</button>

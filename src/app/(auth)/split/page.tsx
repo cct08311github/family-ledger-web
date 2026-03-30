@@ -8,6 +8,7 @@ import { useMembers } from '@/lib/hooks/use-members'
 import { calculateNetBalances, simplifyDebts } from '@/lib/services/split-calculator'
 import { addSettlement } from '@/lib/services/settlement-service'
 import { currency, signedCurrency, toDate, fmtDateFull } from '@/lib/utils'
+import { useAuth } from '@/lib/auth'
 
 // ── Settlement dialog ─────────────────────────────────────────
 
@@ -106,6 +107,7 @@ export default function SplitPage() {
   const { expenses, loading: expLoading } = useExpenses(group?.id)
   const settlements = useSettlements(group?.id)
   const members = useMembers(group?.id)
+  const { user } = useAuth()
   const nameMap = Object.fromEntries(members.map((m) => [m.id, m.name]))
 
   const [settling, setSettling] = useState<{
@@ -131,7 +133,7 @@ export default function SplitPage() {
       amount,
       note: note || undefined,
       date: new Date(),
-    })
+    }, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
     setSettling(null)
   }
 
