@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, Timestamp, updateDoc } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDocs, Timestamp, updateDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { addActivityLog } from './activity-log-service'
 import type { MemberRole } from '@/lib/types'
@@ -29,7 +29,22 @@ export async function addMember(groupId: string, name: string, role: MemberRole 
   return ref.id
 }
 
-export async function removeMember(groupId: string, memberId: string, actor?: Actor, removedMemberName?: string): Promise<void> {
+export async function removeMember(
+  groupId: string,
+  memberId: string,
+  actor?: Actor,
+  removedMemberName?: string,
+  wasCurrentUser?: boolean,
+): Promise<void> {
+  // If deleting the current user, promote another member first
+  if (wasCurrentUser) {
+    const snap = await getDocs(collection(db, 'groups', groupId, 'members'))
+    const replacement = snap.docs.find((d) => d.id !== memberId)
+    if (replacement) {
+      await updateDoc(doc(db, 'groups', groupId, 'members', replacement.id), { isCurrentUser: true })
+    }
+  }
+
   await deleteDoc(doc(db, 'groups', groupId, 'members', memberId))
   if (actor) {
     await addActivityLog(groupId, {

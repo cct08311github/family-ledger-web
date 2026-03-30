@@ -49,9 +49,9 @@ function MembersSection({ groupId }: { groupId: string }) {
     }
   }
 
-  async function handleDelete(memberId: string, memberName: string) {
+  async function handleDelete(memberId: string, memberName: string, isCurrentUser: boolean) {
     if (!confirm(`確定要刪除成員「${memberName}」嗎？此操作無法復原。`)) return
-    await removeMember(groupId, memberId, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined, memberName)
+    await removeMember(groupId, memberId, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined, memberName, isCurrentUser)
   }
 
   async function handleRename(memberId: string) {
@@ -111,7 +111,7 @@ function MembersSection({ groupId }: { groupId: string }) {
               </button>
               <button onClick={() => { setEditingId(m.id); setEditName(m.name) }}
                 className="text-xs px-2 py-1 rounded border border-[var(--border)] hover:bg-[var(--muted)] text-[var(--muted-foreground)]">改名</button>
-              <button onClick={() => handleDelete(m.id, m.name)}
+              <button onClick={() => handleDelete(m.id, m.name, m.isCurrentUser)}
                 className="text-xs px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950 text-[var(--destructive)]">刪除</button>
             </>
           )}
