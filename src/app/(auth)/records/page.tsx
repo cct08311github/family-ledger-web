@@ -93,7 +93,7 @@ export default function RecordsPage() {
                           if (!group?.id) return
                           try {
                             await deleteExpense(group.id, e.id, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
-                          } catch (err) {
+                          } catch {
                             alert('刪除失敗，請稍後再試')
                           }
                         }} className="p-1.5 rounded-md hover:bg-[var(--muted)]" title="刪除"

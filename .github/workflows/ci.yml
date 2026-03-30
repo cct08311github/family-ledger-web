@@ -21,7 +21,7 @@ jobs:
       - run: npm ci
 
       - name: ESLint
-        run: npm run lint
+        run: npx eslint src/ --ext .ts,.tsx
 
       - name: Jest Unit Tests
         run: npm run test
