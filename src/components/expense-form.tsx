@@ -149,9 +149,9 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         createdBy: user?.uid ?? payerId,
       }
       if (isEditing) {
-        await updateExpense(group.id, existingExpense!.id, input)
+        await updateExpense(group.id, existingExpense!.id, input, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
       } else {
-        await addExpense(group.id, input)
+        await addExpense(group.id, input, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
       }
       onSaved()
     } catch (e: unknown) {

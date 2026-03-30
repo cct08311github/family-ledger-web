@@ -31,6 +31,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function MembersSection({ groupId }: { groupId: string }) {
   const members = useMembers(groupId)
+  const { user } = useAuth()
   const [newName, setNewName] = useState('')
   const [adding, setAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -41,7 +42,7 @@ function MembersSection({ groupId }: { groupId: string }) {
     if (!name) return
     setAdding(true)
     try {
-      await addMember(groupId, name)
+      await addMember(groupId, name, 'member', user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
       setNewName('')
     } finally {
       setAdding(false)
@@ -50,7 +51,7 @@ function MembersSection({ groupId }: { groupId: string }) {
 
   async function handleDelete(memberId: string, memberName: string) {
     if (!confirm(`確定要刪除成員「${memberName}」嗎？此操作無法復原。`)) return
-    await removeMember(groupId, memberId)
+    await removeMember(groupId, memberId, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined, memberName)
   }
 
   async function handleRename(memberId: string) {

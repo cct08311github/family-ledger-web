@@ -1,6 +1,12 @@
 import { collection, doc, setDoc, deleteDoc, Timestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { addActivityLog } from './activity-log-service'
 import type { SplitDetail, SplitMethod, PaymentMethod } from '@/lib/types'
+
+interface Actor {
+  id: string
+  name: string
+}
 
 function genId(): string {
   return crypto.randomUUID()
@@ -22,7 +28,7 @@ export interface ExpenseInput {
   createdBy: string
 }
 
-export async function addExpense(groupId: string, input: ExpenseInput): Promise<string> {
+export async function addExpense(groupId: string, input: ExpenseInput, actor?: Actor): Promise<string> {
   const id = genId()
   const now = Timestamp.now()
   const ref = doc(collection(db, 'groups', groupId, 'expenses'), id)
@@ -33,17 +39,44 @@ export async function addExpense(groupId: string, input: ExpenseInput): Promise<
     createdAt: now,
     updatedAt: now,
   })
+  if (actor) {
+    await addActivityLog(groupId, {
+      action: 'expense_created',
+      actorId: actor.id,
+      actorName: actor.name,
+      description: `新增支出：${input.description}`,
+      entityId: id,
+    })
+  }
   return id
 }
 
-export async function updateExpense(groupId: string, expenseId: string, input: Partial<ExpenseInput>): Promise<void> {
+export async function updateExpense(groupId: string, expenseId: string, input: Partial<ExpenseInput>, actor?: Actor): Promise<void> {
   const ref = doc(db, 'groups', groupId, 'expenses', expenseId)
   const data: Record<string, unknown> = { ...input, updatedAt: Timestamp.now() }
   if (input.date) data.date = Timestamp.fromDate(input.date)
   if (input.receiptPaths) data.receiptPath = input.receiptPaths[0] ?? null
   await setDoc(ref, data, { merge: true })
+  if (actor) {
+    await addActivityLog(groupId, {
+      action: 'expense_updated',
+      actorId: actor.id,
+      actorName: actor.name,
+      description: `編輯支出：${input.description ?? ''}`,
+      entityId: expenseId,
+    })
+  }
 }
 
-export async function deleteExpense(groupId: string, expenseId: string): Promise<void> {
+export async function deleteExpense(groupId: string, expenseId: string, actor?: Actor): Promise<void> {
   await deleteDoc(doc(db, 'groups', groupId, 'expenses', expenseId))
+  if (actor) {
+    await addActivityLog(groupId, {
+      action: 'expense_deleted',
+      actorId: actor.id,
+      actorName: actor.name,
+      description: `刪除支出`,
+      entityId: expenseId,
+    })
+  }
 }
