@@ -27,8 +27,8 @@ export function calculateNetBalances(
 
   // 結算扣減
   for (const s of settlements) {
-    balances[s.fromMemberId] = (balances[s.fromMemberId] ?? 0) + s.amount
-    balances[s.toMemberId] = (balances[s.toMemberId] ?? 0) - s.amount
+    balances[s.fromMemberId] = (balances[s.fromMemberId] ?? 0) - s.amount
+    balances[s.toMemberId] = (balances[s.toMemberId] ?? 0) + s.amount
   }
 
   return balances
