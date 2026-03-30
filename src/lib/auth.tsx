@@ -23,11 +23,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u && !u.isAnonymous ? u : null)
-      setLoading(false)
-    })
-    return unsubscribe
+    let settled = false
+
+    // Fallback: force unauthenticated state after 5s to prevent infinite loading
+    const timeout = window.setTimeout(() => {
+      if (!settled) {
+        console.warn('[Auth] onAuthStateChanged timeout — falling back to unauthenticated')
+        settled = true
+        setUser(null)
+        setLoading(false)
+      }
+    }, 5000)
+
+    let unsubscribe = () => {}
+    try {
+      unsubscribe = onAuthStateChanged(
+        auth,
+        (u) => {
+          if (settled) return
+          settled = true
+          window.clearTimeout(timeout)
+          setUser(u && !u.isAnonymous ? u : null)
+          setLoading(false)
+        },
+        (err) => {
+          console.error('[Auth] onAuthStateChanged error:', err)
+          if (settled) return
+          settled = true
+          window.clearTimeout(timeout)
+          setUser(null)
+          setLoading(false)
+        },
+      )
+    } catch (err) {
+      console.error('[Auth] init error:', err)
+      if (!settled) {
+        settled = true
+        window.clearTimeout(timeout)
+        setUser(null)
+        setLoading(false)
+      }
+    }
+
+    return () => {
+      window.clearTimeout(timeout)
+      unsubscribe()
+    }
   }, [])
 
   const signInWithGoogle = async () => {
