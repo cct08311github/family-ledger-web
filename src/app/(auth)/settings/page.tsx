@@ -10,6 +10,7 @@ import { useMembers } from '@/lib/hooks/use-members'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { useColorTheme, COLOR_THEMES } from '@/lib/hooks/use-color-theme'
 import { addMember, removeMember, updateMember } from '@/lib/services/member-service'
+import { createGroup } from '@/lib/services/group-service'
 import { addCategory, updateCategory } from '@/lib/services/category-service'
 import { useRouter } from 'next/navigation'
 import type { FamilyMember } from '@/lib/types'
@@ -311,6 +312,48 @@ function ApiKeySection() {
   )
 }
 
+// ── Create Group section ──────────────────────────────────────
+
+function CreateGroupSection() {
+  const [name, setName] = useState('')
+  const [creating, setCreating] = useState(false)
+
+  async function handleCreate() {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    setCreating(true)
+    try {
+      await createGroup(trimmed)
+      setName('')
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-[var(--muted-foreground)]">建立你的第一個家庭群組來開始記帳</p>
+      <div className="flex gap-2">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+          placeholder="例如：我的家庭"
+          className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+        />
+        <button
+          onClick={handleCreate}
+          disabled={creating || !name.trim()}
+          className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50"
+          style={{ backgroundColor: 'var(--primary)' }}
+        >
+          {creating ? '建立中...' : '建立'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Main page ──────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -339,7 +382,7 @@ export default function SettingsPage() {
       <Section title="👥 成員管理">
         {group
           ? <MembersSection groupId={group.id} />
-          : <p className="text-sm text-[var(--muted-foreground)]">請先建立家庭群組</p>}
+          : <CreateGroupSection />}
       </Section>
 
       {group && (
