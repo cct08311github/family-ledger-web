@@ -88,9 +88,13 @@ export default function RecordsPage() {
                       <div className="hidden group-hover:flex gap-1 shrink-0">
                         <Link href={`/expense/${e.id}?groupId=${group?.id}`}
                           className="p-1.5 rounded-md hover:bg-[var(--muted)] text-[var(--muted-foreground)]" title="編輯">✏️</Link>
-                        <button onClick={() => {
-                          if (confirm(`確定要刪除「${e.description}」嗎？`)) {
-                            if (group?.id) deleteExpense(group.id, e.id, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
+                        <button onClick={async () => {
+                          if (!confirm(`確定要刪除「${e.description}」嗎？`)) return
+                          if (!group?.id) return
+                          try {
+                            await deleteExpense(group.id, e.id, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
+                          } catch (err) {
+                            alert('刪除失敗，請稍後再試')
                           }
                         }} className="p-1.5 rounded-md hover:bg-[var(--muted)]" title="刪除"
                           style={{ color: 'var(--destructive)' }}>🗑️</button>
