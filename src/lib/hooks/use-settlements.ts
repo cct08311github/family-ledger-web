@@ -10,6 +10,7 @@ export function useSettlements(groupId: string | undefined) {
 
   useEffect(() => {
     if (!groupId) return
+    // Path: groups/{groupId}/settlements
     const q = query(collection(db, 'groups', groupId, 'settlements'), orderBy('date', 'desc'))
     const unsub = onSnapshot(q, (snap) => {
       setSettlements(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Settlement))

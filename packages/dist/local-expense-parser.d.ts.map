@@ -1,0 +1,1 @@
+{"version":3,"file":"local-expense-parser.d.ts","sourceRoot":"","sources":["../src/local-expense-parser.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AAEH,MAAM,WAAW,aAAa;IAC5B,WAAW,EAAE,MAAM,CAAA;IACnB,MAAM,EAAE,MAAM,CAAA;IACd,QAAQ,EAAE,MAAM,CAAA;IAChB,IAAI,EAAE,MAAM,CAAA;CACb;AAmOD,wBAAgB,YAAY,CAC1B,IAAI,EAAE,MAAM,EACZ,mBAAmB,GAAE,MAAM,EAAwB,GAClD,aAAa,CAef"}

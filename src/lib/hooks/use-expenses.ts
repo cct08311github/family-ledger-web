@@ -12,6 +12,7 @@ export function useExpenses(groupId: string | undefined) {
 
   useEffect(() => {
     if (!groupId) return
+    // Path: groups/{groupId}/expenses
     const q = query(collection(db, 'groups', groupId, 'expenses'), orderBy('date', 'desc'))
     const unsub = onSnapshot(q, (snap) => {
       setExpenses(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Expense))
