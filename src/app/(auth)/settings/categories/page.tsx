@@ -62,7 +62,8 @@ export default function CategoriesPage() {
     try {
       await deleteCategory(group.id, cat.id, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined, cat.name)
     } catch (e) {
-      console.error(e)
+      console.error('[Categories] Failed to delete category:', e)
+      alert('刪除失敗，請稍後再試')
     }
   }
 
@@ -73,7 +74,12 @@ export default function CategoriesPage() {
     const reordered = [...categories]
     const [moved] = reordered.splice(fromIndex, 1)
     reordered.splice(toIndex, 0, moved)
-    await reorderCategories(group.id, reordered.map((c) => c.id).filter((id): id is string => !!id))
+    try {
+      await reorderCategories(group.id, reordered.map((c) => c.id).filter((id): id is string => !!id))
+    } catch (e) {
+      console.error('[Categories] Failed to reorder categories:', e)
+      alert('排序失敗，請稍後再試')
+    }
   }
 
   return (

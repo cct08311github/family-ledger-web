@@ -52,7 +52,12 @@ function MembersSection({ groupId }: { groupId: string }) {
 
   async function handleDelete(memberId: string, memberName: string, isCurrentUser: boolean) {
     if (!confirm(`確定要刪除成員「${memberName}」嗎？此操作無法復原。`)) return
-    await removeMember(groupId, memberId, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined, memberName, isCurrentUser)
+    try {
+      await removeMember(groupId, memberId, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined, memberName, isCurrentUser)
+    } catch (e) {
+      console.error('[Settings] Failed to delete member:', e)
+      alert('刪除失敗，請稍後再試')
+    }
   }
 
   async function handleRename(memberId: string) {
@@ -71,7 +76,12 @@ function MembersSection({ groupId }: { groupId: string }) {
       if (prev) batch.update(doc(db, 'groups', groupId, 'members', prev.id), { isCurrentUser: false })
     }
     batch.update(doc(db, 'groups', groupId, 'members', member.id), { isCurrentUser: next })
-    await batch.commit()
+    try {
+      await batch.commit()
+    } catch (e) {
+      console.error('[Settings] Failed to toggle current user:', e)
+      alert('更新失敗，請稍後再試')
+    }
   }
 
   return (

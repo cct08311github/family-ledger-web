@@ -106,8 +106,8 @@ service cloud.firestore {
           && request.resource.data.amount > 0
           && request.resource.data.amount < 100000000
           && request.resource.data.fromMemberId is string
-          && request.resource.data.fromMemberId == request.auth.uid
           && request.resource.data.toMemberId is string
+          && request.resource.data.fromMemberId != request.resource.data.toMemberId
           && isReasonableSize();
 
         allow update: if isGroupMember(groupId)
@@ -116,7 +116,41 @@ service cloud.firestore {
           && request.resource.data.amount < 100000000;
         // 刪除：僅建立者或群組 owner
         allow delete: if isGroupMember(groupId)
-          && (resource.data.fromMemberId == request.auth.uid || isGroupOwner(groupId));
+          && (resource.data.createdBy == request.auth.uid || isGroupOwner(groupId));
+      }
+
+      // ─── 類別 ───
+
+      match /categories/{categoryId} {
+        allow read: if isGroupMember(groupId);
+        allow create: if isGroupMember(groupId)
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 30;
+        allow update: if isGroupMember(groupId)
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 30;
+        allow delete: if isGroupMember(groupId);
+      }
+
+      // ─── 活動日誌 ───
+
+      match /activityLogs/{logId} {
+        allow read: if isGroupMember(groupId);
+        allow create: if isGroupMember(groupId) && isReasonableSize();
+        allow update, delete: if false;
+      }
+
+      // ─── 通知 ───
+
+      match /notifications/{notifId} {
+        allow read: if isGroupMember(groupId) && resource.data.userId == request.auth.uid;
+        allow update: if isGroupMember(groupId)
+          && resource.data.userId == request.auth.uid
+          && request.resource.data.userId == request.auth.uid;
+        allow delete: if isGroupMember(groupId)
+          && resource.data.userId == request.auth.uid;
       }
     }
 
