@@ -317,14 +317,18 @@ function ApiKeySection() {
 function CreateGroupSection() {
   const [name, setName] = useState('')
   const [creating, setCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function handleCreate() {
     const trimmed = name.trim()
     if (!trimmed) return
     setCreating(true)
+    setError(null)
     try {
       await createGroup(trimmed)
       setName('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '建立失敗，請重試')
     } finally {
       setCreating(false)
     }
@@ -350,6 +354,9 @@ function CreateGroupSection() {
           {creating ? '建立中...' : '建立'}
         </button>
       </div>
+      {error && (
+        <p className="text-sm text-[var(--destructive)]">{error}</p>
+      )}
     </div>
   )
 }

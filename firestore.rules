@@ -82,6 +82,7 @@ service cloud.firestore {
           && request.resource.data.category is string
           && request.resource.data.payerId is string
           && request.resource.data.payerName is string
+          && request.resource.data.createdBy == request.auth.uid
           && isReasonableSize();
 
         allow update: if isGroupMember(groupId)
@@ -105,6 +106,7 @@ service cloud.firestore {
           && request.resource.data.amount > 0
           && request.resource.data.amount < 100000000
           && request.resource.data.fromMemberId is string
+          && request.resource.data.fromMemberId == request.auth.uid
           && request.resource.data.toMemberId is string
           && isReasonableSize();
 

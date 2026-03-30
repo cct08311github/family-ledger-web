@@ -18,13 +18,17 @@ export async function addMember(groupId: string, name: string, role: MemberRole 
     createdAt: Timestamp.now(),
   })
   if (actor) {
-    await addActivityLog(groupId, {
-      action: 'member_added',
-      actorId: actor.id,
-      actorName: actor.name,
-      description: `新增成員：${name}`,
-      entityId: ref.id,
-    })
+    try {
+      await addActivityLog(groupId, {
+        action: 'member_added',
+        actorId: actor.id,
+        actorName: actor.name,
+        description: `新增成員：${name}`,
+        entityId: ref.id,
+      })
+    } catch (e) {
+      console.error('[MemberService] Failed to log activity:', e)
+    }
   }
   return ref.id
 }
@@ -47,13 +51,17 @@ export async function removeMember(
 
   await deleteDoc(doc(db, 'groups', groupId, 'members', memberId))
   if (actor) {
-    await addActivityLog(groupId, {
-      action: 'member_removed',
-      actorId: actor.id,
-      actorName: actor.name,
-      description: `移除成員：${removedMemberName ?? memberId}`,
-      entityId: memberId,
-    })
+    try {
+      await addActivityLog(groupId, {
+        action: 'member_removed',
+        actorId: actor.id,
+        actorName: actor.name,
+        description: `移除成員：${removedMemberName ?? memberId}`,
+        entityId: memberId,
+      })
+    } catch (e) {
+      console.error('[MemberService] Failed to log activity:', e)
+    }
   }
 }
 

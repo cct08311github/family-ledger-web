@@ -40,13 +40,17 @@ export async function addExpense(groupId: string, input: ExpenseInput, actor?: A
     updatedAt: now,
   })
   if (actor) {
-    await addActivityLog(groupId, {
-      action: 'expense_created',
-      actorId: actor.id,
-      actorName: actor.name,
-      description: `新增支出：${input.description}`,
-      entityId: id,
-    })
+    try {
+      await addActivityLog(groupId, {
+        action: 'expense_created',
+        actorId: actor.id,
+        actorName: actor.name,
+        description: `新增支出：${input.description}`,
+        entityId: id,
+      })
+    } catch (e) {
+      console.error('[ExpenseService] Failed to log activity:', e)
+    }
   }
   return id
 }
@@ -58,25 +62,33 @@ export async function updateExpense(groupId: string, expenseId: string, input: P
   if (input.receiptPaths) data.receiptPath = input.receiptPaths[0] ?? null
   await setDoc(ref, data, { merge: true })
   if (actor) {
-    await addActivityLog(groupId, {
-      action: 'expense_updated',
-      actorId: actor.id,
-      actorName: actor.name,
-      description: `編輯支出：${input.description ?? ''}`,
-      entityId: expenseId,
-    })
+    try {
+      await addActivityLog(groupId, {
+        action: 'expense_updated',
+        actorId: actor.id,
+        actorName: actor.name,
+        description: `編輯支出：${input.description ?? ''}`,
+        entityId: expenseId,
+      })
+    } catch (e) {
+      console.error('[ExpenseService] Failed to log activity:', e)
+    }
   }
 }
 
 export async function deleteExpense(groupId: string, expenseId: string, actor?: Actor): Promise<void> {
   await deleteDoc(doc(db, 'groups', groupId, 'expenses', expenseId))
   if (actor) {
-    await addActivityLog(groupId, {
-      action: 'expense_deleted',
-      actorId: actor.id,
-      actorName: actor.name,
-      description: `刪除支出`,
-      entityId: expenseId,
-    })
+    try {
+      await addActivityLog(groupId, {
+        action: 'expense_deleted',
+        actorId: actor.id,
+        actorName: actor.name,
+        description: `刪除支出`,
+        entityId: expenseId,
+      })
+    } catch (e) {
+      console.error('[ExpenseService] Failed to log activity:', e)
+    }
   }
 }

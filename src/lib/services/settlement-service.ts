@@ -31,13 +31,17 @@ export async function addSettlement(groupId: string, data: NewSettlement, actor?
     createdAt: serverTimestamp(),
   })
   if (actor) {
-    await addActivityLog(groupId, {
-      action: 'settlement_created',
-      actorId: actor.id,
-      actorName: actor.name,
-      description: `記錄結算：${data.fromMemberName} → ${data.toMemberName} ${currency(data.amount)}`,
-      entityId: ref.id,
-    })
+    try {
+      await addActivityLog(groupId, {
+        action: 'settlement_created',
+        actorId: actor.id,
+        actorName: actor.name,
+        description: `記錄結算：${data.fromMemberName} → ${data.toMemberName} ${currency(data.amount)}`,
+        entityId: ref.id,
+      })
+    } catch (e) {
+      console.error('[SettlementService] Failed to log activity:', e)
+    }
   }
   return ref.id
 }
