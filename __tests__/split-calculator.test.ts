@@ -59,6 +59,45 @@ function makeSettlement(
   }
 }
 
+// ── calculateNetBalances with settlements ────────────────────────
+
+describe('calculateNetBalances with settlements', () => {
+  test('結算直拉影響餘額：from扣、to加，帳面淨額不歸零', () => {
+    // A paid 100, share 50/50 with B
+    // expense: A=+50, B=-50
+    // B pays A 30: B扣30 → -50-30=-80, A加30 → +50+30=+80
+    const expenses: Expense[] = [
+      makeExpense('e1', 100, 'A', [
+        { memberId: 'A', shareAmount: 50, paidAmount: 100, isParticipant: true },
+        { memberId: 'B', shareAmount: 50, paidAmount: 0, isParticipant: true },
+      ]),
+    ]
+    const settlements: Settlement[] = [
+      makeSettlement('s1', 'B', 'A', 30),
+    ]
+    const balances = calculateNetBalances(expenses, settlements)
+    // 覆蓋 lines 34-35：balances[from] -= amount, balances[to] += amount
+    expect(Math.round(balances['A'] ?? 0)).toBe(80)
+    expect(Math.round(balances['B'] ?? 0)).toBe(-80)
+  })
+
+  test('多筆結算 settle 多筆費用', () => {
+    const expenses: Expense[] = [
+      makeExpense('e1', 100, 'A', [
+        { memberId: 'A', shareAmount: 50, paidAmount: 100, isParticipant: true },
+        { memberId: 'B', shareAmount: 50, paidAmount: 0, isParticipant: true },
+      ]),
+    ]
+    const settlements: Settlement[] = [
+      makeSettlement('s1', 'B', 'A', 20),
+      makeSettlement('s2', 'B', 'A', 30),
+    ]
+    const balances = calculateNetBalances(expenses, settlements)
+    expect(Math.round(balances['A'] ?? 0)).toBe(100)
+    expect(Math.round(balances['B'] ?? 0)).toBe(-100)
+  })
+})
+
 // ── calculateNetBalances tests ─────────────────────────────────
 
 describe('calculateNetBalances', () => {
