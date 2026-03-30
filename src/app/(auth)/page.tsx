@@ -11,7 +11,7 @@ export default function HomePage() {
   const { group, loading: groupLoading } = useGroup()
   const { expenses, loading: expLoading } = useExpenses(group?.id)
   const settlements = useSettlements(group?.id)
-  const members = useMembers(group?.id)
+  const { members, loading: membersLoading } = useMembers(group?.id)
 
   const monthly = useMonthlyExpenses(expenses)
   const recent = useRecentExpenses(expenses, 5)
@@ -23,7 +23,7 @@ export default function HomePage() {
   const total = monthly.reduce((s, e) => s + e.amount, 0)
   const sharedTotal = monthly.filter((e) => e.isShared).reduce((s, e) => s + e.amount, 0)
 
-  if (groupLoading || expLoading) {
+  if (groupLoading || expLoading || membersLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin h-8 w-8 border-4 border-[var(--primary)] border-t-transparent rounded-full" />

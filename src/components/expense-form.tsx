@@ -23,7 +23,7 @@ interface Props {
 
 export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoiceParsedRef }: Props) {
   const { group } = useGroup()
-  const members = useMembers(group?.id)
+  const { members } = useMembers(group?.id)
   const { expenses } = useExpenses(group?.id)
   const firestoreCategories = useCategories(group?.id)
   const categoryList = firestoreCategories.length > 0
