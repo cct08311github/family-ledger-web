@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, getDocs, Timestamp, updateDoc } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDocs, runTransaction, Timestamp, updateDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { addActivityLog } from './activity-log-service'
 import type { MemberRole } from '@/lib/types'
@@ -40,13 +40,15 @@ export async function removeMember(
   removedMemberName?: string,
   wasCurrentUser?: boolean,
 ): Promise<void> {
-  // If deleting the current user, promote another member first
+  // Atomically promote replacement if deleting current user
   if (wasCurrentUser) {
-    const snap = await getDocs(collection(db, 'groups', groupId, 'members'))
-    const replacement = snap.docs.find((d) => d.id !== memberId)
-    if (replacement) {
-      await updateDoc(doc(db, 'groups', groupId, 'members', replacement.id), { isCurrentUser: true })
-    }
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(collection(db, 'groups', groupId, 'members'))
+      const replacement = snap.docs.find((d) => d.id !== memberId)
+      if (replacement) {
+        tx.update(doc(db, 'groups', groupId, 'members', replacement.id), { isCurrentUser: true })
+      }
+    })
   }
 
   await deleteDoc(doc(db, 'groups', groupId, 'members', memberId))

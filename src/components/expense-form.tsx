@@ -74,7 +74,9 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   // 初始化參與者和付款人
   useEffect(() => {
     if (members.length === 0) return
-    if (!payerId) setPayerId(members[0].id)
+    // Set payerId if empty OR if current payerId is no longer valid (member was removed)
+    const payerValid = members.some((m) => m.id === payerId)
+    if (!payerId || !payerValid) setPayerId(members[0].id)
     if (participantIds.size === 0) {
       if (source?.splits) {
         setParticipantIds(new Set(source.splits.filter((s) => s.isParticipant).map((s) => s.memberId)))
