@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app'
 import { getAuth, connectAuthEmulator } from 'firebase/auth'
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore'
+import { getFirestore, connectFirestoreEmulator, enableIndexedDbPersistence } from 'firebase/firestore'
 import { getStorage, connectStorageEmulator } from 'firebase/storage'
 
 const firebaseConfig = {
@@ -17,6 +17,20 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 export const auth = getAuth(app)
 export const db = getFirestore(app)
 export const storage = getStorage(app)
+
+// Enable offline persistence for Firestore
+// This allows the app to work offline and sync when back online
+if (typeof window !== 'undefined') {
+  enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      // Multiple tabs open - persistence can only be enabled in one tab at a time
+      console.warn('[Firebase] Offline persistence skipped: multiple tabs open')
+    } else if (err.code === 'unimplemented') {
+      // Browser doesn't support offline persistence
+      console.warn('[Firebase] Offline persistence not supported in this browser')
+    }
+  })
+}
 
 // Connect to Firebase Emulators in test/development mode
 if (process.env.NODE_ENV === 'test' || process.env.USE_FIREBASE_EMULATOR === 'true') {
