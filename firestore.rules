@@ -126,12 +126,15 @@ service cloud.firestore {
         allow create: if isGroupMember(groupId)
           && request.resource.data.name is string
           && request.resource.data.name.size() > 0
-          && request.resource.data.name.size() <= 30;
+          && request.resource.data.name.size() <= 30
+          && request.resource.data.isActive is bool
+          && request.resource.data.sortOrder is int;
         allow update: if isGroupMember(groupId)
           && request.resource.data.name is string
           && request.resource.data.name.size() > 0
-          && request.resource.data.name.size() <= 30;
-        allow delete: if isGroupMember(groupId);
+          && request.resource.data.name.size() <= 30
+          && request.resource.data.isActive is bool;
+        allow delete: if isGroupOwner(groupId);
       }
 
       // ─── 活動日誌 ───

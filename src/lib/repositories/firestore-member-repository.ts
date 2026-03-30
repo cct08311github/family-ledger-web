@@ -12,6 +12,7 @@ import {
   query,
   orderBy,
   limit,
+  writeBatch,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type { MemberRepository, Member, MemberInput } from './member-repository'
@@ -84,11 +85,11 @@ export class FirestoreMemberRepository implements MemberRepository {
     // First, get all members
     const members = await this.getByGroupId(groupId)
 
-    // Update each member to set isCurrentUser
-    const updates = members.map((m) =>
-      this.update(groupId, m.id, { isCurrentUser: m.id === memberId })
-    )
-
-    await Promise.all(updates)
+    // Use batch write for atomicity
+    const batch = writeBatch(db)
+    for (const m of members) {
+      batch.update(doc(db, 'groups', groupId, 'members', m.id), { isCurrentUser: m.id === memberId })
+    }
+    await batch.commit()
   }
 }
