@@ -30,7 +30,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 // ── Members section ────────────────────────────────────────────
 
 function MembersSection({ groupId }: { groupId: string }) {
-  const members = useMembers(groupId)
+  const { members, loading: membersLoading } = useMembers(groupId)
   const { user } = useAuth()
   const [newName, setNewName] = useState('')
   const [adding, setAdding] = useState(false)
@@ -75,9 +75,11 @@ function MembersSection({ groupId }: { groupId: string }) {
 
   return (
     <div className="space-y-3">
-      {members.length === 0 && (
+      {membersLoading ? (
+        <p className="text-sm text-[var(--muted-foreground)]">載入中...</p>
+      ) : members.length === 0 ? (
         <p className="text-sm text-[var(--muted-foreground)]">還沒有成員，請新增</p>
-      )}
+      ) : null}
       {members.map((m) => (
         <div key={m.id} className="flex items-center gap-2">
           {editingId === m.id ? (
