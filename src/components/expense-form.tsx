@@ -131,13 +131,22 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
       setError('請填寫必要欄位')
       return
     }
+    const saveAmt = parseFloat(amount) || 0
+    if (isShared && splitMethod !== 'equal') {
+      const splits = buildSplits()
+      const splitSum = splits.reduce((s, sp) => s + sp.shareAmount, 0)
+      if (splitSum !== saveAmt) {
+        setError(`分帳金額合計 (NT$ ${splitSum}) 與支出金額 (NT$ ${saveAmt}) 不符`)
+        return
+      }
+    }
     setSaving(true)
     setError(null)
     try {
       const input: ExpenseInput = {
         date: new Date(date),
         description: description.trim(),
-        amount: parseFloat(amount),
+        amount: saveAmt,
         category,
         isShared,
         splitMethod,
