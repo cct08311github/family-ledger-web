@@ -105,7 +105,7 @@ function SettleDialog({ fromName, toName, suggested, onClose, onConfirm }: Settl
 export default function SplitPage() {
   const { group, loading: groupLoading } = useGroup()
   const { expenses, loading: expLoading } = useExpenses(group?.id)
-  const settlements = useSettlements(group?.id)
+  const { settlements, loading: settlementsLoading } = useSettlements(group?.id)
   const { members, loading: membersLoading } = useMembers(group?.id)
   const { user } = useAuth()
   const nameMap = Object.fromEntries(members.map((m) => [m.id, m.name]))
@@ -148,7 +148,7 @@ export default function SplitPage() {
     })
   }
 
-  if (groupLoading || expLoading || membersLoading) {
+  if (groupLoading || expLoading || membersLoading || settlementsLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin h-8 w-8 border-4 border-[var(--primary)] border-t-transparent rounded-full" />

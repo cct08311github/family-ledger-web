@@ -10,7 +10,7 @@ import { currency, toDate, fmtDate } from '@/lib/utils'
 export default function HomePage() {
   const { group, loading: groupLoading } = useGroup()
   const { expenses, loading: expLoading } = useExpenses(group?.id)
-  const settlements = useSettlements(group?.id)
+  const { settlements } = useSettlements(group?.id)
   const { members, loading: membersLoading } = useMembers(group?.id)
 
   const monthly = useMonthlyExpenses(expenses)

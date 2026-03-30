@@ -7,6 +7,7 @@ import type { Settlement } from '@/lib/types'
 
 export function useSettlements(groupId: string | undefined) {
   const [settlements, setSettlements] = useState<Settlement[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!groupId) return
@@ -14,9 +15,10 @@ export function useSettlements(groupId: string | undefined) {
     const q = query(collection(db, 'groups', groupId, 'settlements'), orderBy('date', 'desc'))
     const unsub = onSnapshot(q, (snap) => {
       setSettlements(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Settlement))
+      setLoading(false)
     })
     return unsub
   }, [groupId])
 
-  return settlements
+  return { settlements, loading }
 }

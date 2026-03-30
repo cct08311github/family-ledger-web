@@ -102,6 +102,7 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   const buildSplits = (): SplitDetail[] => {
     const amt = parseFloat(amount) || 0
     const participants = members.filter((m) => participantIds.has(m.id))
+    if (participants.length === 0) return []
     const nameMap = Object.fromEntries(members.map((m) => [m.id, m.name]))
 
     return participants.map((m, i) => {
