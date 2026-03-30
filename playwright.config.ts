@@ -28,5 +28,9 @@ export default defineConfig({
     url: 'http://localhost:3000',
     reuseExistingServer: true,
     timeout: 120 * 1000,
+    env: {
+      USE_FIREBASE_EMULATOR: 'true',
+      FIREBASE_EMULATOR_HOST: 'localhost',
+    },
   },
 })
