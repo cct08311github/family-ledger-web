@@ -86,6 +86,9 @@ service cloud.firestore {
           && isReasonableSize();
 
         allow update: if isGroupMember(groupId)
+          && request.resource.data.description is string
+          && request.resource.data.description.size() > 0
+          && request.resource.data.description.size() <= 200
           && request.resource.data.amount is number
           && request.resource.data.amount > 0
           && request.resource.data.amount < 100000000

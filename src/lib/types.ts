@@ -42,6 +42,7 @@ export interface FamilyMember {
   sortOrder: number
   isCurrentUser: boolean
   createdAt: Timestamp
+  updatedAt?: Timestamp
 }
 
 export interface FamilyGroup {
