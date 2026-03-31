@@ -23,10 +23,18 @@ export function calculateNetBalances(
 
   for (const e of expenses) {
     if (!e.isShared) continue
+
+    // 先把付款人的 paidAmount 加進去（無論是否為參與者）
+    if (e.payerId) {
+      const payerSplit = e.splits.find((s) => s.memberId === e.payerId)
+      const paid = payerSplit?.paidAmount ?? 0
+      balances[e.payerId] = (balances[e.payerId] ?? 0) + paid
+    }
+
+    // 參與者的 shareAmount 要扣除（變成欠款）
     for (const s of e.splits) {
       if (!s.isParticipant) continue
-      const debt = s.shareAmount - s.paidAmount
-      balances[s.memberId] = (balances[s.memberId] ?? 0) - debt
+      balances[s.memberId] = (balances[s.memberId] ?? 0) - s.shareAmount
     }
   }
 
