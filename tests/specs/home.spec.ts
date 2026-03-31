@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { HomePage } from '../pages/HomePage'
-import { createTestUser, signInWithEmailPassword, deleteTestUser } from '../helpers/test-auth'
+import { createTestUser, signInWithEmailPassword, deleteTestUser, skipIfEmulatorUnavailable } from '../helpers/test-auth'
 
 /**
  * 首頁儀表板測試
@@ -16,6 +16,7 @@ test.describe('首頁儀表板 (Home Dashboard)', () => {
   let testUserUid: string
 
   test.beforeAll(async () => {
+    if (!await skipIfEmulatorUnavailable()) return
     // Create test user in Auth Emulator
     testUserEmail = `home${Date.now()}@emulator.test`
     testUserPassword = 'testpass123'

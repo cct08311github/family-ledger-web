@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { StatisticsPage } from '../pages/StatisticsPage'
-import { createTestUser, signInWithEmailPassword, deleteTestUser } from '../helpers/test-auth'
+import { createTestUser, signInWithEmailPassword, deleteTestUser, skipIfEmulatorUnavailable } from '../helpers/test-auth'
 
 /**
  * 統計頁面測試
@@ -16,6 +16,7 @@ test.describe('統計頁面 (Statistics Page)', () => {
   let testUserUid: string
 
   test.beforeAll(async () => {
+    if (!await skipIfEmulatorUnavailable()) return
     testUserEmail = `stats${Date.now()}@emulator.test`
     testUserPassword = 'testpass123'
     const user = await createTestUser(testUserEmail, testUserPassword, '測試使用者')

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { SplitPage } from '../pages/SplitPage'
-import { createTestUser, signInWithEmailPassword, deleteTestUser } from '../helpers/test-auth'
+import { createTestUser, signInWithEmailPassword, deleteTestUser, skipIfEmulatorUnavailable } from '../helpers/test-auth'
 
 /**
  * 拆帳結算測試
@@ -16,6 +16,7 @@ test.describe('拆帳結算 (Split & Settlement)', () => {
   let testUserUid: string
 
   test.beforeAll(async () => {
+    if (!await skipIfEmulatorUnavailable()) return
     testUserEmail = `split${Date.now()}@emulator.test`
     testUserPassword = 'testpass123'
     const user = await createTestUser(testUserEmail, testUserPassword, '測試使用者')

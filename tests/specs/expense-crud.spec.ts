@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { ExpenseFormPage } from '../pages/ExpenseFormPage'
 import { RecordsPage } from '../pages/RecordsPage'
-import { createTestUser, signInWithEmailPassword, deleteTestUser } from '../helpers/test-auth'
+import { createTestUser, signInWithEmailPassword, deleteTestUser, skipIfEmulatorUnavailable } from '../helpers/test-auth'
 
 /**
  * 支出 CRUD 測試
@@ -16,6 +16,7 @@ test.describe('支出 CRUD (Expense CRUD)', () => {
   let testUserUid: string
 
   test.beforeAll(async () => {
+    if (!await skipIfEmulatorUnavailable()) return
     testUserEmail = `expense${Date.now()}@emulator.test`
     testUserPassword = 'testpass123'
     const user = await createTestUser(testUserEmail, testUserPassword, '測試使用者')
@@ -108,6 +109,7 @@ test.describe('記錄頁面 (Records Page)', () => {
   let testUserUid: string
 
   test.beforeAll(async () => {
+    if (!await skipIfEmulatorUnavailable()) return
     testUserEmail = `records${Date.now()}@emulator.test`
     testUserPassword = 'testpass123'
     const user = await createTestUser(testUserEmail, testUserPassword, '測試使用者')

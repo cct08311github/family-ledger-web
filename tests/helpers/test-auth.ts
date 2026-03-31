@@ -4,9 +4,11 @@
  * Provides utilities to:
  * - Create test users in Auth Emulator
  * - Sign in via Firebase Auth SDK in Playwright browser context
+ * - Check emulator availability (skip tests gracefully when unavailable)
  */
 
 import type { Page } from '@playwright/test'
+import { test } from '@playwright/test'
 
 const EMULATOR_HOST = process.env.FIREBASE_EMULATOR_HOST ?? 'localhost'
 
@@ -20,7 +22,46 @@ export interface TestUser {
 const TEST_PROJECT_ID = 'demo-test'
 
 /**
+ * Check if Firebase Auth Emulator is available.
+ * Returns true if the emulator is reachable, false otherwise.
+ */
+export async function isEmulatorAvailable(): Promise<boolean> {
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 3000)
+    const response = await fetch(
+      `http://${EMULATOR_HOST}:9099/identitytoolkit/v1/relyingparty/getAccountInfo`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: 1 }),
+        signal: controller.signal,
+      }
+    )
+    clearTimeout(timeoutId)
+    // Auth Emulator returns 400 for getAccountInfo with empty users array, but reachable
+    return response.ok || response.status === 400
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Skip all tests in a describe block if Firebase Auth Emulator is unavailable.
+ * Call this at the start of beforeAll in auth-dependent test suites.
+ */
+export async function skipIfEmulatorUnavailable(): Promise<boolean> {
+  const available = await isEmulatorAvailable()
+  if (!available) {
+    test.skip(true, 'Firebase Auth Emulator not available. Run "firebase emulators:start" first.')
+    return false
+  }
+  return true
+}
+
+/**
  * Create a test user in the Auth Emulator via REST API.
+ * Throws if emulator is unavailable.
  */
 export async function createTestUser(
   email: string,
