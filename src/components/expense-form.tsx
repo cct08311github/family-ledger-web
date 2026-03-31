@@ -115,6 +115,11 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         share = i === participants.length - 1 ? per + remainder : per
       } else if (splitMethod === 'percentage') {
         share = Math.round(amt * (percentages[m.id] ?? 0) / 100)
+        // Distribute rounding remainder to last participant to ensure sum matches amount
+        if (i === participants.length - 1) {
+          const total = participants.reduce((s, pm) => s + Math.round(amt * (percentages[pm.id] ?? 0) / 100), 0)
+          share += amt - total
+        }
       } else {
         share = customAmounts[m.id] ?? 0
       }
