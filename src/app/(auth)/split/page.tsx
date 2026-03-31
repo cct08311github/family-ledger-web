@@ -24,7 +24,6 @@ function SettleDialog({ fromName, toName, suggested, onClose, onConfirm }: Settl
   const [amount, setAmount] = useState(String(suggested))
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
-
   const [error, setError] = useState<string | null>(null)
 
   async function handleSubmit() {

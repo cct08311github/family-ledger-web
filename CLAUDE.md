@@ -13,7 +13,7 @@ npm run dev      # Start development server (Turbopack)
 npm run build    # Production build
 npm run start    # Start production server
 npm run lint     # ESLint check
-npm run test     # Jest unit tests (25 tests)
+npm run test     # Jest unit tests (42 tests)
 npx playwright test  # E2E tests (54 tests, 20 passing, 34 require Auth)
 ```
 
@@ -100,11 +100,12 @@ Tailwind CSS v4 with CSS custom properties defined in `globals.css`. Key variabl
 
 ### Unit Tests
 - `__tests__/local-parser.test.ts` - 25 tests for local expense parsing
+- `__tests__/split-calculator.test.ts` - 17 tests for split calculator
 - Run: `npm run test`
 
 ### E2E Tests (Playwright)
 - `tests/` - 54 test cases covering auth, expense, split, statistics, notifications, settings, voice, PWA
 - 20 passing (smoke, auth flow, PWA, routes)
-- 34 skipped (require Firebase Auth Emulator)
+- 34 enabled with Firebase Auth Emulator (requires emulator in CI)
 - Run: `npx playwright test`
 - Config: `playwright.config.ts`
