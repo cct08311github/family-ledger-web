@@ -66,5 +66,5 @@ export interface ExpenseQueryOptions extends QueryOptions {
 }
 
 export type ExpenseRepository = BaseRepository<Expense, ExpenseInput, ExpenseUpdate> & {
-  queryWithFilters(groupId: string, options?: ExpenseQueryOptions): Promise<PaginatedResult<Expense>>
+  queryWithFilters(_groupId: string, _options?: ExpenseQueryOptions): Promise<PaginatedResult<Expense>>
 }

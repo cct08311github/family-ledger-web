@@ -20,7 +20,7 @@ type SpeechRecognitionCtor = new () => ISpeechRecognition
 
 interface Props {
   availableCategories?: string[]
-  onParsed: (result: ParsedExpense) => void
+  onParsed: (_result: ParsedExpense) => void
 }
 
 type Status = 'idle' | 'listening' | 'processing' | 'error'
