@@ -44,6 +44,7 @@
     "postcss": "^8.5.8",
     "source-map-js": "^1.2.1",
     "ts-jest": "^29.4.6",
+    "ts-node": "^10.9.2",
     "typescript-eslint": "^8.57.2"
   }
 }
