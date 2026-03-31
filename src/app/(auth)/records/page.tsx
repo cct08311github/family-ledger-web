@@ -81,7 +81,7 @@ export default function RecordsPage() {
                         <div className="text-xs text-[var(--muted-foreground)]">
                           {e.category} · {e.payerName}付 · {paymentLabel(e.paymentMethod)}
                           {e.isShared ? ' · 共同' : ''}
-                          {(e.receiptPaths?.length ?? 0) > 0 && ` · 📷${e.receiptPaths.length}`}
+                          {e.receiptPath && ' · 📷'}
                         </div>
                       </div>
                       <div className="font-semibold shrink-0">{currency(e.amount)}</div>
