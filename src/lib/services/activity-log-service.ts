@@ -7,6 +7,7 @@ export type LogAction =
   | 'expense_deleted'
   | 'settlement_created'
   | 'member_added'
+  | 'member_updated'
   | 'member_removed'
   | 'category_created'
   | 'category_updated'
@@ -18,6 +19,7 @@ const ACTION_LABELS: Record<LogAction, string> = {
   expense_deleted: '刪除支出',
   settlement_created: '記錄結算',
   member_added: '新增成員',
+  member_updated: '編輯成員',
   member_removed: '移除成員',
   category_created: '新增類別',
   category_updated: '編輯類別',

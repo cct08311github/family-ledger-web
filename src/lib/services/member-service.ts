@@ -70,9 +70,23 @@ export async function updateMember(
   groupId: string,
   memberId: string,
   data: { name?: string; role?: MemberRole; isCurrentUser?: boolean },
+  actor?: Actor,
 ): Promise<void> {
   await updateDoc(doc(db, 'groups', groupId, 'members', memberId), {
     ...data,
     updatedAt: Timestamp.now(),
   })
+  if (actor) {
+    try {
+      await addActivityLog(groupId, {
+        action: 'member_updated',
+        actorId: actor.id,
+        actorName: actor.name,
+        description: `編輯成員：${data.name ?? memberId}`,
+        entityId: memberId,
+      })
+    } catch (e) {
+      console.error('[MemberService] Failed to log activity:', e)
+    }
+  }
 }
