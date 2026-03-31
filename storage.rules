@@ -1,22 +1,38 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // 收據照片：僅已登入使用者可讀寫自己上傳的檔案
+
+    // ─── 輔助函式 ───
+
+    // 是否為群組擁有者（用於收據刪除驗證）
+    function isGroupOwner(groupId) {
+      return request.auth != null &&
+        request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid;
+    }
+
+    // ─── 收據 ───
+
     match /receipts/{groupId}/{expenseId}/{fileName} {
-      // 讀取：任何已登入使用者（同群組驗證由 Firestore 處理）
+      // 讀取：已登入（群組存取由 Firestore expense document 規則保護）
       allow read: if request.auth != null;
 
       // 上傳：已登入 + 檔案 < 10MB + 圖片類型
+      // 建議上傳時在 metadata 中設定 uploadedBy: request.auth.uid
       allow write: if request.auth != null
         && request.resource.size < 10 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
 
-      // 刪除：已登入
-      allow delete: if request.auth != null;
+      // 刪除：上傳者本人或群組 owner
+      // - resource.metadata.uploadedBy 需在上傳時設定（建議）
+      // - 若無此欄位（舊檔案），僅群組 owner 可刪除
+      allow delete: if request.auth != null
+        && (resource.metadata.uploadedBy == request.auth.uid
+            || isGroupOwner(groupId));
     }
 
-    // 其他路徑：全部拒絕
-    match /{allPaths=**} {
+    // ─── 其他路徑：全部拒絕 ───
+
+    match /{document=**} {
       allow read, write: if false;
     }
   }
