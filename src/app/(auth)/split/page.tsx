@@ -6,7 +6,7 @@ import { useExpenses } from '@/lib/hooks/use-expenses'
 import { useSettlements } from '@/lib/hooks/use-settlements'
 import { useMembers } from '@/lib/hooks/use-members'
 import { calculateNetBalances, simplifyDebts } from '@/lib/services/split-calculator'
-import { addSettlement } from '@/lib/services/settlement-service'
+import { addSettlement, deleteSettlement } from '@/lib/services/settlement-service'
 import { currency, signedCurrency, toDate, fmtDateFull } from '@/lib/utils'
 import { useAuth } from '@/lib/auth'
 
@@ -56,27 +56,26 @@ function SettleDialog({ fromName, toName, suggested, onClose, onConfirm }: Settl
           <span className="font-medium text-[var(--foreground)]">{toName}</span>
         </p>
 
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs text-[var(--muted-foreground)] mb-1 block">金額（NT$）</label>
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-              min="1"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-[var(--muted-foreground)] mb-1 block">備注（選填）</label>
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="e.g. Line Pay"
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-            />
-          </div>
+        <div>
+          <label className="text-xs text-[var(--muted-foreground)] mb-1 block">金額（NT$）</label>
+          <input
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+            min="1"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs text-[var(--muted-foreground)] mb-1 block">備註（可選）</label>
+          <input
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="例：房租、紅包..."
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+          />
         </div>
 
         {error && (
@@ -118,6 +117,19 @@ export default function SplitPage() {
     fromId: string; fromName: string; toId: string; toName: string; amount: number
   } | null>(null)
   const [copied, setCopied] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  async function handleDeleteSettlement(id: string) {
+    if (!group) return
+    setDeletingId(id)
+    try {
+      await deleteSettlement(group.id, id, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
+    } catch (e) {
+      logger.error('[SplitPage] Failed to delete settlement:', e)
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   const netBalances = calculateNetBalances(expenses, settlements)
   const debts = simplifyDebts(expenses, settlements, nameMap)
@@ -313,6 +325,13 @@ export default function SplitPage() {
                   <div className="font-semibold text-sm text-green-600 dark:text-green-400">
                     {currency(s.amount)}
                   </div>
+                  <button
+                    onClick={() => handleDeleteSettlement(s.id)}
+                    disabled={deletingId === s.id}
+                    className="shrink-0 text-xs px-2 py-1 rounded-md text-[var(--muted-foreground)] hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 transition-colors disabled:opacity-50"
+                  >
+                    {deletingId === s.id ? '...' : '刪除'}
+                  </button>
                 </div>
               ))}
               {settlements.length > 10 && (
