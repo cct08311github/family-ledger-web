@@ -7,6 +7,7 @@ import { auth } from './firebase'
 interface AuthContextType {
   user: User | null
   loading: boolean
+  authError: string | null
   signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
 }
@@ -14,6 +15,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
+  authError: null,
   signInWithGoogle: async () => {},
   signOut: async () => {},
 })
@@ -21,6 +23,7 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [authError, setAuthError] = useState<string | null>(null)
 
   useEffect(() => {
     // Fallback: force unauthenticated state after 5s to prevent infinite loading
@@ -42,16 +45,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signInWithGoogle = async () => {
-    const provider = new GoogleAuthProvider()
-    await signInWithPopup(auth, provider)
+    setAuthError(null)
+    try {
+      const provider = new GoogleAuthProvider()
+      await signInWithPopup(auth, provider)
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      // Ignore popup closed by user (common, not an error)
+      if (!msg.includes('popup-closed-by-user') && !msg.includes('cancelled')) {
+        setAuthError('登入失敗，請稍後再試')
+        console.error('[Auth] signInWithGoogle failed:', e)
+      }
+    }
   }
 
   const signOut = async () => {
-    await fbSignOut(auth)
+    try {
+      await fbSignOut(auth)
+    } catch (e) {
+      console.error('[Auth] signOut failed:', e)
+    }
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, loading, authError, signInWithGoogle, signOut }}>
       {children}
     </AuthContext.Provider>
   )

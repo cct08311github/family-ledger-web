@@ -20,12 +20,21 @@ export default function NotificationsPage() {
 
   async function handleMarkAllRead() {
     if (!group || !user) return
-    await markAllNotificationsRead(group.id, user.uid)
+    try {
+      await markAllNotificationsRead(group.id, user.uid)
+    } catch (e) {
+      console.error('[Notifications] Failed to mark all read:', e)
+      alert('標記已讀失敗，請稍後再試')
+    }
   }
 
   async function handleMarkOneRead(notifId: string) {
     if (!group) return
-    await markNotificationRead(group.id, notifId)
+    try {
+      await markNotificationRead(group.id, notifId)
+    } catch (e) {
+      console.error('[Notifications] Failed to mark read:', e)
+    }
   }
 
   return (
