@@ -13,7 +13,7 @@ import { addMember, removeMember, updateMember } from '@/lib/services/member-ser
 import { createGroup } from '@/lib/services/group-service'
 import { addCategory, updateCategory } from '@/lib/services/category-service'
 import { useRouter } from 'next/navigation'
-import type { FamilyMember } from '@/lib/types'
+import type { FamilyMember, Category } from '@/lib/types'
 
 // ── Section wrapper ────────────────────────────────────────────
 
@@ -45,6 +45,9 @@ function MembersSection({ groupId }: { groupId: string }) {
     try {
       await addMember(groupId, name, 'member', user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
       setNewName('')
+    } catch (e) {
+      console.error('[Settings] Failed to add member:', e)
+      alert('新增失敗，請稍後再試')
     } finally {
       setAdding(false)
     }
@@ -151,7 +154,7 @@ function MembersSection({ groupId }: { groupId: string }) {
 const EMOJI_PRESETS = ['🍜', '🚌', '🛒', '🏠', '💡', '🏥', '🎮', '👨‍👩‍👧', '📚', '🧴', '📱', '💰', '✈️', '🎁', '⚽', '🐾']
 
 function CategoriesSection({ groupId }: { groupId: string }) {
-  const categories = useCategories(groupId)
+  const { categories } = useCategories(groupId)
   const [newName, setNewName] = useState('')
   const [newIcon, setNewIcon] = useState('💰')
   const [adding, setAdding] = useState(false)
@@ -170,7 +173,7 @@ function CategoriesSection({ groupId }: { groupId: string }) {
     }
   }
 
-  async function handleToggleActive(cat: ReturnType<typeof useCategories>[0]) {
+  async function handleToggleActive(cat: Category) {
     if (!cat.id || cat.isDefault) return
     await updateCategory(groupId, cat.id, { isActive: !cat.isActive })
   }

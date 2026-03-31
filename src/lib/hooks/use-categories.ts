@@ -7,6 +7,7 @@ import type { Category } from '@/lib/types'
 
 export function useCategories(groupId: string | undefined) {
   const [categories, setCategories] = useState<Category[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!groupId) return
@@ -14,11 +15,18 @@ export function useCategories(groupId: string | undefined) {
       collection(db, 'groups', groupId, 'categories'),
       orderBy('sortOrder'),
     )
-    const unsub = onSnapshot(q, (snap) => {
-      setCategories(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Category)))
-    })
+    const unsub = onSnapshot(q,
+      (snap) => {
+        setCategories(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Category)))
+        setLoading(false)
+      },
+      (err) => {
+        console.error('[useCategories] Snapshot error:', err)
+        setLoading(false)
+      },
+    )
     return unsub
   }, [groupId])
 
-  return categories
+  return { categories, loading }
 }

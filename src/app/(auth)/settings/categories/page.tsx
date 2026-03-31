@@ -16,7 +16,7 @@ interface CategoryFormData {
 
 export default function CategoriesPage() {
   const { group } = useGroup()
-  const categories = useCategories(group?.id)
+  const { categories } = useCategories(group?.id)
   const { user } = useAuth()
 
   const [editing, setEditing] = useState<Category | null>(null)

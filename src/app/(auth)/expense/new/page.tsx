@@ -11,7 +11,7 @@ import { useRef } from 'react'
 export default function NewExpensePage() {
   const router = useRouter()
   const { group } = useGroup()
-  const categories = useCategories(group?.id)
+  const { categories } = useCategories(group?.id)
   const availableCategories = categories.filter((c) => c.isActive).map((c) => c.name)
 
   // Expose a setter that ExpenseForm can call back to us via ref

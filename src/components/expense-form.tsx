@@ -25,7 +25,7 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   const { group } = useGroup()
   const { members } = useMembers(group?.id)
   const { expenses } = useExpenses(group?.id)
-  const firestoreCategories = useCategories(group?.id)
+  const { categories: firestoreCategories } = useCategories(group?.id)
   const categoryList = firestoreCategories.length > 0
     ? firestoreCategories.filter((c) => c.isActive).map((c) => c.name)
     : FALLBACK_CATEGORIES
