@@ -7,7 +7,8 @@
  */
 
 import type { Page } from '@playwright/test'
-import { EMULATOR_HOST } from './firebase-auth-emulator'
+
+const EMULATOR_HOST = process.env.FIREBASE_EMULATOR_HOST ?? 'localhost'
 
 export interface TestUser {
   uid: string
