@@ -1,15 +1,33 @@
 import { test, expect } from '@playwright/test'
 import { HomePage } from '../pages/HomePage'
+import { createTestUser, signInWithEmailPassword, deleteTestUser } from '../helpers/test-auth'
 
 /**
  * 首頁儀表板測試
  *
  * 注意：這些測試需要 Firebase 認證。首頁 Dashboard 需要登入後才能完整訪問。
- * 部分測試（如導航連結）可以在未認證狀態下測試。
+ * 使用 Firebase Auth Emulator 進行認證。
  */
 
 test.describe('首頁儀表板 (Home Dashboard)', () => {
   let homePage: HomePage
+  let testUserEmail: string
+  let testUserPassword: string
+  let testUserUid: string
+
+  test.beforeAll(async () => {
+    // Create test user in Auth Emulator
+    testUserEmail = `home${Date.now()}@emulator.test`
+    testUserPassword = 'testpass123'
+    const user = await createTestUser(testUserEmail, testUserPassword, '測試使用者')
+    testUserUid = user.uid
+  })
+
+  test.afterAll(async () => {
+    if (testUserUid) {
+      await deleteTestUser(testUserUid)
+    }
+  })
 
   test.beforeEach(async ({ page }) => {
     homePage = new HomePage(page)
@@ -42,35 +60,41 @@ test.describe('首頁儀表板 (Home Dashboard)', () => {
     await expect(body).toBeVisible()
   })
 
-  test.skip('TC-HOME-004: 月度摘要顯示需要認證', async ({ page }) => {
+  test('TC-HOME-004: 月度摘要顯示需要認證', async ({ page }) => {
+    await signInWithEmailPassword(page, testUserEmail, testUserPassword)
     await homePage.goto()
     await homePage.waitForLoadState('networkidle')
 
     await homePage.expectLoaded()
   })
 
-  test.skip('TC-HOME-005: 導航連結需要認證', async ({ page }) => {
+  test('TC-HOME-005: 導航連結需要認證', async ({ page }) => {
+    await signInWithEmailPassword(page, testUserEmail, testUserPassword)
     await homePage.goto()
     await homePage.waitForLoadState('networkidle')
 
     await homePage.expectLoaded()
   })
 
-  test.skip('TC-HOME-006: 新增支出按鈕需要認證', async ({ page }) => {
+  test('TC-HOME-006: 新增支出按鈕需要認證', async ({ page }) => {
+    await signInWithEmailPassword(page, testUserEmail, testUserPassword)
+    await homePage.goto()
+    await homePage.waitForLoadState('networkidle')
+
+    await homePage.expectLoaded()
+    await expect(homePage.addExpenseFab).toBeVisible()
+  })
+
+  test('TC-HOME-007: 無資料狀態需要認證', async ({ page }) => {
+    await signInWithEmailPassword(page, testUserEmail, testUserPassword)
     await homePage.goto()
     await homePage.waitForLoadState('networkidle')
 
     await homePage.expectLoaded()
   })
 
-  test.skip('TC-HOME-007: 無資料狀態需要認證', async ({ page }) => {
-    await homePage.goto()
-    await homePage.waitForLoadState('networkidle')
-
-    await homePage.expectLoaded()
-  })
-
-  test.skip('TC-HOME-008: 通知圖標顯示需要認證', async ({ page }) => {
+  test('TC-HOME-008: 通知圖標顯示需要認證', async ({ page }) => {
+    await signInWithEmailPassword(page, testUserEmail, testUserPassword)
     await homePage.goto()
     await homePage.waitForLoadState('networkidle')
 

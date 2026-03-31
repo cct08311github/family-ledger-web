@@ -73,7 +73,7 @@ export async function signInWithEmailPassword(
 
   if (!response.ok) {
     throw new Error(`Failed to sign in: ${await response.text()}`)
-  })
+  }
 
   const data = await response.json()
   return data.idToken

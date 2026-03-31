@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, getDocs, Timestamp, updateDoc, writeBatch } from 'firebase/firestore'
+import { addDoc, collection, doc, getDocs, Timestamp, updateDoc, writeBatch } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { addActivityLog } from './activity-log-service'
 import type { MemberRole } from '@/lib/types'
