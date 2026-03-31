@@ -66,8 +66,13 @@ function MembersSection({ groupId }: { groupId: string }) {
   async function handleRename(memberId: string) {
     const name = editName.trim()
     if (!name) return
-    await updateMember(groupId, memberId, { name })
-    setEditingId(null)
+    try {
+      await updateMember(groupId, memberId, { name })
+      setEditingId(null)
+    } catch (e) {
+      console.error('[Settings] Failed to rename member:', e)
+      alert('重新命名失敗，請稍後再試')
+    }
   }
 
   async function handleToggleCurrent(member: FamilyMember) {
@@ -168,6 +173,9 @@ function CategoriesSection({ groupId }: { groupId: string }) {
       await addCategory(groupId, { name, icon: newIcon, sortOrder: categories.length })
       setNewName('')
       setShowEmojiPicker(false)
+    } catch (e) {
+      console.error('[Settings] Failed to add category:', e)
+      alert('新增失敗，請稍後再試')
     } finally {
       setAdding(false)
     }
@@ -175,7 +183,12 @@ function CategoriesSection({ groupId }: { groupId: string }) {
 
   async function handleToggleActive(cat: Category) {
     if (!cat.id || cat.isDefault) return
-    await updateCategory(groupId, cat.id, { isActive: !cat.isActive })
+    try {
+      await updateCategory(groupId, cat.id, { isActive: !cat.isActive })
+    } catch (e) {
+      console.error('[Settings] Failed to toggle category:', e)
+      alert('更新失敗，請稍後再試')
+    }
   }
 
   return (

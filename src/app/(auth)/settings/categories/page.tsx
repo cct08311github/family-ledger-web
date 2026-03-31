@@ -51,7 +51,8 @@ export default function CategoriesPage() {
       }
       setShowForm(false)
     } catch (e) {
-      console.error(e)
+      console.error('[Categories] Failed to save category:', e)
+      alert('儲存失敗，請稍後再試')
     } finally {
       setSaving(false)
     }
