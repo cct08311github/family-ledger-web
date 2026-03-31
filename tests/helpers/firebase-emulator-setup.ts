@@ -10,7 +10,7 @@ import type { TestUser } from './firebase-auth-emulator'
 
 const EMULATOR_HOST = process.env.FIREBASE_EMULATOR_HOST ?? 'localhost'
 const FIRESTORE_EMULATOR_URL = `http://${EMULATOR_HOST}:8080`
-const PROJECT_ID = 'family-ledger-784ed'
+const PROJECT_ID = 'demo-test'
 
 interface TestMember {
   id: string
@@ -19,7 +19,7 @@ interface TestMember {
 }
 
 /**
- * Create a test group with members in Firestore
+ * Create a test group with members in Firestore Emulator
  */
 export async function setupTestGroup(
   ownerUid: string,
@@ -28,15 +28,12 @@ export async function setupTestGroup(
 ): Promise<string> {
   const groupId = `test-group-${Date.now()}`
 
-  // Create group document
+  // Create group document via Firestore Emulator REST API
   await fetch(
-    `https://${PROJECT_ID}.firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/groups/${groupId}`,
+    `${FIRESTORE_EMULATOR_URL}/v1/projects/${PROJECT_ID}/databases/(default)/documents/groups/${groupId}`,
     {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer owner',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         fields: {
           name: { stringValue: '測試家庭' },
@@ -56,13 +53,10 @@ export async function setupTestGroup(
   // Create member documents
   for (const member of members) {
     await fetch(
-      `https://${PROJECT_ID}.firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/groups/${groupId}/members/${member.id}`,
+      `${FIRESTORE_EMULATOR_URL}/v1/projects/${PROJECT_ID}/databases/(default)/documents/groups/${groupId}/members/${member.id}`,
       {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer owner',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fields: {
             name: { stringValue: member.name },
@@ -97,13 +91,10 @@ export async function seedTestExpenses(
     const docId = `test-exp-${Date.now()}-${i}`
 
     await fetch(
-      `https://${PROJECT_ID}.firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/groups/${groupId}/expenses/${docId}`,
+      `${FIRESTORE_EMULATOR_URL}/v1/projects/${PROJECT_ID}/databases/(default)/documents/groups/${groupId}/expenses/${docId}`,
       {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer owner',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fields: {
             description: { stringValue: exp.description },
@@ -138,7 +129,7 @@ export async function seedTestExpenses(
 export async function cleanupTestGroup(groupId: string): Promise<void> {
   // Delete expenses
   const expResponse = await fetch(
-    `https://${PROJECT_ID}.firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents:runQuery`,
+    `${FIRESTORE_EMULATOR_URL}/v1/projects/${PROJECT_ID}/databases/(default)/documents:runQuery`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -162,20 +153,54 @@ export async function cleanupTestGroup(groupId: string): Promise<void> {
     for (const doc of expData) {
       if (doc.document) {
         const docPath = doc.document.name
-        await fetch(`https://${PROJECT_ID}.firestore.googleapis.com/v1/${docPath}`, {
+        await fetch(`${FIRESTORE_EMULATOR_URL}/v1/${docPath}`, {
           method: 'DELETE',
-          headers: { Authorization: 'Bearer owner' },
+          headers: { 'Content-Type': 'application/json' },
         })
       }
     }
   }
 
-  // Delete members
+  // Delete members subcollection then group
+  const memberResponse = await fetch(
+    `${FIRESTORE_EMULATOR_URL}/v1/projects/${PROJECT_ID}/databases/(default)/documents:runQuery`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: 'members' }],
+          where: {
+            fieldFilter: {
+              field: { fieldPath: '__name__' },
+              op: 'PATH_STARTS_WITH',
+              value: { stringValue: `groups/${groupId}/members/` },
+            },
+          },
+        },
+      }),
+    }
+  )
+
+  if (memberResponse.ok) {
+    const memberData = await memberResponse.json()
+    for (const doc of memberData) {
+      if (doc.document) {
+        const docPath = doc.document.name
+        await fetch(`${FIRESTORE_EMULATOR_URL}/v1/${docPath}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+    }
+  }
+
+  // Delete group
   await fetch(
-    `https://${PROJECT_ID}.firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/groups/${groupId}`,
+    `${FIRESTORE_EMULATOR_URL}/v1/projects/${PROJECT_ID}/databases/(default)/documents/groups/${groupId}`,
     {
       method: 'DELETE',
-      headers: { Authorization: 'Bearer owner' },
+      headers: { 'Content-Type': 'application/json' },
     }
   )
 }
