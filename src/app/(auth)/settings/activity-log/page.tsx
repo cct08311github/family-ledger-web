@@ -18,7 +18,7 @@ const ACTION_ICONS: Record<string, string> = {
 
 export default function ActivityLogPage() {
   const { group, loading: groupLoading } = useGroup()
-  const logs = useActivityLog(group?.id)
+  const { logs } = useActivityLog(group?.id)
 
   if (groupLoading) {
     return (
