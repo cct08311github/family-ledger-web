@@ -29,6 +29,7 @@ export async function addSettlement(groupId: string, data: NewSettlement, actor?
     note: data.note ?? null,
     date: Timestamp.fromDate(data.date),
     createdAt: serverTimestamp(),
+    createdBy: actor?.id ?? null,
   })
   if (actor) {
     try {
