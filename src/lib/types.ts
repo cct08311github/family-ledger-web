@@ -65,6 +65,7 @@ export interface Settlement {
   note?: string
   date: Timestamp
   createdAt: Timestamp
+  createdBy?: string
 }
 
 export interface Category {
