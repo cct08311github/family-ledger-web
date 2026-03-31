@@ -18,7 +18,7 @@ interface Props {
   duplicateFrom?: Expense
   onSaved: () => void
   /** Ref to register a setter for voice-parsed results. Parent passes ref, form fills it on mount. */
-  onVoiceParsedRef?: RefObject<((result: ParsedExpense) => void) | null>
+  onVoiceParsedRef?: RefObject<((_result: ParsedExpense) => void) | null>
 }
 
 export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoiceParsedRef }: Props) {

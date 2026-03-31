@@ -19,9 +19,9 @@ export interface QueryOptions {
 }
 
 export interface BaseRepository<T, CreateInput, UpdateInput> {
-  create(groupId: string, input: CreateInput): Promise<string>
-  update(groupId: string, id: string, input: UpdateInput): Promise<void>
-  delete(groupId: string, id: string): Promise<void>
-  getById(groupId: string, id: string): Promise<T | null>
-  query(groupId: string, options?: QueryOptions): Promise<PaginatedResult<T>>
+  create(_groupId: string, _input: CreateInput): Promise<string>
+  update(_groupId: string, _id: string, _input: UpdateInput): Promise<void>
+  delete(_groupId: string, _id: string): Promise<void>
+  getById(_groupId: string, _id: string): Promise<T | null>
+  query(_groupId: string, _options?: QueryOptions): Promise<PaginatedResult<T>>
 }

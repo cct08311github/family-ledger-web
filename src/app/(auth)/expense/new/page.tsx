@@ -15,7 +15,7 @@ export default function NewExpensePage() {
   const availableCategories = categories.filter((c) => c.isActive).map((c) => c.name)
 
   // Expose a setter that ExpenseForm can call back to us via ref
-  const onVoiceParsedRef = useRef<((result: ParsedExpense) => void) | null>(null)
+  const onVoiceParsedRef = useRef<((_result: ParsedExpense) => void) | null>(null)
 
   function handleVoiceParsed(result: ParsedExpense) {
     onVoiceParsedRef.current?.(result)

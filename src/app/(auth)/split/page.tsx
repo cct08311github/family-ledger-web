@@ -17,7 +17,7 @@ interface SettleDialogProps {
   toName: string
   suggested: number
   onClose: () => void
-  onConfirm: (amount: number, note: string) => Promise<void>
+  onConfirm: (_amount: number, _note: string) => Promise<void>
 }
 
 function SettleDialog({ fromName, toName, suggested, onClose, onConfirm }: SettleDialogProps) {
