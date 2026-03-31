@@ -25,7 +25,7 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   const { group } = useGroup()
   const { members } = useMembers(group?.id)
   const { expenses } = useExpenses(group?.id)
-  const firestoreCategories = useCategories(group?.id)
+  const { categories: firestoreCategories } = useCategories(group?.id)
   const categoryList = firestoreCategories.length > 0
     ? firestoreCategories.filter((c) => c.isActive).map((c) => c.name)
     : FALLBACK_CATEGORIES
@@ -74,7 +74,9 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   // 初始化參與者和付款人
   useEffect(() => {
     if (members.length === 0) return
-    if (!payerId) setPayerId(members[0].id)
+    // Set payerId if empty OR if current payerId is no longer valid (member was removed)
+    const payerValid = members.some((m) => m.id === payerId)
+    if (!payerId || !payerValid) setPayerId(members[0].id)
     if (participantIds.size === 0) {
       if (source?.splits) {
         setParticipantIds(new Set(source.splits.filter((s) => s.isParticipant).map((s) => s.memberId)))

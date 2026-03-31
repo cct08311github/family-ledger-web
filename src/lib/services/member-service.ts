@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, getDocs, Timestamp, updateDoc } from 'firebase/firestore'
+import { addDoc, collection, doc, getDocs, Timestamp, updateDoc, writeBatch } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { addActivityLog } from './activity-log-service'
 import type { MemberRole } from '@/lib/types'
@@ -40,16 +40,17 @@ export async function removeMember(
   removedMemberName?: string,
   wasCurrentUser?: boolean,
 ): Promise<void> {
-  // If deleting the current user, promote another member first
+  // Atomically promote replacement + delete target in single batch
+  const batch = writeBatch(db)
   if (wasCurrentUser) {
     const snap = await getDocs(collection(db, 'groups', groupId, 'members'))
     const replacement = snap.docs.find((d) => d.id !== memberId)
     if (replacement) {
-      await updateDoc(doc(db, 'groups', groupId, 'members', replacement.id), { isCurrentUser: true })
+      batch.update(doc(db, 'groups', groupId, 'members', replacement.id), { isCurrentUser: true })
     }
   }
-
-  await deleteDoc(doc(db, 'groups', groupId, 'members', memberId))
+  batch.delete(doc(db, 'groups', groupId, 'members', memberId))
+  await batch.commit()
   if (actor) {
     try {
       await addActivityLog(groupId, {

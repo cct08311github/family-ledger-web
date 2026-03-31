@@ -13,7 +13,7 @@ import { addMember, removeMember, updateMember } from '@/lib/services/member-ser
 import { createGroup } from '@/lib/services/group-service'
 import { addCategory, updateCategory } from '@/lib/services/category-service'
 import { useRouter } from 'next/navigation'
-import type { FamilyMember } from '@/lib/types'
+import type { FamilyMember, Category } from '@/lib/types'
 
 // ── Section wrapper ────────────────────────────────────────────
 
@@ -45,6 +45,9 @@ function MembersSection({ groupId }: { groupId: string }) {
     try {
       await addMember(groupId, name, 'member', user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
       setNewName('')
+    } catch (e) {
+      console.error('[Settings] Failed to add member:', e)
+      alert('新增失敗，請稍後再試')
     } finally {
       setAdding(false)
     }
@@ -52,14 +55,24 @@ function MembersSection({ groupId }: { groupId: string }) {
 
   async function handleDelete(memberId: string, memberName: string, isCurrentUser: boolean) {
     if (!confirm(`確定要刪除成員「${memberName}」嗎？此操作無法復原。`)) return
-    await removeMember(groupId, memberId, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined, memberName, isCurrentUser)
+    try {
+      await removeMember(groupId, memberId, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined, memberName, isCurrentUser)
+    } catch (e) {
+      console.error('[Settings] Failed to delete member:', e)
+      alert('刪除失敗，請稍後再試')
+    }
   }
 
   async function handleRename(memberId: string) {
     const name = editName.trim()
     if (!name) return
-    await updateMember(groupId, memberId, { name })
-    setEditingId(null)
+    try {
+      await updateMember(groupId, memberId, { name })
+      setEditingId(null)
+    } catch (e) {
+      console.error('[Settings] Failed to rename member:', e)
+      alert('重新命名失敗，請稍後再試')
+    }
   }
 
   async function handleToggleCurrent(member: FamilyMember) {
@@ -71,7 +84,12 @@ function MembersSection({ groupId }: { groupId: string }) {
       if (prev) batch.update(doc(db, 'groups', groupId, 'members', prev.id), { isCurrentUser: false })
     }
     batch.update(doc(db, 'groups', groupId, 'members', member.id), { isCurrentUser: next })
-    await batch.commit()
+    try {
+      await batch.commit()
+    } catch (e) {
+      console.error('[Settings] Failed to toggle current user:', e)
+      alert('更新失敗，請稍後再試')
+    }
   }
 
   return (
@@ -141,7 +159,7 @@ function MembersSection({ groupId }: { groupId: string }) {
 const EMOJI_PRESETS = ['🍜', '🚌', '🛒', '🏠', '💡', '🏥', '🎮', '👨‍👩‍👧', '📚', '🧴', '📱', '💰', '✈️', '🎁', '⚽', '🐾']
 
 function CategoriesSection({ groupId }: { groupId: string }) {
-  const categories = useCategories(groupId)
+  const { categories } = useCategories(groupId)
   const [newName, setNewName] = useState('')
   const [newIcon, setNewIcon] = useState('💰')
   const [adding, setAdding] = useState(false)
@@ -155,14 +173,22 @@ function CategoriesSection({ groupId }: { groupId: string }) {
       await addCategory(groupId, { name, icon: newIcon, sortOrder: categories.length })
       setNewName('')
       setShowEmojiPicker(false)
+    } catch (e) {
+      console.error('[Settings] Failed to add category:', e)
+      alert('新增失敗，請稍後再試')
     } finally {
       setAdding(false)
     }
   }
 
-  async function handleToggleActive(cat: ReturnType<typeof useCategories>[0]) {
+  async function handleToggleActive(cat: Category) {
     if (!cat.id || cat.isDefault) return
-    await updateCategory(groupId, cat.id, { isActive: !cat.isActive })
+    try {
+      await updateCategory(groupId, cat.id, { isActive: !cat.isActive })
+    } catch (e) {
+      console.error('[Settings] Failed to toggle category:', e)
+      alert('更新失敗，請稍後再試')
+    }
   }
 
   return (

@@ -1,22 +1,39 @@
 import { test, expect } from '@playwright/test'
 import { ExpenseFormPage } from '../pages/ExpenseFormPage'
 import { RecordsPage } from '../pages/RecordsPage'
+import { createTestUser, signInWithEmailPassword, deleteTestUser } from '../helpers/test-auth'
 
 /**
  * 支出 CRUD 測試
  *
- * 注意：這些測試需要 Firebase 認證。在沒有 Firebase Emulator 或測試帳號的情況下，
- * 這些測試會因為 auth redirect 而失敗或超時。
- *
- * 要完整執行這些測試，需要：
- * 1. 設定 Firebase Auth Emulator
- * 2. 或使用測試 Google 帳號進行 OAuth
+ * 注意：這些測試需要 Firebase 認證。使用 Firebase Auth Emulator 進行認證。
  */
 
 test.describe('支出 CRUD (Expense CRUD)', () => {
-  test.skip('TC-EXPENSE-001: 新增支出頁面需要認證', async ({ page }) => {
-    // 此測試需要 Firebase Auth，無法在沒有測試帳號的情況下執行
-    const expensePage = new ExpenseFormPage(page, '/expense/new')
+  let expensePage: ExpenseFormPage
+  let testUserEmail: string
+  let testUserPassword: string
+  let testUserUid: string
+
+  test.beforeAll(async () => {
+    testUserEmail = `expense${Date.now()}@emulator.test`
+    testUserPassword = 'testpass123'
+    const user = await createTestUser(testUserEmail, testUserPassword, '測試使用者')
+    testUserUid = user.uid
+  })
+
+  test.afterAll(async () => {
+    if (testUserUid) {
+      await deleteTestUser(testUserUid)
+    }
+  })
+
+  test.beforeEach(async ({ page }) => {
+    expensePage = new ExpenseFormPage(page, '/expense/new')
+    await signInWithEmailPassword(page, testUserEmail, testUserPassword)
+  })
+
+  test('TC-EXPENSE-001: 新增支出頁面需要認證', async ({ page }) => {
     await expensePage.goto()
     await expensePage.waitForLoadState('networkidle')
 
@@ -24,8 +41,7 @@ test.describe('支出 CRUD (Expense CRUD)', () => {
     await expect(page.locator('h1:has-text("新增支出")')).toBeVisible()
   })
 
-  test.skip('TC-EXPENSE-002: 驗證必填欄位需要認證', async ({ page }) => {
-    const expensePage = new ExpenseFormPage(page, '/expense/new')
+  test('TC-EXPENSE-002: 驗證必填欄位需要認證', async ({ page }) => {
     await expensePage.goto()
     await expensePage.waitForLoadState('networkidle')
 
@@ -34,8 +50,7 @@ test.describe('支出 CRUD (Expense CRUD)', () => {
     await expect(errorMsg).toBeVisible()
   })
 
-  test.skip('TC-EXPENSE-003: 填寫基本支出資訊需要認證', async ({ page }) => {
-    const expensePage = new ExpenseFormPage(page, '/expense/new')
+  test('TC-EXPENSE-003: 填寫基本支出資訊需要認證', async ({ page }) => {
     await expensePage.goto()
     await expensePage.waitForLoadState('networkidle')
 
@@ -43,8 +58,7 @@ test.describe('支出 CRUD (Expense CRUD)', () => {
     await expensePage.fillAmount('500')
   })
 
-  test.skip('TC-EXPENSE-004: 選擇支出類型需要認證', async ({ page }) => {
-    const expensePage = new ExpenseFormPage(page, '/expense/new')
+  test('TC-EXPENSE-004: 選擇支出類型需要認證', async ({ page }) => {
     await expensePage.goto()
     await expensePage.waitForLoadState('networkidle')
 
@@ -52,8 +66,7 @@ test.describe('支出 CRUD (Expense CRUD)', () => {
     await expensePage.selectExpenseType('共同')
   })
 
-  test.skip('TC-EXPENSE-005: 選擇付款方式需要認證', async ({ page }) => {
-    const expensePage = new ExpenseFormPage(page, '/expense/new')
+  test('TC-EXPENSE-005: 選擇付款方式需要認證', async ({ page }) => {
     await expensePage.goto()
     await expensePage.waitForLoadState('networkidle')
 
@@ -62,8 +75,7 @@ test.describe('支出 CRUD (Expense CRUD)', () => {
     await expensePage.selectPaymentMethod('轉帳')
   })
 
-  test.skip('TC-EXPENSE-006: 選擇分帳方式需要認證', async ({ page }) => {
-    const expensePage = new ExpenseFormPage(page, '/expense/new')
+  test('TC-EXPENSE-006: 選擇分帳方式需要認證', async ({ page }) => {
     await expensePage.goto()
     await expensePage.waitForLoadState('networkidle')
 
@@ -73,16 +85,14 @@ test.describe('支出 CRUD (Expense CRUD)', () => {
     await expensePage.selectSplitMethod('custom')
   })
 
-  test.skip('TC-EXPENSE-007: 日期輸入需要認證', async ({ page }) => {
-    const expensePage = new ExpenseFormPage(page, '/expense/new')
+  test('TC-EXPENSE-007: 日期輸入需要認證', async ({ page }) => {
     await expensePage.goto()
     await expensePage.waitForLoadState('networkidle')
 
     await expensePage.fillDate('2026-03-15')
   })
 
-  test.skip('TC-EXPENSE-008: 描述自動完成需要認證', async ({ page }) => {
-    const expensePage = new ExpenseFormPage(page, '/expense/new')
+  test('TC-EXPENSE-008: 描述自動完成需要認證', async ({ page }) => {
     await expensePage.goto()
     await expensePage.waitForLoadState('networkidle')
 
@@ -92,16 +102,37 @@ test.describe('支出 CRUD (Expense CRUD)', () => {
 })
 
 test.describe('記錄頁面 (Records Page)', () => {
-  test.skip('TC-RECORDS-001: 記錄頁面需要認證', async ({ page }) => {
-    const recordsPage = new RecordsPage(page)
+  let recordsPage: RecordsPage
+  let testUserEmail: string
+  let testUserPassword: string
+  let testUserUid: string
+
+  test.beforeAll(async () => {
+    testUserEmail = `records${Date.now()}@emulator.test`
+    testUserPassword = 'testpass123'
+    const user = await createTestUser(testUserEmail, testUserPassword, '測試使用者')
+    testUserUid = user.uid
+  })
+
+  test.afterAll(async () => {
+    if (testUserUid) {
+      await deleteTestUser(testUserUid)
+    }
+  })
+
+  test.beforeEach(async ({ page }) => {
+    recordsPage = new RecordsPage(page)
+    await signInWithEmailPassword(page, testUserEmail, testUserPassword)
+  })
+
+  test('TC-RECORDS-001: 記錄頁面需要認證', async ({ page }) => {
     await recordsPage.goto()
     await recordsPage.waitForLoadState('networkidle')
 
     await recordsPage.expectLoaded()
   })
 
-  test.skip('TC-RECORDS-002: 篩選功能需要認證', async ({ page }) => {
-    const recordsPage = new RecordsPage(page)
+  test('TC-RECORDS-002: 篩選功能需要認證', async ({ page }) => {
     await recordsPage.goto()
     await recordsPage.waitForLoadState('networkidle')
 

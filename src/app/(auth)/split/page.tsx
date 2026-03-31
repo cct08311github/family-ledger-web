@@ -24,7 +24,6 @@ function SettleDialog({ fromName, toName, suggested, onClose, onConfirm }: Settl
   const [amount, setAmount] = useState(String(suggested))
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
-
   const [error, setError] = useState<string | null>(null)
 
   async function handleSubmit() {
@@ -118,10 +117,11 @@ export default function SplitPage() {
   const netBalances = calculateNetBalances(expenses, settlements)
   const debts = simplifyDebts(expenses, settlements, nameMap)
 
-  // 所有出現過的成員 ID（從支出的 splits 收集）
+  // 所有出現過的成員 ID（union of members and expense splits）
+  const expenseMemberIds = Array.from(new Set(expenses.flatMap((e) => e.splits.map((s) => s.memberId))))
   const memberIds = members.length > 0
-    ? members.map((m) => m.id)
-    : Array.from(new Set(expenses.flatMap((e) => e.splits.map((s) => s.memberId))))
+    ? [...new Set([...members.map((m) => m.id), ...expenseMemberIds])]
+    : expenseMemberIds
 
   async function handleSettle(amount: number, note: string) {
     if (!settling || !group) return

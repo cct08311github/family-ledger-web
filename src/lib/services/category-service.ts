@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, Timestamp, updateDoc } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, Timestamp, updateDoc, writeBatch } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { addActivityLog } from './activity-log-service'
 
@@ -73,8 +73,9 @@ export async function reorderCategories(
   groupId: string,
   orderedIds: string[],
 ): Promise<void> {
-  const batch = orderedIds.map((id, index) =>
-    updateDoc(doc(db, 'groups', groupId, 'categories', id), { sortOrder: index }),
-  )
-  await Promise.all(batch)
+  const batch = writeBatch(db)
+  orderedIds.forEach((id, index) => {
+    batch.update(doc(db, 'groups', groupId, 'categories', id), { sortOrder: index })
+  })
+  await batch.commit()
 }

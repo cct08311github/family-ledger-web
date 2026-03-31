@@ -35,7 +35,7 @@ test.describe('家族記帳應用 - 全面 E2E 測試', () => {
     await page.screenshot({ path: `${screenshotDir}/smoke-home.png`, fullPage: true })
 
     // 基本驗證
-    expect(page.url()).toContain('localhost:3000')
+    expect(new URL(page.url()).port).toBe('3013')
   })
 
   test('SMOKE: 登入頁面正常運作', async ({ page }) => {

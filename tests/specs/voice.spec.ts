@@ -1,14 +1,37 @@
 import { test, expect } from '@playwright/test'
+import { createTestUser, signInWithEmailPassword, deleteTestUser } from '../helpers/test-auth'
 
 /**
  * 語音輸入測試
  *
  * 注意：這些測試需要 Firebase 認證。語音輸入功能需要登入後才能訪問。
  * 另外，Web Speech API 的麥克風權限在自動化環境中可能不可用。
+ * 使用 Firebase Auth Emulator 進行認證。
  */
 
 test.describe('語音輸入 (Voice Input)', () => {
-  test.skip('TC-VOICE-001: 語音輸入按鈕需要認證', async ({ page }) => {
+  let testUserEmail: string
+  let testUserPassword: string
+  let testUserUid: string
+
+  test.beforeAll(async () => {
+    testUserEmail = `voice${Date.now()}@emulator.test`
+    testUserPassword = 'testpass123'
+    const user = await createTestUser(testUserEmail, testUserPassword, '測試使用者')
+    testUserUid = user.uid
+  })
+
+  test.afterAll(async () => {
+    if (testUserUid) {
+      await deleteTestUser(testUserUid)
+    }
+  })
+
+  test.beforeEach(async ({ page }) => {
+    await signInWithEmailPassword(page, testUserEmail, testUserPassword)
+  })
+
+  test('TC-VOICE-001: 語音輸入按鈕需要認證', async ({ page }) => {
     await page.goto('/expense/new')
     await page.waitForLoadState('networkidle')
 
@@ -16,7 +39,7 @@ test.describe('語音輸入 (Voice Input)', () => {
     await expect(voiceButton).toBeVisible()
   })
 
-  test.skip('TC-VOICE-002: 語音按鈕可點擊需要認證', async ({ page }) => {
+  test('TC-VOICE-002: 語音按鈕可點擊需要認證', async ({ page }) => {
     await page.goto('/expense/new')
     await page.waitForLoadState('networkidle')
 
@@ -24,7 +47,7 @@ test.describe('語音輸入 (Voice Input)', () => {
     await voiceButton.click()
   })
 
-  test.skip('TC-VOICE-003: 描述自動完成需要認證', async ({ page }) => {
+  test('TC-VOICE-003: 描述自動完成需要認證', async ({ page }) => {
     await page.goto('/expense/new')
     await page.waitForLoadState('networkidle')
 
@@ -33,7 +56,7 @@ test.describe('語音輸入 (Voice Input)', () => {
     await descInput.fill('測試')
   })
 
-  test.skip('TC-VOICE-004: 語音 API 可用性檢測需要認證', async ({ page }) => {
+  test('TC-VOICE-004: 語音 API 可用性檢測需要認證', async ({ page }) => {
     await page.goto('/expense/new')
     await page.waitForLoadState('networkidle')
 
