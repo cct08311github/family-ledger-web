@@ -109,6 +109,8 @@ export function VoiceInput({ availableCategories, onParsed }: Props) {
     }
 
     recognition.onerror = (e) => {
+      recognition.stop()
+      recognitionRef.current = null
       setErrorMsg(e.error === 'not-allowed' ? '請允許麥克風權限' : `語音辨識錯誤：${e.error}`)
       updateStatus('error')
     }
