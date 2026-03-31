@@ -4,6 +4,8 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut as fbSignOut } from 'firebase/auth'
 import { auth } from './firebase'
 
+import { logger } from '@/lib/logger'
+
 interface AuthContextType {
   user: User | null
   loading: boolean
@@ -28,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Fallback: force unauthenticated state after 5s to prevent infinite loading
     const timeout = setTimeout(() => {
-      console.warn('[Auth] onAuthStateChanged timeout — falling back to unauthenticated')
+      logger.warn('[Auth] onAuthStateChanged timeout — falling back to unauthenticated')
       setLoading(false)
     }, 5000)
 
@@ -54,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Ignore popup closed by user (common, not an error)
       if (!msg.includes('popup-closed-by-user') && !msg.includes('cancelled')) {
         setAuthError('登入失敗，請稍後再試')
-        console.error('[Auth] signInWithGoogle failed:', e)
+        logger.error('[Auth] signInWithGoogle failed:', e)
       }
     }
   }
@@ -63,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await fbSignOut(auth)
     } catch (e) {
-      console.error('[Auth] signOut failed:', e)
+      logger.error('[Auth] signOut failed:', e)
     }
   }
 

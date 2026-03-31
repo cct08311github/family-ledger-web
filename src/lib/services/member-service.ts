@@ -3,6 +3,8 @@ import { db } from '@/lib/firebase'
 import { addActivityLog } from './activity-log-service'
 import type { MemberRole } from '@/lib/types'
 
+import { logger } from '@/lib/logger'
+
 interface Actor {
   id: string
   name: string
@@ -27,7 +29,7 @@ export async function addMember(groupId: string, name: string, role: MemberRole 
         entityId: ref.id,
       })
     } catch (e) {
-      console.error('[MemberService] Failed to log activity:', e)
+      logger.error('[MemberService] Failed to log activity:', e)
     }
   }
   return ref.id
@@ -61,7 +63,7 @@ export async function removeMember(
         entityId: memberId,
       })
     } catch (e) {
-      console.error('[MemberService] Failed to log activity:', e)
+      logger.error('[MemberService] Failed to log activity:', e)
     }
   }
 }
@@ -86,7 +88,7 @@ export async function updateMember(
         entityId: memberId,
       })
     } catch (e) {
-      console.error('[MemberService] Failed to log activity:', e)
+      logger.error('[MemberService] Failed to log activity:', e)
     }
   }
 }

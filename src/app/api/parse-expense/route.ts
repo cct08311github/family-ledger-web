@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import { logger } from '@/lib/logger'
+
 /**
  * POST /api/parse-expense
  * Server-side Gemini 2.0 Flash call to parse natural language expense input.
@@ -58,7 +60,7 @@ export async function POST(req: NextRequest) {
   if (!res.ok) {
     // Log full error server-side only; return generic message to client
     const errText = await res.text().catch(() => '')
-    console.error(`[parse-expense] Gemini API error ${res.status}: ${errText}`)
+    logger.error(`[parse-expense] Gemini API error ${res.status}: ${errText}`)
     return NextResponse.json({ error: `AI 解析服務暫時無法使用（${res.status}）` }, { status: 502 })
   }
 
@@ -84,7 +86,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ description, amount, category, date: dateStr })
   } catch {
-    console.error('[parse-expense] Failed to parse Gemini response:', rawText)
+    logger.error('[parse-expense] Failed to parse Gemini response:', rawText)
     return NextResponse.json({ error: 'AI 解析結果格式錯誤' }, { status: 502 })
   }
 }

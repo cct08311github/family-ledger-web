@@ -3,6 +3,8 @@ import { db } from '@/lib/firebase'
 import { addActivityLog } from './activity-log-service'
 import type { SplitDetail, SplitMethod, PaymentMethod } from '@/lib/types'
 
+import { logger } from '@/lib/logger'
+
 interface Actor {
   id: string
   name: string
@@ -49,7 +51,7 @@ export async function addExpense(groupId: string, input: ExpenseInput, actor?: A
         entityId: id,
       })
     } catch (e) {
-      console.error('[ExpenseService] Failed to log activity:', e)
+      logger.error('[ExpenseService] Failed to log activity:', e)
     }
   }
   return id
@@ -71,7 +73,7 @@ export async function updateExpense(groupId: string, expenseId: string, input: P
         entityId: expenseId,
       })
     } catch (e) {
-      console.error('[ExpenseService] Failed to log activity:', e)
+      logger.error('[ExpenseService] Failed to log activity:', e)
     }
   }
 }
@@ -88,7 +90,7 @@ export async function deleteExpense(groupId: string, expenseId: string, actor?: 
         entityId: expenseId,
       })
     } catch (e) {
-      console.error('[ExpenseService] Failed to log activity:', e)
+      logger.error('[ExpenseService] Failed to log activity:', e)
     }
   }
 }

@@ -7,6 +7,8 @@ import { addCategory, updateCategory, deleteCategory, reorderCategories } from '
 import { useAuth } from '@/lib/auth'
 import type { Category } from '@/lib/types'
 
+import { logger } from '@/lib/logger'
+
 const ICONS = ['🍜', '🚗', '🛒', '🏠', '💡', '🏥', '🎬', '💰', '📚', '👶', '🧴', '📱', '✈️', '🎁', '其他']
 
 interface CategoryFormData {
@@ -51,7 +53,7 @@ export default function CategoriesPage() {
       }
       setShowForm(false)
     } catch (e) {
-      console.error('[Categories] Failed to save category:', e)
+      logger.error('[Categories] Failed to save category:', e)
       alert('儲存失敗，請稍後再試')
     } finally {
       setSaving(false)
@@ -63,7 +65,7 @@ export default function CategoriesPage() {
     try {
       await deleteCategory(group.id, cat.id, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined, cat.name)
     } catch (e) {
-      console.error('[Categories] Failed to delete category:', e)
+      logger.error('[Categories] Failed to delete category:', e)
       alert('刪除失敗，請稍後再試')
     }
   }
@@ -78,7 +80,7 @@ export default function CategoriesPage() {
     try {
       await reorderCategories(group.id, reordered.map((c) => c.id).filter((id): id is string => !!id))
     } catch (e) {
-      console.error('[Categories] Failed to reorder categories:', e)
+      logger.error('[Categories] Failed to reorder categories:', e)
       alert('排序失敗，請稍後再試')
     }
   }

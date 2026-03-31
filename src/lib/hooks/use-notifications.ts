@@ -5,6 +5,8 @@ import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestor
 import { db } from '@/lib/firebase'
 import type { AppNotification } from '@/lib/types'
 
+import { logger } from '@/lib/logger'
+
 export function useNotifications(groupId: string | undefined, recipientId: string | undefined) {
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -28,7 +30,7 @@ export function useNotifications(groupId: string | undefined, recipientId: strin
       (err) => {
         // Likely a missing composite index (recipientId + createdAt).
         // Deploy: firebase deploy --only firestore:indexes
-        console.error('[useNotifications] Firestore query failed:', err.message)
+        logger.error('[useNotifications] Firestore query failed:', err.message)
       },
     )
 

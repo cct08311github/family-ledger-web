@@ -10,6 +10,8 @@ import { addSettlement } from '@/lib/services/settlement-service'
 import { currency, signedCurrency, toDate, fmtDateFull } from '@/lib/utils'
 import { useAuth } from '@/lib/auth'
 
+import { logger } from '@/lib/logger'
+
 // ── Settlement dialog ─────────────────────────────────────────
 
 interface SettleDialogProps {
@@ -38,7 +40,7 @@ function SettleDialog({ fromName, toName, suggested, onClose, onConfirm }: Settl
       await onConfirm(n, note)
     } catch (e) {
       setError('儲存失敗，請重試')
-      console.error('Settlement save error', e)
+      logger.error('Settlement save error', e)
     } finally {
       setSaving(false)
     }

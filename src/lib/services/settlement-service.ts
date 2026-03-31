@@ -3,6 +3,8 @@ import { db } from '@/lib/firebase'
 import { addActivityLog } from './activity-log-service'
 import { currency } from '@/lib/utils'
 
+import { logger } from '@/lib/logger'
+
 export interface NewSettlement {
   fromMemberId: string
   fromMemberName: string
@@ -41,7 +43,7 @@ export async function addSettlement(groupId: string, data: NewSettlement, actor?
         entityId: ref.id,
       })
     } catch (e) {
-      console.error('[SettlementService] Failed to log activity:', e)
+      logger.error('[SettlementService] Failed to log activity:', e)
     }
   }
   return ref.id

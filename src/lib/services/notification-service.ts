@@ -1,6 +1,8 @@
 import { addDoc, collection, updateDoc, doc, serverTimestamp, query, where, getDocs, writeBatch } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 
+import { logger } from '@/lib/logger'
+
 export interface NotificationInput {
   type: string
   title: string
@@ -44,7 +46,7 @@ export async function markAllNotificationsRead(groupId: string, recipientId: str
   try {
     await batch.commit()
   } catch (err) {
-    console.error('[notification-service] markAllNotificationsRead failed:', err)
+    logger.error('[notification-service] markAllNotificationsRead failed:', err)
     throw err
   }
 }

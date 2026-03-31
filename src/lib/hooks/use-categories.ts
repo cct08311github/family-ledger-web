@@ -5,6 +5,8 @@ import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type { Category } from '@/lib/types'
 
+import { logger } from '@/lib/logger'
+
 export function useCategories(groupId: string | undefined) {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
@@ -21,7 +23,7 @@ export function useCategories(groupId: string | undefined) {
         setLoading(false)
       },
       (err) => {
-        console.error('[useCategories] Snapshot error:', err)
+        logger.error('[useCategories] Snapshot error:', err)
         setLoading(false)
       },
     )

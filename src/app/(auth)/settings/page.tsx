@@ -16,6 +16,8 @@ import { addActivityLog } from '@/lib/services/activity-log-service'
 import { useRouter } from 'next/navigation'
 import type { FamilyMember, Category } from '@/lib/types'
 
+import { logger } from '@/lib/logger'
+
 // ── Section wrapper ────────────────────────────────────────────
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -47,7 +49,7 @@ function MembersSection({ groupId }: { groupId: string }) {
       await addMember(groupId, name, 'member', user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
       setNewName('')
     } catch (e) {
-      console.error('[Settings] Failed to add member:', e)
+      logger.error('[Settings] Failed to add member:', e)
       alert('新增失敗，請稍後再試')
     } finally {
       setAdding(false)
@@ -59,7 +61,7 @@ function MembersSection({ groupId }: { groupId: string }) {
     try {
       await removeMember(groupId, memberId, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined, memberName, isCurrentUser)
     } catch (e) {
-      console.error('[Settings] Failed to delete member:', e)
+      logger.error('[Settings] Failed to delete member:', e)
       alert('刪除失敗，請稍後再試')
     }
   }
@@ -71,7 +73,7 @@ function MembersSection({ groupId }: { groupId: string }) {
       await updateMember(groupId, memberId, { name })
       setEditingId(null)
     } catch (e) {
-      console.error('[Settings] Failed to rename member:', e)
+      logger.error('[Settings] Failed to rename member:', e)
       alert('重新命名失敗，請稍後再試')
     }
   }
@@ -97,11 +99,11 @@ function MembersSection({ groupId }: { groupId: string }) {
             entityId: member.id,
           })
         } catch (e) {
-          console.error('[Settings] Failed to log activity:', e)
+          logger.error('[Settings] Failed to log activity:', e)
         }
       }
     } catch (e) {
-      console.error('[Settings] Failed to toggle current user:', e)
+      logger.error('[Settings] Failed to toggle current user:', e)
       alert('更新失敗，請稍後再試')
     }
   }
@@ -188,7 +190,7 @@ function CategoriesSection({ groupId }: { groupId: string }) {
       setNewName('')
       setShowEmojiPicker(false)
     } catch (e) {
-      console.error('[Settings] Failed to add category:', e)
+      logger.error('[Settings] Failed to add category:', e)
       alert('新增失敗，請稍後再試')
     } finally {
       setAdding(false)
@@ -200,7 +202,7 @@ function CategoriesSection({ groupId }: { groupId: string }) {
     try {
       await updateCategory(groupId, cat.id, { isActive: !cat.isActive })
     } catch (e) {
-      console.error('[Settings] Failed to toggle category:', e)
+      logger.error('[Settings] Failed to toggle category:', e)
       alert('更新失敗，請稍後再試')
     }
   }

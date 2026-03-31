@@ -2,11 +2,13 @@
 
 import { useEffect } from 'react'
 
+import { logger } from '@/lib/logger'
+
 export function ServiceWorkerRegister() {
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch((err) => {
-        console.warn('SW registration failed:', err)
+        logger.warn('SW registration failed:', err)
       })
     }
   }, [])

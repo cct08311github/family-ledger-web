@@ -6,6 +6,8 @@ import { useAuth } from '@/lib/auth'
 import { markAllNotificationsRead, markNotificationRead } from '@/lib/services/notification-service'
 import { toDate, fmtDateFull } from '@/lib/utils'
 
+import { logger } from '@/lib/logger'
+
 const TYPE_ICONS: Record<string, string> = {
   expense_added: '💸',
   settlement_created: '✅',
@@ -23,7 +25,7 @@ export default function NotificationsPage() {
     try {
       await markAllNotificationsRead(group.id, user.uid)
     } catch (e) {
-      console.error('[Notifications] Failed to mark all read:', e)
+      logger.error('[Notifications] Failed to mark all read:', e)
       alert('標記已讀失敗，請稍後再試')
     }
   }
@@ -33,7 +35,7 @@ export default function NotificationsPage() {
     try {
       await markNotificationRead(group.id, notifId)
     } catch (e) {
-      console.error('[Notifications] Failed to mark read:', e)
+      logger.error('[Notifications] Failed to mark read:', e)
     }
   }
 
