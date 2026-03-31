@@ -12,6 +12,7 @@ import { useColorTheme, COLOR_THEMES } from '@/lib/hooks/use-color-theme'
 import { addMember, removeMember, updateMember } from '@/lib/services/member-service'
 import { createGroup } from '@/lib/services/group-service'
 import { addCategory, updateCategory } from '@/lib/services/category-service'
+import { addActivityLog } from '@/lib/services/activity-log-service'
 import { useRouter } from 'next/navigation'
 import type { FamilyMember, Category } from '@/lib/types'
 
@@ -86,6 +87,19 @@ function MembersSection({ groupId }: { groupId: string }) {
     batch.update(doc(db, 'groups', groupId, 'members', member.id), { isCurrentUser: next })
     try {
       await batch.commit()
+      if (next && user) {
+        try {
+          await addActivityLog(groupId, {
+            action: 'member_updated',
+            actorId: user.uid,
+            actorName: user.displayName ?? '未知',
+            description: `切換目前成員：${member.name}`,
+            entityId: member.id,
+          })
+        } catch (e) {
+          console.error('[Settings] Failed to log activity:', e)
+        }
+      }
     } catch (e) {
       console.error('[Settings] Failed to toggle current user:', e)
       alert('更新失敗，請稍後再試')

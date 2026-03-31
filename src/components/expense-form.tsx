@@ -303,7 +303,7 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
             <div key={m.id} className="flex items-center gap-2">
               <span className="w-16 text-sm">{m.name}</span>
               <input type="number" placeholder="%" value={percentages[m.id] ?? ''}
-                onChange={(e) => setPercentages({ ...percentages, [m.id]: parseFloat(e.target.value) || 0 })}
+                onChange={(e) => setPercentages({ ...percentages, [m.id]: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) })}
                 className="flex-1 h-9 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm" />
               <span className="text-xs text-[var(--muted-foreground)]">%</span>
             </div>
@@ -313,7 +313,7 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
             <div key={m.id} className="flex items-center gap-2">
               <span className="w-16 text-sm">{m.name}</span>
               <input type="number" placeholder="NT$" value={customAmounts[m.id] ?? ''}
-                onChange={(e) => setCustomAmounts({ ...customAmounts, [m.id]: parseFloat(e.target.value) || 0 })}
+                onChange={(e) => setCustomAmounts({ ...customAmounts, [m.id]: Math.max(0, parseFloat(e.target.value) || 0) })}
                 className="flex-1 h-9 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm" />
             </div>
           ))}

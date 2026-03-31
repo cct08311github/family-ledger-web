@@ -28,7 +28,10 @@ function SettleDialog({ fromName, toName, suggested, onClose, onConfirm }: Settl
 
   async function handleSubmit() {
     const n = Math.round(parseFloat(amount))
-    if (!n || n <= 0) return
+    if (!n || n <= 0) {
+      setError('請輸入有效的金額')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
