@@ -25,8 +25,7 @@ export interface Expense {
   payerName: string
   splits: SplitDetail[]
   paymentMethod: PaymentMethod
-  receiptPath?: string
-  receiptPaths: string[]
+  receiptPath?: string | null
   note?: string
   createdBy: string
   createdAt: Timestamp
