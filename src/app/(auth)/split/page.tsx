@@ -15,29 +15,37 @@ import { logger } from '@/lib/logger'
 // ── Settlement dialog ─────────────────────────────────────────
 
 interface SettleDialogProps {
-  fromName: string
-  toName: string
-  suggested: number
+  members: { id: string; name: string }[]
+  defaultFromId?: string
+  defaultToId?: string
+  defaultAmount?: number
   onClose: () => void
-  onConfirm: (_amount: number, _note: string) => Promise<void>
+  onConfirm: (_data: { fromId: string; toId: string; amount: number; note: string; date: Date }) => Promise<void>
 }
 
-function SettleDialog({ fromName, toName, suggested, onClose, onConfirm }: SettleDialogProps) {
-  const [amount, setAmount] = useState(String(suggested))
+function todayStr() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function SettleDialog({ members, defaultFromId, defaultToId, defaultAmount, onClose, onConfirm }: SettleDialogProps) {
+  const [dateStr, setDateStr] = useState(todayStr)
+  const [fromId, setFromId] = useState(defaultFromId ?? members[0]?.id ?? '')
+  const [toId, setToId] = useState(defaultToId ?? members[1]?.id ?? '')
+  const [amount, setAmount] = useState(defaultAmount ? String(defaultAmount) : '')
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function handleSubmit() {
+    if (fromId === toId) { setError('轉出人與轉入人不能相同'); return }
     const n = Math.round(parseFloat(amount))
-    if (!n || n <= 0) {
-      setError('請輸入有效的金額')
-      return
-    }
+    if (!n || n <= 0) { setError('請輸入有效的金額'); return }
     setSaving(true)
     setError(null)
     try {
-      await onConfirm(n, note)
+      const [y, m, d] = dateStr.split('-').map(Number)
+      await onConfirm({ fromId, toId, amount: n, note, date: new Date(y, m - 1, d) })
     } catch (e) {
       setError('儲存失敗，請重試')
       logger.error('Settlement save error', e)
@@ -46,56 +54,54 @@ function SettleDialog({ fromName, toName, suggested, onClose, onConfirm }: Settl
     }
   }
 
+  const inputCls = "w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-full max-w-sm mx-4 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xl p-6 space-y-4">
-        <h2 className="text-lg font-bold">記錄付款</h2>
-        <p className="text-sm text-[var(--muted-foreground)]">
-          <span className="font-medium text-[var(--foreground)]">{fromName}</span>
-          {' '}付給{' '}
-          <span className="font-medium text-[var(--foreground)]">{toName}</span>
-        </p>
+        <h2 className="text-lg font-bold">記錄轉帳</h2>
+
+        <div>
+          <label className="text-xs text-[var(--muted-foreground)] mb-1 block">日期</label>
+          <input type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} className={inputCls} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-[var(--muted-foreground)] mb-1 block">轉出人</label>
+            <select value={fromId} onChange={(e) => setFromId(e.target.value)} className={inputCls}>
+              {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-[var(--muted-foreground)] mb-1 block">轉入人</label>
+            <select value={toId} onChange={(e) => setToId(e.target.value)} className={inputCls}>
+              {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          </div>
+        </div>
 
         <div>
           <label className="text-xs text-[var(--muted-foreground)] mb-1 block">金額（NT$）</label>
-          <input
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-            min="1"
-          />
+          <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputCls} min="1" placeholder="0" />
         </div>
 
         <div>
           <label className="text-xs text-[var(--muted-foreground)] mb-1 block">備註（可選）</label>
-          <input
-            type="text"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="例：房租、紅包..."
-            className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-          />
+          <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="例：房租、紅包..." className={inputCls} />
         </div>
 
-        {error && (
-          <p className="text-xs text-[var(--destructive)] -mt-1">{error}</p>
-        )}
+        {error && <p className="text-xs text-[var(--destructive)]">{error}</p>}
 
         <div className="flex gap-3 pt-2">
-          <button
-            onClick={onClose}
-            className="flex-1 rounded-lg border border-[var(--border)] py-2 text-sm font-medium hover:bg-[var(--muted)] transition-colors"
-          >
-            取消
-          </button>
+          <button onClick={onClose} className="flex-1 rounded-lg border border-[var(--border)] py-2 text-sm font-medium hover:bg-[var(--muted)] transition-colors">取消</button>
           <button
             onClick={handleSubmit}
-            disabled={saving || !amount || Math.round(parseFloat(amount)) <= 0}
+            disabled={saving || !amount || !fromId || !toId}
             className="flex-1 rounded-lg py-2 text-sm font-semibold text-white transition-colors disabled:opacity-50"
             style={{ backgroundColor: 'var(--primary)' }}
           >
-            {saving ? '儲存中...' : '確認付款'}
+            {saving ? '儲存中...' : '確認'}
           </button>
         </div>
       </div>
@@ -114,7 +120,7 @@ export default function SplitPage() {
   const nameMap = Object.fromEntries(members.map((m) => [m.id, m.name]))
 
   const [settling, setSettling] = useState<{
-    fromId: string; fromName: string; toId: string; toName: string; amount: number
+    fromId?: string; toId?: string; amount?: number
   } | null>(null)
   const [copied, setCopied] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -140,16 +146,16 @@ export default function SplitPage() {
     ? [...new Set([...members.map((m) => m.id), ...expenseMemberIds])]
     : expenseMemberIds
 
-  async function handleSettle(amount: number, note: string) {
-    if (!settling || !group) return
+  async function handleSettle(data: { fromId: string; toId: string; amount: number; note: string; date: Date }) {
+    if (!group) return
     await addSettlement(group.id, {
-      fromMemberId: settling.fromId,
-      fromMemberName: settling.fromName,
-      toMemberId: settling.toId,
-      toMemberName: settling.toName,
-      amount,
-      note: note || undefined,
-      date: new Date(),
+      fromMemberId: data.fromId,
+      fromMemberName: nameMap[data.fromId] ?? data.fromId,
+      toMemberId: data.toId,
+      toMemberName: nameMap[data.toId] ?? data.toId,
+      amount: data.amount,
+      note: data.note || undefined,
+      date: data.date,
     }, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
     setSettling(null)
   }
@@ -187,15 +193,24 @@ export default function SplitPage() {
     <>
       {settling && (
         <SettleDialog
-          fromName={settling.fromName}
-          toName={settling.toName}
-          suggested={settling.amount}
+          members={members}
+          defaultFromId={settling.fromId}
+          defaultToId={settling.toId}
+          defaultAmount={settling.amount}
           onClose={() => setSettling(null)}
           onConfirm={handleSettle}
         />
       )}
 
       <div className="p-4 md:p-6 space-y-4 max-w-2xl mx-auto">
+        {/* 記錄轉帳 */}
+        <button
+          onClick={() => setSettling({})}
+          className="w-full rounded-2xl border border-dashed border-[var(--border)] py-3 text-sm font-medium text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-colors"
+        >
+          + 記錄轉帳
+        </button>
+
         {/* 每人淨餘額 */}
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-3">
           <div className="flex items-center justify-between">
@@ -289,9 +304,7 @@ export default function SplitPage() {
                   <div className="font-bold">{currency(d.amount)}</div>
                   <button
                     onClick={() => setSettling({
-                      fromId: d.from, fromName: d.fromName,
-                      toId: d.to, toName: d.toName,
-                      amount: d.amount,
+                      fromId: d.from, toId: d.to, amount: d.amount,
                     })}
                     className="shrink-0 text-xs px-3 py-1.5 rounded-lg font-medium text-white transition-colors"
                     style={{ backgroundColor: 'var(--primary)' }}
