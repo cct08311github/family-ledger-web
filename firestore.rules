@@ -30,9 +30,11 @@ service cloud.firestore {
 
     match /groups/{groupId} {
 
-      // 讀取：群組成員，或已登入使用者透過邀請碼查詢（list query）
-      allow read: if isGroupMember(groupId)
-        || (isSignedIn() && resource.data.inviteCode != null);
+      // 讀取：群組成員（直接檢查 resource.data，相容 list query）
+      // 或已登入使用者查詢有邀請碼的群組
+      allow read: if isSignedIn()
+        && (request.auth.uid in resource.data.memberUids
+            || resource.data.inviteCode != null);
 
       // 建立：任何已登入使用者（建群組）
       // 必須包含 ownerUid = 自己，且 memberUids 包含自己
