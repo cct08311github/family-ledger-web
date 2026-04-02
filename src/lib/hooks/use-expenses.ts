@@ -1,37 +1,12 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { useMemo } from 'react'
+import { useGroupData } from '@/lib/group-data-context'
 import { toDate } from '@/lib/utils'
 import type { Expense } from '@/lib/types'
 
-import { logger } from '@/lib/logger'
-
-export function useExpenses(groupId: string | undefined) {
-  const [expenses, setExpenses] = useState<Expense[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (!groupId) {
-      setLoading(false)
-      return
-    }
-    // Path: groups/{groupId}/expenses
-    const q = query(collection(db, 'groups', groupId, 'expenses'), orderBy('date', 'desc'))
-    const unsub = onSnapshot(q,
-      (snap) => {
-        setExpenses(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Expense))
-        setLoading(false)
-      },
-      (err) => {
-        logger.error('[useExpenses] Snapshot error:', err)
-        setLoading(false)
-      },
-    )
-    return unsub
-  }, [groupId])
-
+export function useExpenses(_groupId?: string) {
+  const { expenses, expensesLoading: loading } = useGroupData()
   return { expenses, loading }
 }
 

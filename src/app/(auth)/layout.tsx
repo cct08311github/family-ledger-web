@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/lib/auth'
 import { GroupProvider } from '@/lib/group-context'
+import { GroupDataProvider } from '@/lib/group-data-context'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { NavShell } from '@/components/nav-shell'
@@ -26,7 +27,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <GroupProvider>
-      <NavShell>{children}</NavShell>
+      <GroupDataProvider>
+        <NavShell>{children}</NavShell>
+      </GroupDataProvider>
     </GroupProvider>
   )
 }
