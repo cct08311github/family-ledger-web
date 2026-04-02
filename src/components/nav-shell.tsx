@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useAuth } from '@/lib/auth'
 import { useNotifications } from '@/lib/hooks/use-notifications'
+import { GroupSwitcher } from '@/components/group-switcher'
 
 const navItems = [
   { href: `/`, label: '首頁', icon: '🏠' },
@@ -39,6 +40,9 @@ export function NavShell({ children }: { children: React.ReactNode }) {
             )}
           </Link>
         </div>
+        <div className="px-1 pb-2">
+          <GroupSwitcher />
+        </div>
         {navItems.map((item) => {
           const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
           return (
@@ -67,6 +71,13 @@ export function NavShell({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <main className="flex-1 pb-20 md:pb-0 overflow-auto">
+        {/* Mobile group switcher header */}
+        <div className="md:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-2 bg-[var(--card)] border-b border-[var(--border)]">
+          <span className="text-sm font-bold" style={{ color: 'var(--primary)' }}>💰 家計本</span>
+          <div className="w-40">
+            <GroupSwitcher />
+          </div>
+        </div>
         {children}
       </main>
 
