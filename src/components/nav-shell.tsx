@@ -118,7 +118,7 @@ export function NavShell({ children }: { children: React.ReactNode }) {
             <span>💵</span> 新增支出
           </Link>
           <Link
-            href="/split"
+            href="/split?action=transfer"
             onClick={() => setFabOpen(false)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-sm font-medium bg-[var(--card)] border border-[var(--border)]"
           >

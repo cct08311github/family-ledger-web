@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useExpenses } from '@/lib/hooks/use-expenses'
 import { useSettlements } from '@/lib/hooks/use-settlements'
@@ -112,6 +113,7 @@ function SettleDialog({ members, defaultFromId, defaultToId, defaultAmount, onCl
 // ── Main page ─────────────────────────────────────────────────
 
 export default function SplitPage() {
+  const searchParams = useSearchParams()
   const { group, loading: groupLoading } = useGroup()
   const { expenses, loading: expLoading } = useExpenses(group?.id)
   const { settlements, loading: settlementsLoading } = useSettlements(group?.id)
@@ -124,6 +126,13 @@ export default function SplitPage() {
   } | null>(null)
   const [copied, setCopied] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  // Auto-open transfer dialog when navigated with ?action=transfer
+  useEffect(() => {
+    if (searchParams.get('action') === 'transfer' && !settling) {
+      setSettling({})
+    }
+  }, [searchParams, settling])
 
   async function handleDeleteSettlement(id: string) {
     if (!group) return
