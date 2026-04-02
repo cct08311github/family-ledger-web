@@ -450,11 +450,13 @@ function GroupManagementSection() {
     }
     if (!confirm(`確定要刪除群組「${groupName}」嗎？所有支出、結算紀錄都會一併刪除，此操作無法復原。`)) return
     try {
-      // Optimistic: 先從 UI 移除，不等 Firestore snapshot
-      const remaining = groups.find((g) => g.id !== groupId)
-      if (group?.id === groupId && remaining) setActiveGroupId(remaining.id)
-      removeGroup(groupId)
       await deleteGroup(groupId)
+      // 刪除成功後切換 active group（snapshot 會自動移除已刪群組）
+      if (group?.id === groupId) {
+        const remaining = groups.find((g) => g.id !== groupId)
+        if (remaining) setActiveGroupId(remaining.id)
+      }
+      removeGroup(groupId)
     } catch (e) {
       logger.error('[Settings] Failed to delete group:', e)
       alert('刪除失敗')

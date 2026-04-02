@@ -43,16 +43,18 @@ service cloud.firestore {
         && request.resource.data.name.size() > 0
         && request.resource.data.name.size() <= 50;
 
-      // 更新：群組成員，或持有邀請碼的登入使用者（加入群組）
+      // 更新：群組成員（一般更新），或持邀請碼用戶（僅限加入）
       // ownerUid 不可變更（除非是 owner 自己轉移）
       // inviteCode 欄位只有 owner 能修改
+      // 非成員加入時只能修改 memberUids 和 updatedAt
       allow update: if hasReasonableSize()
         && (request.resource.data.ownerUid == resource.data.ownerUid
             || isGroupOwner(groupId))
         && (isGroupMember(groupId)
             || (isSignedIn()
                 && resource.data.inviteCode != null
-                && request.auth.uid in request.resource.data.memberUids))
+                && request.auth.uid in request.resource.data.memberUids
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'updatedAt'])))
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['inviteCode'])
             || isGroupOwner(groupId));
 
