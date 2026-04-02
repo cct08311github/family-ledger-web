@@ -359,12 +359,16 @@ function ApiKeySection() {
 function InviteCodeBlock({ group }: { group: { id: string; name: string; inviteCode?: string | null } }) {
   const [generating, setGenerating] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function handleGenerate() {
     setGenerating(true)
+    setError(null)
     try {
       await refreshInviteCode(group.id)
     } catch (e) {
+      const msg = e instanceof Error ? e.message : '產生邀請碼失敗'
+      setError(msg.includes('permission') ? '沒有權限，請聯絡群組擁有者' : msg)
       logger.error('[Settings] Failed to generate invite code:', e)
     } finally {
       setGenerating(false)
@@ -383,6 +387,7 @@ function InviteCodeBlock({ group }: { group: { id: string; name: string; inviteC
       <div className="text-xs text-[var(--muted-foreground)]">
         邀請碼 — {group.name}
       </div>
+      {error && <p className="text-xs text-[var(--destructive)]">{error}</p>}
       {group.inviteCode ? (
         <div className="flex items-center gap-2">
           <code className="flex-1 text-center text-xl font-mono font-bold tracking-[0.3em] py-1 rounded-lg bg-[var(--muted)]">

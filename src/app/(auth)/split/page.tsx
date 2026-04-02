@@ -171,15 +171,49 @@ export default function SplitPage() {
     setSettling(null)
   }
 
-  function copyReport() {
-    const lines = debts.map((d) => `${d.fromName} → ${d.toName}：${currency(d.amount)}`)
-    const text = lines.length > 0
-      ? `💰 拆帳明細\n${lines.join('\n')}`
-      : '目前沒有未結清的債務 🎉'
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+  function buildShareText() {
+    const today = new Date()
+    const dateLabel = `${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`
+    const groupName = group?.name ?? '家計本'
+
+    const balanceLines = memberIds.map((id) => {
+      const bal = Math.round(netBalances[id] ?? 0)
+      const name = nameMap[id] ?? id
+      if (bal === 0) return `  ${name}：±0（已結清）`
+      return `  ${name}：${signedCurrency(bal)}（${bal > 0 ? '應收' : '應付'}）`
     })
+
+    const debtLines = debts.map((d) => `  ${d.fromName} → ${d.toName}：${currency(d.amount)}`)
+
+    const sections = [
+      `📊 ${groupName} — ${dateLabel}`,
+      '',
+      '👥 每人餘額',
+      ...balanceLines,
+    ]
+
+    if (debtLines.length > 0) {
+      sections.push('', '💰 結算方案', ...debtLines)
+    } else {
+      sections.push('', '🎉 目前沒有未結清的債務')
+    }
+
+    return sections.join('\n')
+  }
+
+  async function shareReport() {
+    const text = buildShareText()
+    if (navigator.share) {
+      try {
+        await navigator.share({ text })
+        return
+      } catch {
+        // 使用者取消分享，fallback 到複製
+      }
+    }
+    await navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   if (groupLoading || expLoading || membersLoading || settlementsLoading) {
@@ -214,13 +248,21 @@ export default function SplitPage() {
       )}
 
       <div className="p-4 md:p-6 space-y-4 max-w-2xl mx-auto">
-        {/* 記錄轉帳 */}
-        <button
-          onClick={() => setSettling({})}
-          className="w-full rounded-2xl border border-dashed border-[var(--border)] py-3 text-sm font-medium text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-colors"
-        >
-          + 記錄轉帳
-        </button>
+        {/* 操作按鈕 */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setSettling({})}
+            className="flex-1 rounded-2xl border border-dashed border-[var(--border)] py-3 text-sm font-medium text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-colors"
+          >
+            + 記錄轉帳
+          </button>
+          <button
+            onClick={shareReport}
+            className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm font-medium text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-colors"
+          >
+            {copied ? '已複製 ✓' : '📤 分享'}
+          </button>
+        </div>
 
         {/* 每人淨餘額 */}
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-3">
@@ -276,15 +318,7 @@ export default function SplitPage() {
 
         {/* 簡化結算方案 */}
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="font-semibold">💰 結算方案</div>
-            <button
-              onClick={copyReport}
-              className="text-xs px-2.5 py-1 rounded-lg border border-[var(--border)] hover:bg-[var(--muted)] transition-colors"
-            >
-              {copied ? '已複製 ✓' : '複製明細'}
-            </button>
-          </div>
+          <div className="font-semibold">💰 結算方案</div>
 
           {debts.length === 0 ? (
             <div className="text-center py-4 space-y-1">
