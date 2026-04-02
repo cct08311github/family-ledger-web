@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useGroup } from '@/lib/hooks/use-group'
@@ -19,6 +20,7 @@ export function NavShell({ children }: { children: React.ReactNode }) {
   const { group } = useGroup()
   const { user } = useAuth()
   const { unreadCount } = useNotifications(group?.id, user?.uid)
+  const [fabOpen, setFabOpen] = useState(false)
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
@@ -102,13 +104,34 @@ export function NavShell({ children }: { children: React.ReactNode }) {
         </Link>
       </nav>
 
-      {/* Mobile FAB */}
-      <Link
-        href={`/expense/new`}
-        className="md:hidden fixed bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-lg z-50 bg-[var(--primary)] text-[var(--primary-foreground)]"
+      {/* Mobile FAB with menu */}
+      {fabOpen && (
+        <div className="md:hidden fixed inset-0 z-40" onClick={() => setFabOpen(false)} />
+      )}
+      {fabOpen && (
+        <div className="md:hidden fixed bottom-36 right-4 z-50 flex flex-col gap-2 items-end">
+          <Link
+            href="/expense/new"
+            onClick={() => setFabOpen(false)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-sm font-medium bg-[var(--card)] border border-[var(--border)]"
+          >
+            <span>💵</span> 新增支出
+          </Link>
+          <Link
+            href="/split"
+            onClick={() => setFabOpen(false)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-sm font-medium bg-[var(--card)] border border-[var(--border)]"
+          >
+            <span>🔄</span> 記錄轉帳
+          </Link>
+        </div>
+      )}
+      <button
+        onClick={() => setFabOpen(!fabOpen)}
+        className={`md:hidden fixed bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-lg z-50 bg-[var(--primary)] text-[var(--primary-foreground)] transition-transform ${fabOpen ? 'rotate-45' : ''}`}
       >
         ＋
-      </Link>
+      </button>
     </div>
   )
 }
