@@ -22,7 +22,7 @@ service cloud.firestore {
     }
 
     // 資料大小限制
-    function isReasonableSize() {
+    function hasReasonableSize() {
       return request.resource.data.keys().size() < 30;
     }
 
@@ -45,7 +45,7 @@ service cloud.firestore {
 
       // 更新：僅群組成員，但 ownerUid 不可變更（除非是 owner 自己轉移）
       allow update: if isGroupMember(groupId)
-        && isReasonableSize()
+        && hasReasonableSize()
         && (request.resource.data.ownerUid == resource.data.ownerUid
             || isGroupOwner(groupId));
 
@@ -83,7 +83,7 @@ service cloud.firestore {
           && request.resource.data.payerId is string
           && request.resource.data.payerName is string
           && request.resource.data.createdBy == request.auth.uid
-          && isReasonableSize();
+          && hasReasonableSize();
 
         allow update: if isGroupMember(groupId)
           && request.resource.data.description is string
@@ -92,7 +92,7 @@ service cloud.firestore {
           && request.resource.data.amount is number
           && request.resource.data.amount > 0
           && request.resource.data.amount < 100000000
-          && isReasonableSize();
+          && hasReasonableSize();
 
         // 刪除：僅建立者或群組 owner
         allow delete: if isGroupMember(groupId)
@@ -112,7 +112,7 @@ service cloud.firestore {
           && request.resource.data.fromMemberId is string
           && request.resource.data.toMemberId is string
           && request.resource.data.fromMemberId != request.resource.data.toMemberId
-          && isReasonableSize();
+          && hasReasonableSize();
 
         allow update: if isGroupMember(groupId)
           && request.resource.data.amount is number
@@ -145,7 +145,7 @@ service cloud.firestore {
 
       match /activityLogs/{logId} {
         allow read: if isGroupMember(groupId);
-        allow create: if isGroupMember(groupId) && isReasonableSize();
+        allow create: if isGroupMember(groupId) && hasReasonableSize();
         allow update, delete: if false;
       }
 
@@ -155,7 +155,7 @@ service cloud.firestore {
         allow read: if isGroupMember(groupId) && resource.data.recipientId == request.auth.uid;
         allow create: if isGroupMember(groupId)
           && request.resource.data.recipientId is string
-          && isReasonableSize();
+          && hasReasonableSize();
         allow update: if isGroupMember(groupId)
           && resource.data.recipientId == request.auth.uid
           && request.resource.data.recipientId == request.auth.uid;
