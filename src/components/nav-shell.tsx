@@ -22,6 +22,7 @@ export function NavShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   const { unreadCount } = useNotifications(group?.id, user?.uid)
   const [fabOpen, setFabOpen] = useState(false)
+  const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false)
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
@@ -62,12 +63,31 @@ export function NavShell({ children }: { children: React.ReactNode }) {
           )
         })}
         <div className="flex-1" />
-        <Link
-          href="/expense/new"
-          className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl font-semibold text-sm btn-primary btn-press"
-        >
-          ＋ 記帳
-        </Link>
+        <div className="relative">
+          {sidebarMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setSidebarMenuOpen(false)} />
+              <div className="absolute bottom-full left-0 right-0 mb-2 z-50 flex flex-col gap-1.5 animate-slide-up">
+                <Link href="/expense/new" onClick={() => setSidebarMenuOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold bg-[var(--card)] border border-[var(--border)] hover:bg-[var(--muted)] btn-press"
+                  style={{ boxShadow: 'var(--card-shadow-hover)' }}>
+                  <span>💵</span> 新增支出
+                </Link>
+                <Link href="/split?action=transfer" onClick={() => setSidebarMenuOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold bg-[var(--card)] border border-[var(--border)] hover:bg-[var(--muted)] btn-press"
+                  style={{ boxShadow: 'var(--card-shadow-hover)' }}>
+                  <span>🔄</span> 記錄轉帳
+                </Link>
+              </div>
+            </>
+          )}
+          <button
+            onClick={() => setSidebarMenuOpen(!sidebarMenuOpen)}
+            className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-xl font-semibold text-sm btn-primary btn-press"
+          >
+            ＋ 記帳
+          </button>
+        </div>
       </nav>
 
       {/* Main content */}
