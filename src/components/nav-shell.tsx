@@ -6,14 +6,12 @@ import { useGroup } from '@/lib/hooks/use-group'
 import { useAuth } from '@/lib/auth'
 import { useNotifications } from '@/lib/hooks/use-notifications'
 
-const BASE = '/family-ledger-web'
-
 const navItems = [
-  { href: `${BASE}/`, label: '首頁', icon: '🏠' },
-  { href: `${BASE}/split`, label: '拆帳', icon: '💰' },
-  { href: `${BASE}/records`, label: '記錄', icon: '📋' },
-  { href: `${BASE}/statistics`, label: '統計', icon: '📊' },
-  { href: `${BASE}/settings`, label: '設定', icon: '⚙️' },
+  { href: `/`, label: '首頁', icon: '🏠' },
+  { href: `/split`, label: '拆帳', icon: '💰' },
+  { href: `/records`, label: '記錄', icon: '📋' },
+  { href: `/statistics`, label: '統計', icon: '📊' },
+  { href: `/settings`, label: '設定', icon: '⚙️' },
 ]
 
 export function NavShell({ children }: { children: React.ReactNode }) {
@@ -30,7 +28,7 @@ export function NavShell({ children }: { children: React.ReactNode }) {
           <h1 className="text-xl font-bold" style={{ color: 'var(--primary)' }}>
             💰 家計本
           </h1>
-          <Link href={`${BASE}/notifications`} className="relative p-1.5 rounded-lg hover:bg-[var(--muted)] transition">
+          <Link href={`/notifications`} className="relative p-1.5 rounded-lg hover:bg-[var(--muted)] transition">
             <span className="text-lg">🔔</span>
             {unreadCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-[var(--destructive)] text-white text-[10px] font-bold flex items-center justify-center">
@@ -58,7 +56,7 @@ export function NavShell({ children }: { children: React.ReactNode }) {
         })}
         <div className="flex-1" />
         <Link
-          href={`${BASE}/expense/new`}
+          href={`/expense/new`}
           className="flex items-center justify-center gap-2 px-3 py-3 rounded-lg font-medium text-sm bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition"
         >
           ＋ 記帳
@@ -89,10 +87,10 @@ export function NavShell({ children }: { children: React.ReactNode }) {
           )
         })}
         <Link
-          href={`${BASE}/notifications`}
+          href={`/notifications`}
           aria-label={unreadCount > 0 ? `通知，${unreadCount} 則未讀` : '通知'}
           className="relative flex flex-col items-center gap-0.5 text-xs"
-          style={{ color: pathname.startsWith(`${BASE}/notifications`) ? 'var(--primary)' : 'var(--muted-foreground)' }}
+          style={{ color: pathname.startsWith(`/notifications`) ? 'var(--primary)' : 'var(--muted-foreground)' }}
         >
           <span className="text-lg" aria-hidden="true">🔔</span>
           <span>通知</span>
@@ -106,7 +104,7 @@ export function NavShell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile FAB */}
       <Link
-        href={`${BASE}/expense/new`}
+        href={`/expense/new`}
         className="md:hidden fixed bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-lg z-50 bg-[var(--primary)] text-[var(--primary-foreground)]"
       >
         ＋
