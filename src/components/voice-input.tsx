@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react'
 import { parseExpense, type ParsedExpense } from '@/lib/services/local-expense-parser'
+import { auth } from '@/lib/firebase'
 
 const GEMINI_KEY = 'gemini-api-key'
 
@@ -51,11 +52,13 @@ export function VoiceInput({ availableCategories, onParsed }: Props) {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 10000)
       try {
+        const idToken = await auth.currentUser?.getIdToken() ?? ''
         const res = await fetch('/api/parse-expense', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-gemini-key': apiKey,   // key in header, not body
+            'Authorization': `Bearer ${idToken}`,
+            'x-gemini-key': apiKey,
           },
           body: JSON.stringify({ text, categories: availableCategories }),
           signal: controller.signal,

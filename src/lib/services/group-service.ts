@@ -114,6 +114,11 @@ export async function leaveGroup(groupId: string): Promise<void> {
   const user = auth.currentUser
   if (!user) throw new Error('User not authenticated')
   const ref = doc(db, 'groups', groupId)
+  const snap = await getDocs(query(collection(db, 'groups'), where('__name__', '==', groupId)))
+  const data = snap.docs[0]?.data()
+  if (data?.ownerUid === user.uid) {
+    throw new Error('群組擁有者無法退出，請先轉移擁有者或刪除群組')
+  }
   await updateDoc(ref, {
     memberUids: arrayRemove(user.uid),
     updatedAt: Timestamp.now(),

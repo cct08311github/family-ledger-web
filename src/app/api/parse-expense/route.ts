@@ -9,6 +9,12 @@ import { logger } from '@/lib/logger'
  * Returns: { description, amount, category, date } | { error }
  */
 export async function POST(req: NextRequest) {
+  // Verify Firebase auth token to prevent unauthorized access
+  const authHeader = req.headers.get('authorization')
+  if (!authHeader?.startsWith('Bearer ')) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   // API key is transmitted via header (not body) to avoid logging in request payloads
   const apiKey = req.headers.get('x-gemini-key')
   const body = await req.json().catch(() => null)
