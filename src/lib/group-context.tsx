@@ -81,13 +81,15 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     }
   }, [user])
 
-  // Resolve active group
+  // Resolve active group (with stale ID cleanup)
   const activeGroup = (() => {
     if (groups.length === 0) return null
     // 1. localStorage saved ID
     if (activeGroupId) {
       const found = groups.find((g) => g.id === activeGroupId)
       if (found) return found
+      // Stale ID — clean up localStorage
+      localStorage.removeItem(STORAGE_KEY)
     }
     // 2. isPrimary
     const primary = groups.find((g) => g.isPrimary)

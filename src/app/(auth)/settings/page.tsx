@@ -10,7 +10,7 @@ import { useMembers } from '@/lib/hooks/use-members'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { useColorTheme, COLOR_THEMES } from '@/lib/hooks/use-color-theme'
 import { addMember, removeMember, updateMember } from '@/lib/services/member-service'
-import { createGroup } from '@/lib/services/group-service'
+import { createGroup, updateGroup, deleteGroup } from '@/lib/services/group-service'
 import { addCategory, updateCategory } from '@/lib/services/category-service'
 import { addActivityLog } from '@/lib/services/activity-log-service'
 import { useRouter } from 'next/navigation'
@@ -354,21 +354,25 @@ function ApiKeySection() {
   )
 }
 
-// ── Create Group section ──────────────────────────────────────
+// ── Group Management section ─────────────────────────────────
 
-function CreateGroupSection() {
-  const [name, setName] = useState('')
+function GroupManagementSection() {
+  const { group, groups, setActiveGroupId } = useGroup()
+  const [newName, setNewName] = useState('')
   const [creating, setCreating] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   async function handleCreate() {
-    const trimmed = name.trim()
+    const trimmed = newName.trim()
     if (!trimmed) return
     setCreating(true)
     setError(null)
     try {
-      await createGroup(trimmed)
-      setName('')
+      const id = await createGroup(trimmed, groups.length === 0)
+      setNewName('')
+      setActiveGroupId(id)
     } catch (e) {
       setError(e instanceof Error ? e.message : '建立失敗，請重試')
     } finally {
@@ -376,29 +380,91 @@ function CreateGroupSection() {
     }
   }
 
+  async function handleRename(groupId: string) {
+    const trimmed = editName.trim()
+    if (!trimmed) return
+    try {
+      await updateGroup(groupId, { name: trimmed })
+      setEditingId(null)
+    } catch (e) {
+      logger.error('[Settings] Failed to rename group:', e)
+      alert('重新命名失敗')
+    }
+  }
+
+  async function handleDelete(groupId: string, groupName: string) {
+    if (groups.length <= 1) {
+      alert('至少要保留一個群組')
+      return
+    }
+    if (!confirm(`確定要刪除群組「${groupName}」嗎？所有支出、結算紀錄都會一併刪除，此操作無法復原。`)) return
+    try {
+      await deleteGroup(groupId)
+      if (group?.id === groupId) {
+        const remaining = groups.find((g) => g.id !== groupId)
+        if (remaining) setActiveGroupId(remaining.id)
+      }
+    } catch (e) {
+      logger.error('[Settings] Failed to delete group:', e)
+      alert('刪除失敗')
+    }
+  }
+
   return (
     <div className="space-y-3">
-      <p className="text-sm text-[var(--muted-foreground)]">建立你的第一個家庭群組來開始記帳</p>
-      <div className="flex gap-2">
+      {groups.map((g) => (
+        <div key={g.id} className="flex items-center gap-2">
+          {editingId === g.id ? (
+            <>
+              <input
+                autoFocus
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleRename(g.id)}
+                className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+              />
+              <button onClick={() => handleRename(g.id)}
+                className="text-xs px-2.5 py-1.5 rounded-lg font-medium text-white"
+                style={{ backgroundColor: 'var(--primary)' }}>儲存</button>
+              <button onClick={() => setEditingId(null)}
+                className="text-xs px-2.5 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--muted)]">取消</button>
+            </>
+          ) : (
+            <>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 80%)', color: 'var(--primary)' }}>
+                {g.name.slice(0, 1)}
+              </div>
+              <span className="flex-1 text-sm font-medium">{g.name}</span>
+              {g.id === group?.id && (
+                <span className="text-xs px-1.5 py-0.5 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)]">目前</span>
+              )}
+              <button onClick={() => { setEditingId(g.id); setEditName(g.name) }}
+                className="text-xs px-2 py-1 rounded border border-[var(--border)] hover:bg-[var(--muted)] text-[var(--muted-foreground)]">改名</button>
+              {groups.length > 1 && (
+                <button onClick={() => handleDelete(g.id, g.name)}
+                  className="text-xs px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950 text-[var(--destructive)]">刪除</button>
+              )}
+            </>
+          )}
+        </div>
+      ))}
+
+      <div className="flex gap-2 pt-1">
         <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-          placeholder="例如：我的家庭"
+          placeholder="新群組名稱"
           className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
         />
-        <button
-          onClick={handleCreate}
-          disabled={creating || !name.trim()}
+        <button onClick={handleCreate} disabled={creating || !newName.trim()}
           className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50"
-          style={{ backgroundColor: 'var(--primary)' }}
-        >
-          {creating ? '建立中...' : '建立'}
+          style={{ backgroundColor: 'var(--primary)' }}>
+          {creating ? '建立中...' : '+ 新增群組'}
         </button>
       </div>
-      {error && (
-        <p className="text-sm text-[var(--destructive)]">{error}</p>
-      )}
+      {error && <p className="text-sm text-[var(--destructive)]">{error}</p>}
     </div>
   )
 }
@@ -428,10 +494,14 @@ export default function SettingsPage() {
     <div className="p-4 md:p-6 space-y-4 max-w-2xl mx-auto">
       <h1 className="text-xl font-bold">⚙️ 設定</h1>
 
-      <Section title="👥 成員管理">
+      <Section title="📂 群組管理">
+        <GroupManagementSection />
+      </Section>
+
+      <Section title={`👥 成員管理${group ? ` — ${group.name}` : ''}`}>
         {group
           ? <MembersSection groupId={group.id} />
-          : <CreateGroupSection />}
+          : <p className="text-sm text-[var(--muted-foreground)]">請先建立群組</p>}
       </Section>
 
       {group && (
