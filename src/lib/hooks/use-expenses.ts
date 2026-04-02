@@ -5,6 +5,7 @@ import { useGroupData } from '@/lib/group-data-context'
 import { toDate } from '@/lib/utils'
 import type { Expense } from '@/lib/types'
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function useExpenses(_groupId?: string) {
   const { expenses, expensesLoading: loading } = useGroupData()
   return { expenses, loading }

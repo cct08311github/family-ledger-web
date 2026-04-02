@@ -12,8 +12,8 @@ const STORAGE_KEY = 'active-group-id'
 interface GroupContextType {
   groups: FamilyGroup[]
   activeGroup: FamilyGroup | null
-  setActiveGroupId: (id: string) => void
-  removeGroup: (id: string) => void
+  setActiveGroupId: (_id: string) => void
+  removeGroup: (_id: string) => void
   loading: boolean
 }
 
