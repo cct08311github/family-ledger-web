@@ -88,8 +88,6 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     if (activeGroupId) {
       const found = groups.find((g) => g.id === activeGroupId)
       if (found) return found
-      // Stale ID — clean up localStorage
-      localStorage.removeItem(STORAGE_KEY)
     }
     // 2. isPrimary
     const primary = groups.find((g) => g.isPrimary)
@@ -97,6 +95,18 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     // 3. first
     return groups[0]
   })()
+
+  // Clean up stale activeGroupId when resolved group differs
+  useEffect(() => {
+    if (!loading && groups.length > 0 && activeGroupId && activeGroup?.id !== activeGroupId) {
+      setActiveGroupIdState(activeGroup?.id ?? null)
+      if (activeGroup) {
+        localStorage.setItem(STORAGE_KEY, activeGroup.id)
+      } else {
+        localStorage.removeItem(STORAGE_KEY)
+      }
+    }
+  }, [loading, groups, activeGroupId, activeGroup])
 
   function setActiveGroupId(id: string) {
     setActiveGroupIdState(id)
