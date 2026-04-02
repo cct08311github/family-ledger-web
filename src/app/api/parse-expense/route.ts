@@ -21,6 +21,10 @@ export async function POST(req: NextRequest) {
     categories?: string[]
   }
 
+  if (text.length > 500) {
+    return NextResponse.json({ error: '輸入文字過長（最多 500 字）' }, { status: 400 })
+  }
+
   const catList = Array.isArray(categories) && categories.length > 0
     ? categories
     : ['餐飲', '交通', '購物', '房租', '水電', '醫療', '娛樂', '孝親', '子女教育', '日用品', '通訊', '其他']
