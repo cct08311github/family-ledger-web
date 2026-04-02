@@ -35,11 +35,12 @@ export async function addExpense(groupId: string, input: ExpenseInput, actor?: A
   const now = Timestamp.now()
   const ref = doc(collection(db, 'groups', groupId, 'expenses'), id)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { receiptPaths: _receiptPaths, ...rest } = input
+  const { receiptPaths: _receiptPaths, note, ...rest } = input
   await setDoc(ref, {
     ...rest,
     date: Timestamp.fromDate(input.date),
     receiptPath: input.receiptPaths[0] ?? null,
+    ...(note !== undefined ? { note } : {}),
     createdAt: now,
     updatedAt: now,
   })
@@ -62,8 +63,9 @@ export async function addExpense(groupId: string, input: ExpenseInput, actor?: A
 export async function updateExpense(groupId: string, expenseId: string, input: Partial<ExpenseInput>, actor?: Actor): Promise<void> {
   const ref = doc(db, 'groups', groupId, 'expenses', expenseId)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { receiptPaths: _rp, ...rest } = input
+  const { receiptPaths: _rp, note, ...rest } = input
   const data: Record<string, unknown> = { ...rest, updatedAt: Timestamp.now() }
+  if (note !== undefined) data.note = note
   if (input.date) data.date = Timestamp.fromDate(input.date)
   if (input.receiptPaths) data.receiptPath = input.receiptPaths[0] ?? null
   await setDoc(ref, data, { merge: true })
