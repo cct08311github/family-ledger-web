@@ -22,7 +22,7 @@ export default function NewExpensePage() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-lg mx-auto">
+    <div className="p-4 md:p-8 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">新增支出</h1>
         <VoiceInput

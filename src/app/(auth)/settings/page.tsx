@@ -552,7 +552,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-2xl mx-auto">
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6 max-w-4xl mx-auto">
       <h1 className="text-xl font-bold">⚙️ 設定</h1>
 
       <Section title="📂 群組管理">

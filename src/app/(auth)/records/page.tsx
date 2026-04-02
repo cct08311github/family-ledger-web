@@ -31,7 +31,7 @@ export default function RecordsPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl mx-auto">
+    <div className="p-4 md:p-8 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">所有記錄</h1>
         <div className="flex gap-1 rounded-lg bg-[var(--muted)] p-1">

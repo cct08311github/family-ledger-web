@@ -38,7 +38,7 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-lg mx-auto">
+    <div className="p-4 md:p-8 max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">編輯支出</h1>
       <ExpenseForm existingExpense={expense} onSaved={() => router.push('/records')} />
     </div>

@@ -29,7 +29,7 @@ export default function ActivityLogPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-2xl mx-auto">
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6 max-w-4xl mx-auto">
       <h1 className="text-xl font-bold">操作記錄</h1>
 
       {logs.length === 0 ? (

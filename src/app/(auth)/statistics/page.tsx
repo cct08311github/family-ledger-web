@@ -241,7 +241,7 @@ export default function StatisticsPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-2xl mx-auto">
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">📊 統計</h1>
         <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
