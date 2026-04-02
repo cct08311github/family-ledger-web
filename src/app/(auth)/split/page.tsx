@@ -132,7 +132,7 @@ export default function SplitPage() {
     if (searchParams.get('action') === 'transfer' && !settling) {
       setSettling({})
     }
-  }, [searchParams, settling])
+  }, [searchParams.toString(), settling])
 
   async function handleDeleteSettlement(id: string) {
     if (!group) return
