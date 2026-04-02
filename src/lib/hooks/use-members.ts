@@ -12,7 +12,10 @@ export function useMembers(groupId: string | undefined) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!groupId) return
+    if (!groupId) {
+      setLoading(false)
+      return
+    }
     const q = query(collection(db, 'groups', groupId, 'members'), orderBy('sortOrder'))
     const unsub = onSnapshot(q,
       (snap) => {

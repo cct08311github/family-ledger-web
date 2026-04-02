@@ -12,7 +12,10 @@ export function useSettlements(groupId: string | undefined) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!groupId) return
+    if (!groupId) {
+      setLoading(false)
+      return
+    }
     // Path: groups/{groupId}/settlements
     const q = query(collection(db, 'groups', groupId, 'settlements'), orderBy('date', 'desc'))
     const unsub = onSnapshot(q,

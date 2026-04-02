@@ -13,7 +13,10 @@ export function useExpenses(groupId: string | undefined) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!groupId) return
+    if (!groupId) {
+      setLoading(false)
+      return
+    }
     // Path: groups/{groupId}/expenses
     const q = query(collection(db, 'groups', groupId, 'expenses'), orderBy('date', 'desc'))
     const unsub = onSnapshot(q,

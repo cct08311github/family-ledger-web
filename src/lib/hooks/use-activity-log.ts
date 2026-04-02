@@ -12,7 +12,10 @@ export function useActivityLog(groupId: string | undefined, max = 50) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!groupId) return
+    if (!groupId) {
+      setLoading(false)
+      return
+    }
     const q = query(
       collection(db, 'groups', groupId, 'activityLogs'),
       orderBy('createdAt', 'desc'),
