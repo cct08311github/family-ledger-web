@@ -246,7 +246,7 @@ export default function SplitPage() {
         />
       )}
 
-      <div className="p-4 md:p-8 space-y-4 md:space-y-6 max-w-4xl mx-auto">
+      <div className="p-4 md:p-8 max-w-5xl mx-auto">
         {/* 操作按鈕 */}
         <div className="flex gap-2 animate-fade-up">
           <button
@@ -262,6 +262,9 @@ export default function SplitPage() {
             {copied ? '已複製 ✓' : '📤 分享'}
           </button>
         </div>
+
+        {/* Dashboard grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
 
         {/* 每人淨餘額 */}
         <div className="card p-5 space-y-3 animate-fade-up stagger-1">
@@ -359,6 +362,8 @@ export default function SplitPage() {
             </div>
           )}
         </div>
+
+        </div>{/* end grid */}
 
         {/* 結算歷史 */}
         {settlements.length > 0 && (

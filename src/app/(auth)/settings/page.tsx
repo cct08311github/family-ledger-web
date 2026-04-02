@@ -552,34 +552,35 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 space-y-4 md:space-y-6 max-w-4xl mx-auto">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-4">
       <h1 className="text-xl font-bold">⚙️ 設定</h1>
 
-      <Section title="📂 群組管理">
-        <GroupManagementSection />
-      </Section>
-
-      <Section title={`👥 成員管理${group ? ` — ${group.name}` : ''}`}>
-        {group
-          ? <MembersSection groupId={group.id} />
-          : <p className="text-sm text-[var(--muted-foreground)]">請先建立群組</p>}
-      </Section>
-
-      {group && (
-        <Section title="🏷️ 支出分類">
-          <CategoriesSection groupId={group.id} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+        <Section title="📂 群組管理">
+          <GroupManagementSection />
         </Section>
-      )}
 
-      <Section title="🎨 外觀與主題">
-        <ThemeSection />
-      </Section>
+        <Section title={`👥 成員管理${group ? ` — ${group.name}` : ''}`}>
+          {group
+            ? <MembersSection groupId={group.id} />
+            : <p className="text-sm text-[var(--muted-foreground)]">請先建立群組</p>}
+        </Section>
 
-      <Section title="🤖 Gemini API Key">
-        <ApiKeySection />
-      </Section>
+        {group && (
+          <Section title="🏷️ 支出分類">
+            <CategoriesSection groupId={group.id} />
+          </Section>
+        )}
 
-      <Section title="👤 帳號">
+        <Section title="🎨 外觀與主題">
+          <ThemeSection />
+        </Section>
+
+        <Section title="🤖 Gemini API Key">
+          <ApiKeySection />
+        </Section>
+
+        <Section title="👤 帳號">
         <div className="flex items-center gap-4">
           {user?.photoURL && (
             <img src={user.photoURL} alt="" className="w-12 h-12 rounded-full" referrerPolicy="no-referrer" />
@@ -594,6 +595,8 @@ export default function SettingsPage() {
           </button>
         </div>
       </Section>
+
+      </div>{/* end grid */}
 
       <p className="text-center text-xs text-[var(--muted-foreground)] pb-2">
         家計本 Web · Phase 5

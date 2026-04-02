@@ -31,7 +31,7 @@ export default function RecordsPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-4xl mx-auto">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">所有記錄</h1>
         <div className="flex gap-1 rounded-lg bg-[var(--muted)] p-1">
@@ -70,22 +70,27 @@ export default function RecordsPage() {
                   <span className="text-sm font-medium" style={{ color: 'var(--primary)' }}>{dateKey}</span>
                   <span className="text-xs text-[var(--muted-foreground)]">{currency(dayTotal)}</span>
                 </div>
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {items.map((e) => (
-                    <div key={e.id} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 flex items-center gap-3 group">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0" style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 85%)' }}>
-                        {e.isShared ? '👥' : '👤'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">{e.description}</div>
-                        <div className="text-xs text-[var(--muted-foreground)]">
-                          {e.category} · {e.payerName}付 · {paymentLabel(e.paymentMethod)}
-                          {e.isShared ? ' · 共同' : ''}
-                          {e.receiptPath && ' · 📷'}
+                    <div key={e.id} className="card p-4 space-y-2 group relative">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0" style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 85%)' }}>
+                          {e.isShared ? '👥' : '👤'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{e.description}</div>
+                          <div className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                            {e.category} · {e.payerName}付
+                          </div>
                         </div>
                       </div>
-                      <div className="font-semibold shrink-0">{currency(e.amount)}</div>
-                      <div className="hidden group-hover:flex gap-1 shrink-0">
+                      <div className="flex items-center justify-between pt-1">
+                        <div className="text-xs text-[var(--muted-foreground)]">
+                          {paymentLabel(e.paymentMethod)}{e.isShared ? ' · 共同' : ''}{e.receiptPath ? ' · 📷' : ''}
+                        </div>
+                        <div className="font-bold text-lg">{currency(e.amount)}</div>
+                      </div>
+                      <div className="absolute top-3 right-3 hidden group-hover:flex gap-1">
                         <Link href={`/expense/${e.id}?groupId=${group?.id}`}
                           className="p-1.5 rounded-md hover:bg-[var(--muted)] text-[var(--muted-foreground)]" title="編輯">✏️</Link>
                         <button onClick={async () => {
