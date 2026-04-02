@@ -1,37 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
-import type { Category } from '@/lib/types'
+import { useGroupData } from '@/lib/group-data-context'
 
-import { logger } from '@/lib/logger'
-
-export function useCategories(groupId: string | undefined) {
-  const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (!groupId) {
-      setLoading(false)
-      return
-    }
-    const q = query(
-      collection(db, 'groups', groupId, 'categories'),
-      orderBy('sortOrder'),
-    )
-    const unsub = onSnapshot(q,
-      (snap) => {
-        setCategories(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Category)))
-        setLoading(false)
-      },
-      (err) => {
-        logger.error('[useCategories] Snapshot error:', err)
-        setLoading(false)
-      },
-    )
-    return unsub
-  }, [groupId])
-
+export function useCategories(_groupId?: string) {
+  const { categories, categoriesLoading: loading } = useGroupData()
   return { categories, loading }
 }
