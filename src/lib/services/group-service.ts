@@ -2,6 +2,19 @@ import { addDoc, collection, doc, updateDoc, deleteDoc, getDocs, Timestamp, arra
 import { db } from '@/lib/firebase'
 import { auth } from '@/lib/firebase'
 
+const DEFAULT_CATEGORIES = [
+  { name: '餐飲', icon: '🍜' },
+  { name: '交通', icon: '🚌' },
+  { name: '日用品', icon: '🛒' },
+  { name: '房租', icon: '🏠' },
+  { name: '水電', icon: '💡' },
+  { name: '醫療', icon: '🏥' },
+  { name: '娛樂', icon: '🎮' },
+  { name: '教育', icon: '📚' },
+  { name: '家庭', icon: '👨‍👩‍👧' },
+  { name: '旅遊', icon: '✈️' },
+]
+
 export async function createGroup(name: string, isFirst = false): Promise<string> {
   const user = auth.currentUser
   if (!user) throw new Error('User not authenticated')
@@ -17,6 +30,21 @@ export async function createGroup(name: string, isFirst = false): Promise<string
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
   })
+
+  // Seed default categories
+  const catCol = collection(db, 'groups', ref.id, 'categories')
+  for (let i = 0; i < DEFAULT_CATEGORIES.length; i++) {
+    const c = DEFAULT_CATEGORIES[i]
+    await addDoc(catCol, {
+      groupId: ref.id,
+      name: c.name,
+      icon: c.icon,
+      sortOrder: i,
+      isDefault: true,
+      isActive: true,
+      createdAt: Timestamp.now(),
+    })
+  }
 
   return ref.id
 }
