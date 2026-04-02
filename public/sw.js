@@ -1,14 +1,13 @@
 // Service Worker — family-ledger
 // Strategy: cache-first for immutable static assets only; network-first for everything else
-// App Router HTML pages are NOT cached to avoid stale RSC payloads after deploys
 
-const CACHE_NAME = 'family-ledger-v1'
+const CACHE_NAME = 'family-ledger-v2'
+const BASE = '/family-ledger-web'
 
-// Only cache truly immutable assets (Next.js adds content hash to filenames)
 const PRECACHE_PATTERNS = [
-  /^\/_next\/static\//,
-  /^\/icons\//,
-  /^\/manifest\.json$/,
+  /\/_next\/static\//,
+  /\/icons\//,
+  /\/manifest\.json$/,
 ]
 
 function shouldCache(url) {
@@ -17,10 +16,13 @@ function shouldCache(url) {
 }
 
 self.addEventListener('install', (event) => {
-  // Minimal precache — only the manifest and icons, not HTML routes
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) =>
-      cache.addAll(['/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png'])
+      cache.addAll([
+        `${BASE}/manifest.json`,
+        `${BASE}/icons/icon-192.png`,
+        `${BASE}/icons/icon-512.png`,
+      ])
     )
   )
   self.skipWaiting()
@@ -38,11 +40,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return
   const url = event.request.url
-  // Never intercept API calls — always go to network
   if (url.includes('/api/')) return
 
   if (shouldCache(url)) {
-    // Cache-first for immutable static assets
     event.respondWith(
       caches.match(event.request).then((cached) => {
         if (cached) return cached
@@ -56,5 +56,4 @@ self.addEventListener('fetch', (event) => {
       })
     )
   }
-  // For HTML pages and other resources: let the browser handle normally (network-first by default)
 })
