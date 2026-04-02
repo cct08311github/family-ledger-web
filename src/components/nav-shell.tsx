@@ -28,10 +28,10 @@ export function NavShell({ children }: { children: React.ReactNode }) {
       {/* Desktop sidebar */}
       <nav className="hidden md:flex flex-col w-56 border-r border-[var(--border)] bg-[var(--card)] p-4 gap-1 shrink-0">
         <div className="flex items-center justify-between px-3 py-4">
-          <h1 className="text-xl font-bold" style={{ color: 'var(--primary)' }}>
+          <h1 className="text-xl font-black tracking-tight" style={{ color: 'var(--primary)' }}>
             💰 家計本
           </h1>
-          <Link href={`/notifications`} className="relative p-1.5 rounded-lg hover:bg-[var(--muted)] transition">
+          <Link href="/notifications" className="relative p-1.5 rounded-lg hover:bg-[var(--muted)] transition">
             <span className="text-lg">🔔</span>
             {unreadCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-[var(--destructive)] text-white text-[10px] font-bold flex items-center justify-center">
@@ -49,11 +49,12 @@ export function NavShell({ children }: { children: React.ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 active
-                  ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
+                  ? 'text-[var(--primary-foreground)]'
                   : 'text-[var(--muted-foreground)] hover:bg-[var(--muted)]'
               }`}
+              style={active ? { background: 'linear-gradient(135deg, var(--primary), oklch(from var(--primary) calc(l - 0.05) c h))' } : undefined}
             >
               <span>{item.icon}</span>
               {item.label}
@@ -62,8 +63,8 @@ export function NavShell({ children }: { children: React.ReactNode }) {
         })}
         <div className="flex-1" />
         <Link
-          href={`/expense/new`}
-          className="flex items-center justify-center gap-2 px-3 py-3 rounded-lg font-medium text-sm bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition"
+          href="/expense/new"
+          className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl font-semibold text-sm btn-primary btn-press"
         >
           ＋ 記帳
         </Link>
@@ -71,9 +72,9 @@ export function NavShell({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <main className="flex-1 pb-20 md:pb-0 overflow-auto">
-        {/* Mobile group switcher header */}
-        <div className="md:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-2 bg-[var(--card)] border-b border-[var(--border)]">
-          <span className="text-sm font-bold" style={{ color: 'var(--primary)' }}>💰 家計本</span>
+        {/* Mobile header */}
+        <div className="md:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-2.5 bg-[var(--card)]/80 backdrop-blur-lg border-b border-[var(--border)]">
+          <span className="text-sm font-black" style={{ color: 'var(--primary)' }}>💰 家計本</span>
           <div className="w-40">
             <GroupSwitcher />
           </div>
@@ -82,15 +83,15 @@ export function NavShell({ children }: { children: React.ReactNode }) {
       </main>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 border-t border-[var(--border)] bg-[var(--card)] flex items-center justify-around h-16 z-50">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 border-t border-[var(--border)] bg-[var(--card)]/80 backdrop-blur-lg flex items-center justify-around h-16 z-50">
         {navItems.map((item) => {
           const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center gap-0.5 text-xs ${
-                active ? 'font-bold' : 'text-[var(--muted-foreground)]'
+              className={`flex flex-col items-center gap-0.5 text-xs transition-all ${
+                active ? 'font-bold scale-110' : 'text-[var(--muted-foreground)]'
               }`}
               style={active ? { color: 'var(--primary)' } : undefined}
             >
@@ -100,38 +101,40 @@ export function NavShell({ children }: { children: React.ReactNode }) {
           )
         })}
         <Link
-          href={`/notifications`}
+          href="/notifications"
           aria-label={unreadCount > 0 ? `通知，${unreadCount} 則未讀` : '通知'}
-          className="relative flex flex-col items-center gap-0.5 text-xs"
-          style={{ color: pathname.startsWith(`/notifications`) ? 'var(--primary)' : 'var(--muted-foreground)' }}
+          className="relative flex flex-col items-center gap-0.5 text-xs transition-all"
+          style={{ color: pathname.startsWith('/notifications') ? 'var(--primary)' : undefined }}
         >
           <span className="text-lg" aria-hidden="true">🔔</span>
-          <span>通知</span>
+          <span className={pathname.startsWith('/notifications') ? 'font-bold' : 'text-[var(--muted-foreground)]'}>通知</span>
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 right-1 min-w-[14px] h-3.5 px-1 rounded-full bg-[var(--destructive)] text-white text-[9px] font-bold flex items-center justify-center" aria-hidden="true">
+            <span className="absolute -top-0.5 right-0 min-w-[14px] h-3.5 px-1 rounded-full bg-[var(--destructive)] text-white text-[9px] font-bold flex items-center justify-center" aria-hidden="true">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
         </Link>
       </nav>
 
-      {/* Mobile FAB with menu */}
+      {/* Mobile FAB */}
       {fabOpen && (
-        <div className="md:hidden fixed inset-0 z-40" onClick={() => setFabOpen(false)} />
+        <div className="md:hidden fixed inset-0 z-40 modal-backdrop" onClick={() => setFabOpen(false)} />
       )}
       {fabOpen && (
-        <div className="md:hidden fixed bottom-36 right-4 z-50 flex flex-col gap-2 items-end">
+        <div className="md:hidden fixed bottom-36 right-4 z-50 flex flex-col gap-2.5 items-end">
           <Link
             href="/expense/new"
             onClick={() => setFabOpen(false)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-sm font-medium bg-[var(--card)] border border-[var(--border)]"
+            className="flex items-center gap-2.5 px-4 py-2.5 rounded-full text-sm font-semibold bg-[var(--card)] border border-[var(--border)] btn-press animate-slide-up stagger-1"
+            style={{ boxShadow: 'var(--card-shadow-hover)' }}
           >
             <span>💵</span> 新增支出
           </Link>
           <Link
             href="/split?action=transfer"
             onClick={() => setFabOpen(false)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-sm font-medium bg-[var(--card)] border border-[var(--border)]"
+            className="flex items-center gap-2.5 px-4 py-2.5 rounded-full text-sm font-semibold bg-[var(--card)] border border-[var(--border)] btn-press animate-slide-up"
+            style={{ boxShadow: 'var(--card-shadow-hover)' }}
           >
             <span>🔄</span> 記錄轉帳
           </Link>
@@ -139,7 +142,7 @@ export function NavShell({ children }: { children: React.ReactNode }) {
       )}
       <button
         onClick={() => setFabOpen(!fabOpen)}
-        className={`md:hidden fixed bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-lg z-50 bg-[var(--primary)] text-[var(--primary-foreground)] transition-transform ${fabOpen ? 'rotate-45' : ''}`}
+        className={`md:hidden fixed bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center text-2xl z-50 btn-primary transition-transform duration-200 ${fabOpen ? 'rotate-45' : ''}`}
       >
         ＋
       </button>

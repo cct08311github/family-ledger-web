@@ -34,7 +34,7 @@ function NoGroupView() {
         <p className="text-sm text-[var(--muted-foreground)]">輸入邀請碼加入家庭群組，或到設定頁建立新群組</p>
       </div>
 
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-3">
+      <div className="card p-5 space-y-3 animate-fade-up stagger-2">
         <label className="text-sm font-medium block">輸入邀請碼</label>
         <input
           type="text"
@@ -48,8 +48,7 @@ function NoGroupView() {
         <button
           onClick={handleJoin}
           disabled={joining || code.length !== 6}
-          className="w-full py-3 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition"
-          style={{ backgroundColor: 'var(--primary)' }}
+          className="w-full py-3 rounded-xl text-sm font-semibold btn-primary btn-press"
         >
           {joining ? '加入中...' : '加入群組'}
         </button>
@@ -89,11 +88,11 @@ export default function HomePage() {
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-2xl mx-auto">
       {/* 月支出摘要 */}
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-3">
+      <div className="card p-5 space-y-3 animate-fade-up stagger-1">
         <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
           📅 {monthLabel}
         </div>
-        <div className="text-3xl font-bold" style={{ color: 'var(--primary)' }}>
+        <div className="text-3xl font-black tracking-tight" style={{ color: 'var(--primary)' }}>
           {currency(total)}
         </div>
         <p className="text-xs text-[var(--muted-foreground)]">本月總支出</p>
@@ -111,7 +110,7 @@ export default function HomePage() {
       </div>
 
       {/* 誰欠誰 */}
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-3">
+      <div className="card p-5 space-y-3 animate-fade-up stagger-2">
         <div className="flex items-center gap-2 font-medium">💰 誰欠誰</div>
         {debts.length === 0 ? (
           <p className="text-[var(--muted-foreground)]">目前沒有未結清的債務 🎉</p>
@@ -132,7 +131,7 @@ export default function HomePage() {
       </div>
 
       {/* 最近記錄 */}
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-3">
+      <div className="card p-5 space-y-3 animate-fade-up stagger-3">
         <div className="flex items-center gap-2 font-medium">📝 最近記錄</div>
         {recent.length === 0 ? (
           <p className="text-[var(--muted-foreground)]">還沒有任何記錄，點下方「記帳」開始！</p>

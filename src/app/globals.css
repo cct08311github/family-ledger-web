@@ -1,43 +1,153 @@
 @import "tailwindcss";
 
 :root {
-  --background: oklch(0.98 0 0);
-  --foreground: oklch(0.15 0 0);
+  --background: oklch(0.97 0.005 145);
+  --foreground: oklch(0.15 0.01 145);
   --primary: oklch(0.45 0.15 145);
   --primary-foreground: oklch(0.98 0 0);
-  --muted: oklch(0.95 0 0);
-  --muted-foreground: oklch(0.55 0 0);
-  --border: oklch(0.9 0 0);
+  --primary-soft: oklch(0.92 0.04 145);
+  --muted: oklch(0.95 0.005 145);
+  --muted-foreground: oklch(0.5 0.02 145);
+  --border: oklch(0.9 0.01 145);
   --card: oklch(1 0 0);
   --destructive: oklch(0.55 0.2 25);
+  --ring: oklch(0.45 0.15 145);
+  --shadow-color: 145 30% 20%;
+  --card-shadow: 0 1px 3px oklch(0.3 0.02 145 / 0.06), 0 4px 12px oklch(0.3 0.02 145 / 0.04);
+  --card-shadow-hover: 0 2px 8px oklch(0.3 0.02 145 / 0.1), 0 8px 24px oklch(0.3 0.02 145 / 0.06);
 }
 
 .dark {
-  --background: oklch(0.15 0 0);
+  --background: oklch(0.13 0.01 145);
   --foreground: oklch(0.93 0 0);
   --primary: oklch(0.6 0.15 145);
-  --primary-foreground: oklch(0.15 0 0);
-  --muted: oklch(0.25 0 0);
-  --muted-foreground: oklch(0.65 0 0);
-  --border: oklch(0.3 0 0);
-  --card: oklch(0.2 0 0);
+  --primary-foreground: oklch(0.13 0 0);
+  --primary-soft: oklch(0.22 0.04 145);
+  --muted: oklch(0.2 0.01 145);
+  --muted-foreground: oklch(0.6 0.02 145);
+  --border: oklch(0.28 0.01 145);
+  --card: oklch(0.18 0.01 145);
   --destructive: oklch(0.65 0.2 25);
+  --ring: oklch(0.6 0.15 145);
+  --card-shadow: 0 1px 3px oklch(0 0 0 / 0.2), 0 4px 12px oklch(0 0 0 / 0.15);
+  --card-shadow-hover: 0 2px 8px oklch(0 0 0 / 0.3), 0 8px 24px oklch(0 0 0 / 0.2);
 }
 
 /* Theme color overrides */
-[data-theme="blue"] { --primary: oklch(0.5 0.15 250); }
-[data-theme="blue"].dark { --primary: oklch(0.65 0.15 250); }
-[data-theme="purple"] { --primary: oklch(0.5 0.15 300); }
-[data-theme="purple"].dark { --primary: oklch(0.65 0.15 300); }
-[data-theme="orange"] { --primary: oklch(0.6 0.15 60); }
-[data-theme="orange"].dark { --primary: oklch(0.7 0.15 60); }
-[data-theme="pink"] { --primary: oklch(0.6 0.15 350); }
-[data-theme="pink"].dark { --primary: oklch(0.7 0.15 350); }
-[data-theme="teal"] { --primary: oklch(0.55 0.12 185); }
-[data-theme="teal"].dark { --primary: oklch(0.65 0.12 185); }
+[data-theme="blue"] { --primary: oklch(0.5 0.15 250); --primary-soft: oklch(0.92 0.04 250); --ring: oklch(0.5 0.15 250); }
+[data-theme="blue"].dark { --primary: oklch(0.65 0.15 250); --primary-soft: oklch(0.22 0.04 250); }
+[data-theme="purple"] { --primary: oklch(0.5 0.15 300); --primary-soft: oklch(0.92 0.04 300); --ring: oklch(0.5 0.15 300); }
+[data-theme="purple"].dark { --primary: oklch(0.65 0.15 300); --primary-soft: oklch(0.22 0.04 300); }
+[data-theme="orange"] { --primary: oklch(0.6 0.15 60); --primary-soft: oklch(0.92 0.04 60); --ring: oklch(0.6 0.15 60); }
+[data-theme="orange"].dark { --primary: oklch(0.7 0.15 60); --primary-soft: oklch(0.22 0.04 60); }
+[data-theme="pink"] { --primary: oklch(0.6 0.15 350); --primary-soft: oklch(0.92 0.04 350); --ring: oklch(0.6 0.15 350); }
+[data-theme="pink"].dark { --primary: oklch(0.7 0.15 350); --primary-soft: oklch(0.22 0.04 350); }
+[data-theme="teal"] { --primary: oklch(0.55 0.12 185); --primary-soft: oklch(0.92 0.04 185); --ring: oklch(0.55 0.12 185); }
+[data-theme="teal"].dark { --primary: oklch(0.65 0.12 185); --primary-soft: oklch(0.22 0.04 185); }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Noto Sans TC', system-ui, sans-serif;
+  font-family: 'Noto Sans TC', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Card system ── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  box-shadow: var(--card-shadow);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.card:hover {
+  box-shadow: var(--card-shadow-hover);
+}
+
+/* ── Stagger animations ── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.4s ease-out both;
+}
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out both;
+}
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out both;
+}
+.animate-slide-up {
+  animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Stagger delays for sequential card reveals */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+
+/* ── Button press effect ── */
+.btn-press {
+  transition: transform 0.1s ease, box-shadow 0.15s ease;
+}
+.btn-press:active {
+  transform: scale(0.97);
+}
+
+/* ── Primary button gradient ── */
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), oklch(from var(--primary) calc(l - 0.05) c h));
+  color: var(--primary-foreground);
+  box-shadow: 0 2px 8px oklch(from var(--primary) l c h / 0.3);
+  transition: transform 0.1s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.btn-primary:hover {
+  box-shadow: 0 4px 16px oklch(from var(--primary) l c h / 0.4);
+}
+.btn-primary:active {
+  transform: scale(0.97);
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+/* ── Input focus ring ── */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px oklch(from var(--ring) l c h / 0.15);
+}
+
+/* ── Modal backdrop blur ── */
+.modal-backdrop {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* ── Smooth scrolling ── */
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+/* ── Selection color ── */
+::selection {
+  background: oklch(from var(--primary) l c h / 0.2);
 }
