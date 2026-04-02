@@ -58,10 +58,12 @@ export class FirestoreExpenseRepository implements ExpenseRepository {
     const id = genId()
     const now = Timestamp.now()
     const ref = doc(collection(db, 'groups', groupId, 'expenses'), id)
+    const { note, ...rest } = input
     await setDoc(ref, {
-      ...input,
+      ...rest,
       date: Timestamp.fromDate(input.date),
       receiptPath: input.receiptPaths[0] ?? null,
+      ...(note !== undefined ? { note } : {}),
       createdAt: now,
       updatedAt: now,
     })
