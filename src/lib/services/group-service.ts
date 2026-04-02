@@ -1,6 +1,13 @@
-import { addDoc, collection, doc, updateDoc, deleteDoc, getDocs, Timestamp, arrayRemove, writeBatch } from 'firebase/firestore'
+import { addDoc, collection, doc, updateDoc, deleteDoc, getDocs, query, where, Timestamp, arrayRemove, arrayUnion, writeBatch } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { auth } from '@/lib/firebase'
+
+function generateInviteCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no 0/O/1/I to avoid confusion
+  const bytes = new Uint8Array(6)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (b) => chars[b % chars.length]).join('')
+}
 
 const DEFAULT_CATEGORIES = [
   { name: '餐飲', icon: '🍜' },
@@ -69,6 +76,38 @@ export async function deleteGroup(groupId: string): Promise<void> {
   }
   // activityLogs are immutable (delete: false in rules), left as orphans
   await deleteDoc(doc(db, 'groups', groupId))
+}
+
+export async function refreshInviteCode(groupId: string): Promise<string> {
+  const code = generateInviteCode()
+  await updateDoc(doc(db, 'groups', groupId), {
+    inviteCode: code,
+    updatedAt: Timestamp.now(),
+  })
+  return code
+}
+
+export async function joinGroupByInviteCode(code: string): Promise<string> {
+  const user = auth.currentUser
+  if (!user) throw new Error('請先登入')
+  const trimmed = code.trim().toUpperCase()
+  if (!trimmed || trimmed.length !== 6) throw new Error('請輸入 6 位邀請碼')
+
+  const q = query(collection(db, 'groups'), where('inviteCode', '==', trimmed))
+  const snap = await getDocs(q)
+  if (snap.empty) throw new Error('邀請碼無效或已過期')
+
+  const groupDoc = snap.docs[0]
+  const data = groupDoc.data()
+  if ((data.memberUids as string[]).includes(user.uid)) {
+    throw new Error('你已經在這個群組中')
+  }
+
+  await updateDoc(groupDoc.ref, {
+    memberUids: arrayUnion(user.uid),
+    updatedAt: Timestamp.now(),
+  })
+  return groupDoc.id
 }
 
 export async function leaveGroup(groupId: string): Promise<void> {

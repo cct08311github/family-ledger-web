@@ -1,11 +1,62 @@
 'use client'
 
+import { useState } from 'react'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useExpenses, useMonthlyExpenses, useRecentExpenses } from '@/lib/hooks/use-expenses'
 import { useSettlements } from '@/lib/hooks/use-settlements'
 import { useMembers } from '@/lib/hooks/use-members'
 import { simplifyDebts } from '@/lib/services/split-calculator'
+import { joinGroupByInviteCode } from '@/lib/services/group-service'
 import { currency, toDate, fmtDate } from '@/lib/utils'
+
+function NoGroupView() {
+  const [code, setCode] = useState('')
+  const [joining, setJoining] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleJoin() {
+    setJoining(true)
+    setError(null)
+    try {
+      await joinGroupByInviteCode(code)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '加入失敗')
+    } finally {
+      setJoining(false)
+    }
+  }
+
+  return (
+    <div className="p-6 max-w-sm mx-auto space-y-6 pt-20">
+      <div className="text-center space-y-2">
+        <div className="text-6xl">👨‍👩‍👧‍👦</div>
+        <h2 className="text-xl font-bold">歡迎使用家計本！</h2>
+        <p className="text-sm text-[var(--muted-foreground)]">輸入邀請碼加入家庭群組，或到設定頁建立新群組</p>
+      </div>
+
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-3">
+        <label className="text-sm font-medium block">輸入邀請碼</label>
+        <input
+          type="text"
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, 6))}
+          placeholder="例如：A2B3C4"
+          maxLength={6}
+          className="w-full text-center text-2xl font-mono font-bold tracking-[0.3em] h-14 rounded-lg border border-[var(--border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+        />
+        {error && <p className="text-xs text-[var(--destructive)]">{error}</p>}
+        <button
+          onClick={handleJoin}
+          disabled={joining || code.length !== 6}
+          className="w-full py-3 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition"
+          style={{ backgroundColor: 'var(--primary)' }}
+        >
+          {joining ? '加入中...' : '加入群組'}
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export default function HomePage() {
   const { group, loading: groupLoading } = useGroup()
@@ -32,13 +83,7 @@ export default function HomePage() {
   }
 
   if (!group) {
-    return (
-      <div className="p-6 text-center space-y-4">
-        <div className="text-6xl opacity-30">👨‍👩‍👧‍👦</div>
-        <h2 className="text-xl font-bold">歡迎使用家計本！</h2>
-        <p className="text-[var(--muted-foreground)]">請先到設定新增家庭成員</p>
-      </div>
-    )
+    return <NoGroupView />
   }
 
   return (
