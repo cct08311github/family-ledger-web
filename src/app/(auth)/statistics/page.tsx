@@ -57,7 +57,7 @@ function EmptyState({ message }: { message: string }) {
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+    <div className="card overflow-hidden">
       <div className="px-5 py-3 border-b border-[var(--border)]">
         <h2 className="font-semibold text-sm text-[var(--muted-foreground)]">{title}</h2>
       </div>
@@ -241,7 +241,7 @@ export default function StatisticsPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 space-y-4 md:space-y-6 max-w-4xl mx-auto">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-4 md:space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">📊 統計</h1>
         <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
@@ -250,20 +250,21 @@ export default function StatisticsPage() {
       {/* Summary */}
       <SummaryCards expenses={monthExpenses} />
 
-      {/* Trend (always show 6-month window regardless of selected month) */}
+      {/* Trend — full width */}
       <SectionCard title="📈 月支出趨勢（近 6 個月）">
         <TrendChart expenses={expenses} />
       </SectionCard>
 
-      {/* Category pie */}
-      <SectionCard title={`🥧 類別分布 — ${formatMonth(selectedMonth.year, selectedMonth.month)}`}>
-        <CategoryPieChart expenses={monthExpenses} />
-      </SectionCard>
+      {/* Category pie + Member bar — 桌面版並排 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+        <SectionCard title={`🥧 類別分布 — ${formatMonth(selectedMonth.year, selectedMonth.month)}`}>
+          <CategoryPieChart expenses={monthExpenses} />
+        </SectionCard>
 
-      {/* Member bar */}
-      <SectionCard title={`👥 成員分攤 — ${formatMonth(selectedMonth.year, selectedMonth.month)}`}>
-        <MemberBarChart expenses={monthExpenses} memberNames={memberNames} />
-      </SectionCard>
+        <SectionCard title={`👥 成員分攤 — ${formatMonth(selectedMonth.year, selectedMonth.month)}`}>
+          <MemberBarChart expenses={monthExpenses} memberNames={memberNames} />
+        </SectionCard>
+      </div>
     </div>
   )
 }
