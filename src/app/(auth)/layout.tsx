@@ -1,6 +1,7 @@
 'use client'
 
 import { useAuth } from '@/lib/auth'
+import { GroupProvider } from '@/lib/group-context'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { NavShell } from '@/components/nav-shell'
@@ -23,5 +24,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
   if (!user) return null
 
-  return <NavShell>{children}</NavShell>
+  return (
+    <GroupProvider>
+      <NavShell>{children}</NavShell>
+    </GroupProvider>
+  )
 }
