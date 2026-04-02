@@ -23,7 +23,7 @@ service cloud.firestore {
 
     // 資料大小限制
     function isReasonableSize() {
-      return request.resource.data.keys().Size() < 30;
+      return request.resource.data.keys().size() < 30;
     }
 
     // ─── 群組 ───
