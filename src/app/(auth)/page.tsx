@@ -86,71 +86,98 @@ export default function HomePage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-2xl mx-auto">
-      {/* 月支出摘要 */}
-      <div className="card p-5 space-y-3 animate-fade-up stagger-1">
-        <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
-          📅 {monthLabel}
-        </div>
-        <div className="text-3xl font-black tracking-tight" style={{ color: 'var(--primary)' }}>
-          {currency(total)}
-        </div>
-        <p className="text-xs text-[var(--muted-foreground)]">本月總支出</p>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl p-3" style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 90%)' }}>
-            <div className="text-xs text-[var(--muted-foreground)]">👥 共同支出</div>
-            <div className="font-semibold">{currency(sharedTotal)}</div>
-          </div>
-          <div className="rounded-xl bg-[var(--muted)] p-3">
-            <div className="text-xs text-[var(--muted-foreground)]">👤 個人支出</div>
-            <div className="font-semibold">{currency(total - sharedTotal)}</div>
-          </div>
-        </div>
-        <p className="text-xs text-[var(--muted-foreground)]">共 {monthly.length} 筆記錄</p>
-      </div>
+    <div className="p-4 md:p-8 max-w-5xl mx-auto">
+      {/* Dashboard grid: 桌面版 2 欄，手機版單欄 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
 
-      {/* 誰欠誰 */}
-      <div className="card p-5 space-y-3 animate-fade-up stagger-2">
-        <div className="flex items-center gap-2 font-medium">💰 誰欠誰</div>
-        {debts.length === 0 ? (
-          <p className="text-[var(--muted-foreground)]">目前沒有未結清的債務 🎉</p>
-        ) : (
-          debts.map((d, i) => (
-            <div key={i} className="flex items-center gap-2 text-sm">
-              <span className="px-2 py-0.5 rounded-md text-xs font-semibold" style={{ backgroundColor: 'color-mix(in oklch, var(--destructive), transparent 90%)', color: 'var(--destructive)' }}>
-                {d.fromName}
-              </span>
-              <span className="text-[var(--muted-foreground)]">→</span>
-              <span className="px-2 py-0.5 rounded-md bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs font-semibold">
-                {d.toName}
-              </span>
-              <span className="ml-auto font-semibold">{currency(d.amount)}</span>
+        {/* 月支出摘要 — 桌面版橫跨兩欄 */}
+        <div className="md:col-span-2 card p-6 md:p-8 space-y-4 animate-fade-up stagger-1">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
+              📅 {monthLabel}
             </div>
-          ))
-        )}
-      </div>
+            <p className="text-xs text-[var(--muted-foreground)]">共 {monthly.length} 筆記錄</p>
+          </div>
+          <div className="flex items-baseline gap-3">
+            <div className="text-4xl md:text-5xl font-black tracking-tight" style={{ color: 'var(--primary)' }}>
+              {currency(total)}
+            </div>
+            <p className="text-sm text-[var(--muted-foreground)]">本月總支出</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="rounded-xl p-4" style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 90%)' }}>
+              <div className="text-xs text-[var(--muted-foreground)]">👥 共同支出</div>
+              <div className="text-lg font-bold mt-1">{currency(sharedTotal)}</div>
+            </div>
+            <div className="rounded-xl bg-[var(--muted)] p-4">
+              <div className="text-xs text-[var(--muted-foreground)]">👤 個人支出</div>
+              <div className="text-lg font-bold mt-1">{currency(total - sharedTotal)}</div>
+            </div>
+            <div className="rounded-xl p-4 border border-[var(--border)]">
+              <div className="text-xs text-[var(--muted-foreground)]">👨‍👩‍👧‍👦 成員數</div>
+              <div className="text-lg font-bold mt-1">{members.length} 人</div>
+            </div>
+            <div className="rounded-xl p-4 border border-[var(--border)]">
+              <div className="text-xs text-[var(--muted-foreground)]">💳 未結清</div>
+              <div className="text-lg font-bold mt-1">{debts.length} 筆</div>
+            </div>
+          </div>
+        </div>
 
-      {/* 最近記錄 */}
-      <div className="card p-5 space-y-3 animate-fade-up stagger-3">
-        <div className="flex items-center gap-2 font-medium">📝 最近記錄</div>
-        {recent.length === 0 ? (
-          <p className="text-[var(--muted-foreground)]">還沒有任何記錄，點下方「記帳」開始！</p>
-        ) : (
-          recent.map((e) => (
-            <div key={e.id} className="flex items-center gap-3 py-1.5">
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg" style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 85%)' }}>
-                {e.isShared ? '👥' : '👤'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-medium text-sm truncate">{e.description}</div>
-                <div className="text-xs text-[var(--muted-foreground)]">
-                  {fmtDate(toDate(e.date))} · {e.category} · {e.payerName}付
+        {/* 誰欠誰 — 左欄 */}
+        <div className="card p-5 md:p-6 space-y-3 animate-fade-up stagger-2">
+          <div className="flex items-center gap-2 font-semibold">💰 誰欠誰</div>
+          {debts.length === 0 ? (
+            <div className="text-center py-6">
+              <div className="text-3xl mb-2">🎉</div>
+              <p className="text-[var(--muted-foreground)]">目前沒有未結清的債務</p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {debts.map((d, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm">
+                  <span className="px-2 py-0.5 rounded-md text-xs font-semibold" style={{ backgroundColor: 'color-mix(in oklch, var(--destructive), transparent 90%)', color: 'var(--destructive)' }}>
+                    {d.fromName}
+                  </span>
+                  <span className="text-[var(--muted-foreground)]">→</span>
+                  <span className="px-2 py-0.5 rounded-md bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs font-semibold">
+                    {d.toName}
+                  </span>
+                  <span className="ml-auto font-bold">{currency(d.amount)}</span>
                 </div>
-              </div>
-              <div className="font-semibold text-sm">{currency(e.amount)}</div>
+              ))}
             </div>
-          ))
-        )}
+          )}
+        </div>
+
+        {/* 最近記錄 — 右欄 */}
+        <div className="card p-5 md:p-6 space-y-3 animate-fade-up stagger-3">
+          <div className="flex items-center gap-2 font-semibold">📝 最近記錄</div>
+          {recent.length === 0 ? (
+            <div className="text-center py-6">
+              <div className="text-3xl mb-2">📭</div>
+              <p className="text-[var(--muted-foreground)]">還沒有任何記錄，點左下「記帳」開始！</p>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {recent.map((e) => (
+                <div key={e.id} className="flex items-center gap-3 py-2 rounded-lg hover:bg-[var(--muted)] px-2 -mx-2 transition-colors">
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0" style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 85%)' }}>
+                    {e.isShared ? '👥' : '👤'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">{e.description}</div>
+                    <div className="text-xs text-[var(--muted-foreground)]">
+                      {fmtDate(toDate(e.date))} · {e.category} · {e.payerName}付
+                    </div>
+                  </div>
+                  <div className="font-semibold text-sm">{currency(e.amount)}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   )

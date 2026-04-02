@@ -246,7 +246,7 @@ export default function SplitPage() {
         />
       )}
 
-      <div className="p-4 md:p-6 space-y-4 max-w-2xl mx-auto">
+      <div className="p-4 md:p-8 space-y-4 md:space-y-6 max-w-4xl mx-auto">
         {/* 操作按鈕 */}
         <div className="flex gap-2 animate-fade-up">
           <button
