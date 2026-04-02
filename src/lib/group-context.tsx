@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useMemo, useCallback, ReactNode } from 'react'
 import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/lib/auth'
@@ -81,40 +81,43 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     }
   }, [user])
 
-  // Resolve active group (with stale ID cleanup)
-  const activeGroup = (() => {
+  // Resolve active group (memoized)
+  const activeGroup = useMemo(() => {
     if (groups.length === 0) return null
-    // 1. localStorage saved ID
     if (activeGroupId) {
       const found = groups.find((g) => g.id === activeGroupId)
       if (found) return found
     }
-    // 2. isPrimary
     const primary = groups.find((g) => g.isPrimary)
     if (primary) return primary
-    // 3. first
     return groups[0]
-  })()
+  }, [groups, activeGroupId])
 
   // Clean up stale activeGroupId when resolved group differs
+  const resolvedId = activeGroup?.id ?? null
   useEffect(() => {
-    if (!loading && groups.length > 0 && activeGroupId && activeGroup?.id !== activeGroupId) {
-      setActiveGroupIdState(activeGroup?.id ?? null)
-      if (activeGroup) {
-        localStorage.setItem(STORAGE_KEY, activeGroup.id)
+    if (!loading && groups.length > 0 && activeGroupId && resolvedId !== activeGroupId) {
+      setActiveGroupIdState(resolvedId)
+      if (resolvedId) {
+        localStorage.setItem(STORAGE_KEY, resolvedId)
       } else {
         localStorage.removeItem(STORAGE_KEY)
       }
     }
-  }, [loading, groups, activeGroupId, activeGroup])
+  }, [loading, groups.length, activeGroupId, resolvedId])
 
-  function setActiveGroupId(id: string) {
+  const setActiveGroupId = useCallback((id: string) => {
     setActiveGroupIdState(id)
     localStorage.setItem(STORAGE_KEY, id)
-  }
+  }, [])
+
+  // Stable context value
+  const value = useMemo(() => ({
+    groups, activeGroup, setActiveGroupId, loading,
+  }), [groups, activeGroup, setActiveGroupId, loading])
 
   return (
-    <GroupContext.Provider value={{ groups, activeGroup, setActiveGroupId, loading }}>
+    <GroupContext.Provider value={value}>
       {children}
     </GroupContext.Provider>
   )

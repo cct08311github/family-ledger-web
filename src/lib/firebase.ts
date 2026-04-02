@@ -9,12 +9,12 @@ import {
 import { getStorage, connectStorageEmulator } from 'firebase/storage'
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyD9FyDSM4-acovBVfMvf_2kLW1IaJcVsMQ',
-  authDomain: 'family-ledger-784ed.firebaseapp.com',
-  projectId: 'family-ledger-784ed',
-  storageBucket: 'family-ledger-784ed.firebasestorage.app',
-  messagingSenderId: '137558877215',
-  appId: '1:137558877215:ios:7101807b49be145b96a12a',
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? '',
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? '',
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? '',
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? '',
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? '',
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID ?? '',
 }
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]

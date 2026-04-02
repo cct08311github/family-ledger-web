@@ -1,4 +1,4 @@
-import { addDoc, collection, doc, updateDoc, deleteDoc, getDocs, Timestamp, arrayRemove } from 'firebase/firestore'
+import { addDoc, collection, doc, updateDoc, deleteDoc, getDocs, Timestamp, arrayRemove, writeBatch } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { auth } from '@/lib/firebase'
 
@@ -31,20 +31,23 @@ export async function createGroup(name: string, isFirst = false): Promise<string
     updatedAt: Timestamp.now(),
   })
 
-  // Seed default categories
+  // Seed default categories (single batch write)
+  const batch = writeBatch(db)
   const catCol = collection(db, 'groups', ref.id, 'categories')
-  for (let i = 0; i < DEFAULT_CATEGORIES.length; i++) {
-    const c = DEFAULT_CATEGORIES[i]
-    await addDoc(catCol, {
+  const now = Timestamp.now()
+  DEFAULT_CATEGORIES.forEach((c, i) => {
+    const catRef = doc(catCol)
+    batch.set(catRef, {
       groupId: ref.id,
       name: c.name,
       icon: c.icon,
       sortOrder: i,
       isDefault: true,
       isActive: true,
-      createdAt: Timestamp.now(),
+      createdAt: now,
     })
-  }
+  })
+  await batch.commit()
 
   return ref.id
 }
