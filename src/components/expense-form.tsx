@@ -234,7 +234,7 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
       <div>
         <label className="text-sm font-medium mb-1 block">付款方式</label>
         <div className="flex gap-2">
-          {([['cash', '💵 現金'], ['creditCard', '💳 信用卡'], ['transfer', '🔄 轉帳']] as const).map(([v, l]) => (
+          {([['cash', '💵 現金'], ['creditCard', '💳 信用卡']] as const).map(([v, l]) => (
             <button key={v} onClick={() => setPaymentMethod(v)}
               className={`flex-1 h-10 rounded-lg text-sm font-medium border transition ${
                 paymentMethod === v
