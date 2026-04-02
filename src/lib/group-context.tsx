@@ -13,6 +13,7 @@ interface GroupContextType {
   groups: FamilyGroup[]
   activeGroup: FamilyGroup | null
   setActiveGroupId: (id: string) => void
+  removeGroup: (id: string) => void
   loading: boolean
 }
 
@@ -20,6 +21,7 @@ const GroupContext = createContext<GroupContextType>({
   groups: [],
   activeGroup: null,
   setActiveGroupId: () => {},
+  removeGroup: () => {},
   loading: true,
 })
 
@@ -111,10 +113,14 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, id)
   }, [])
 
+  const removeGroup = useCallback((id: string) => {
+    setGroups((prev) => prev.filter((g) => g.id !== id))
+  }, [])
+
   // Stable context value
   const value = useMemo(() => ({
-    groups, activeGroup, setActiveGroupId, loading,
-  }), [groups, activeGroup, setActiveGroupId, loading])
+    groups, activeGroup, setActiveGroupId, removeGroup, loading,
+  }), [groups, activeGroup, setActiveGroupId, removeGroup, loading])
 
   return (
     <GroupContext.Provider value={value}>

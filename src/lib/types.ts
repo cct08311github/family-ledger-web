@@ -50,6 +50,7 @@ export interface FamilyGroup {
   isPrimary: boolean
   ownerUid?: string
   memberUids: string[]
+  inviteCode?: string | null
   createdAt: Timestamp
   updatedAt: Timestamp
 }

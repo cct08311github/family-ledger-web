@@ -10,7 +10,7 @@ import { useMembers } from '@/lib/hooks/use-members'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { useColorTheme, COLOR_THEMES } from '@/lib/hooks/use-color-theme'
 import { addMember, removeMember, updateMember } from '@/lib/services/member-service'
-import { createGroup, updateGroup, deleteGroup } from '@/lib/services/group-service'
+import { createGroup, updateGroup, deleteGroup, refreshInviteCode } from '@/lib/services/group-service'
 import { addCategory, updateCategory } from '@/lib/services/category-service'
 import { addActivityLog } from '@/lib/services/activity-log-service'
 import { useRouter } from 'next/navigation'
@@ -356,8 +356,59 @@ function ApiKeySection() {
 
 // ── Group Management section ─────────────────────────────────
 
+function InviteCodeBlock({ group }: { group: { id: string; name: string; inviteCode?: string | null } }) {
+  const [generating, setGenerating] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  async function handleGenerate() {
+    setGenerating(true)
+    try {
+      await refreshInviteCode(group.id)
+    } catch (e) {
+      logger.error('[Settings] Failed to generate invite code:', e)
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  function handleCopy() {
+    if (!group.inviteCode) return
+    navigator.clipboard.writeText(group.inviteCode)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="rounded-xl border border-dashed border-[var(--border)] p-3 space-y-2">
+      <div className="text-xs text-[var(--muted-foreground)]">
+        邀請碼 — {group.name}
+      </div>
+      {group.inviteCode ? (
+        <div className="flex items-center gap-2">
+          <code className="flex-1 text-center text-xl font-mono font-bold tracking-[0.3em] py-1 rounded-lg bg-[var(--muted)]">
+            {group.inviteCode}
+          </code>
+          <button onClick={handleCopy}
+            className="text-xs px-2.5 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--muted)]">
+            {copied ? '已複製' : '複製'}
+          </button>
+          <button onClick={handleGenerate} disabled={generating}
+            className="text-xs px-2.5 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--muted)] text-[var(--muted-foreground)]">
+            重新產生
+          </button>
+        </div>
+      ) : (
+        <button onClick={handleGenerate} disabled={generating}
+          className="w-full py-2 rounded-lg text-sm font-medium border border-[var(--border)] hover:bg-[var(--muted)] transition">
+          {generating ? '產生中...' : '產生邀請碼'}
+        </button>
+      )}
+    </div>
+  )
+}
+
 function GroupManagementSection() {
-  const { group, groups, setActiveGroupId } = useGroup()
+  const { group, groups, setActiveGroupId, removeGroup } = useGroup()
   const [newName, setNewName] = useState('')
   const [creating, setCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -399,11 +450,11 @@ function GroupManagementSection() {
     }
     if (!confirm(`確定要刪除群組「${groupName}」嗎？所有支出、結算紀錄都會一併刪除，此操作無法復原。`)) return
     try {
+      // Optimistic: 先從 UI 移除，不等 Firestore snapshot
+      const remaining = groups.find((g) => g.id !== groupId)
+      if (group?.id === groupId && remaining) setActiveGroupId(remaining.id)
+      removeGroup(groupId)
       await deleteGroup(groupId)
-      if (group?.id === groupId) {
-        const remaining = groups.find((g) => g.id !== groupId)
-        if (remaining) setActiveGroupId(remaining.id)
-      }
     } catch (e) {
       logger.error('[Settings] Failed to delete group:', e)
       alert('刪除失敗')
@@ -449,6 +500,9 @@ function GroupManagementSection() {
           )}
         </div>
       ))}
+
+      {/* 邀請碼 */}
+      {group && <InviteCodeBlock group={group} />}
 
       <div className="flex gap-2 pt-1">
         <input

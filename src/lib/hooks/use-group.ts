@@ -9,7 +9,8 @@ export function useGroup(): {
   groups: FamilyGroup[]
   loading: boolean
   setActiveGroupId: (id: string) => void
+  removeGroup: (id: string) => void
 } {
-  const { activeGroup, groups, loading, setActiveGroupId } = useGroupContext()
-  return { group: activeGroup, groups, loading, setActiveGroupId }
+  const { activeGroup, groups, loading, setActiveGroupId, removeGroup } = useGroupContext()
+  return { group: activeGroup, groups, loading, setActiveGroupId, removeGroup }
 }
