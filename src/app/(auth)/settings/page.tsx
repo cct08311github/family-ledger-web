@@ -22,7 +22,7 @@ import { logger } from '@/lib/logger'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+    <div className="card overflow-hidden">
       <div className="px-5 py-3 border-b border-[var(--border)]">
         <h2 className="font-semibold text-sm text-[var(--muted-foreground)]">{title}</h2>
       </div>

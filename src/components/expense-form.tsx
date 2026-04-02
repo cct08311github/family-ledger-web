@@ -350,7 +350,7 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
 
       {/* 儲存 */}
       <button onClick={handleSave} disabled={saving}
-        className="w-full h-12 rounded-lg font-medium bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition disabled:opacity-50">
+        className="w-full h-12 rounded-xl font-semibold btn-primary btn-press">
         {saving ? '儲存中...' : isEditing ? '儲存變更' : '新增支出'}
       </button>
     </div>

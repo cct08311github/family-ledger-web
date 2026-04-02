@@ -55,11 +55,11 @@ function SettleDialog({ members, defaultFromId, defaultToId, defaultAmount, onCl
     }
   }
 
-  const inputCls = "w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+  const inputCls = "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm transition-all"
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-sm mx-4 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xl p-6 space-y-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 modal-backdrop animate-fade-in">
+      <div className="w-full sm:max-w-sm sm:mx-4 rounded-t-2xl sm:rounded-2xl bg-[var(--card)] border border-[var(--border)] p-6 space-y-4 animate-slide-up" style={{ boxShadow: 'var(--card-shadow-hover)' }}>
         <h2 className="text-lg font-bold">記錄轉帳</h2>
 
         <div>
@@ -95,12 +95,11 @@ function SettleDialog({ members, defaultFromId, defaultToId, defaultAmount, onCl
         {error && <p className="text-xs text-[var(--destructive)]">{error}</p>}
 
         <div className="flex gap-3 pt-2">
-          <button onClick={onClose} className="flex-1 rounded-lg border border-[var(--border)] py-2 text-sm font-medium hover:bg-[var(--muted)] transition-colors">取消</button>
+          <button onClick={onClose} className="flex-1 rounded-xl border border-[var(--border)] py-2.5 text-sm font-medium hover:bg-[var(--muted)] btn-press transition-colors">取消</button>
           <button
             onClick={handleSubmit}
             disabled={saving || !amount || !fromId || !toId}
-            className="flex-1 rounded-lg py-2 text-sm font-semibold text-white transition-colors disabled:opacity-50"
-            style={{ backgroundColor: 'var(--primary)' }}
+            className="flex-1 rounded-xl py-2.5 text-sm font-semibold btn-primary btn-press"
           >
             {saving ? '儲存中...' : '確認'}
           </button>
@@ -249,23 +248,23 @@ export default function SplitPage() {
 
       <div className="p-4 md:p-6 space-y-4 max-w-2xl mx-auto">
         {/* 操作按鈕 */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 animate-fade-up">
           <button
             onClick={() => setSettling({})}
-            className="flex-1 rounded-2xl border border-dashed border-[var(--border)] py-3 text-sm font-medium text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-colors"
+            className="flex-1 rounded-2xl border border-dashed border-[var(--border)] py-3 text-sm font-semibold text-[var(--muted-foreground)] hover:bg-[var(--primary-soft)] hover:border-[var(--primary)] hover:text-[var(--primary)] btn-press transition-all"
           >
             + 記錄轉帳
           </button>
           <button
             onClick={shareReport}
-            className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm font-medium text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-colors"
+            className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm font-semibold text-[var(--muted-foreground)] hover:bg-[var(--muted)] btn-press transition-all"
           >
             {copied ? '已複製 ✓' : '📤 分享'}
           </button>
         </div>
 
         {/* 每人淨餘額 */}
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-3">
+        <div className="card p-5 space-y-3 animate-fade-up stagger-1">
           <div className="flex items-center justify-between">
             <div className="font-semibold">📊 每人餘額</div>
             <span className="text-xs text-[var(--muted-foreground)]">{expenses.length} 筆支出</span>
@@ -317,7 +316,7 @@ export default function SplitPage() {
         </div>
 
         {/* 簡化結算方案 */}
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-3">
+        <div className="card p-5 space-y-3 animate-fade-up stagger-2">
           <div className="font-semibold">💰 結算方案</div>
 
           {debts.length === 0 ? (
@@ -351,8 +350,7 @@ export default function SplitPage() {
                     onClick={() => setSettling({
                       fromId: d.from, toId: d.to, amount: d.amount,
                     })}
-                    className="shrink-0 text-xs px-3 py-1.5 rounded-lg font-medium text-white transition-colors"
-                    style={{ backgroundColor: 'var(--primary)' }}
+                    className="shrink-0 text-xs px-3 py-1.5 rounded-lg font-semibold btn-primary btn-press"
                   >
                     記錄
                   </button>
@@ -364,7 +362,7 @@ export default function SplitPage() {
 
         {/* 結算歷史 */}
         {settlements.length > 0 && (
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-3">
+          <div className="card p-5 space-y-3 animate-fade-up stagger-3">
             <div className="font-semibold">🧾 結算紀錄</div>
             <div className="space-y-2">
               {settlements.slice(0, 10).map((s) => (
