@@ -7,15 +7,15 @@ import './globals.css'
 export const metadata: Metadata = {
   title: '💰 家計本',
   description: '全家人共享記帳．自動拆帳．一目了然誰欠誰',
-  manifest: '/manifest.json',
+  manifest: '/family-ledger-web/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: '家計本',
   },
   icons: {
-    icon: '/icons/icon-192.png',
-    apple: '/icons/icon-192.png',
+    icon: '/family-ledger-web/icons/icon-192.png',
+    apple: '/family-ledger-web/icons/icon-192.png',
   },
 }
 
