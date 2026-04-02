@@ -3,6 +3,7 @@
 // This file re-exports once Turbopack workspace support is resolved.
 
 import type { Expense, Settlement } from '@/lib/types'
+import { logger } from '@/lib/logger'
 
 interface Debt {
   from: string
@@ -26,15 +27,21 @@ export function calculateNetBalances(
 
     // 加入每人實際付款金額
     let payerCredited = false
+    let totalPaid = 0
     for (const s of e.splits) {
       if (s.paidAmount > 0) {
         balances[s.memberId] = (balances[s.memberId] ?? 0) + s.paidAmount
+        totalPaid += s.paidAmount
         if (s.memberId === e.payerId) payerCredited = true
       }
     }
     // 付款人不在 splits 中時（例：爸爸付錢但只拆給小孩），以全額計入
     if (e.payerId && !payerCredited) {
       balances[e.payerId] = (balances[e.payerId] ?? 0) + e.amount
+    }
+    // Sanity check: splits 的 paidAmount 總和應等於 expense amount
+    if (payerCredited && totalPaid !== e.amount) {
+      logger.warn(`[split-calculator] paidAmount sum (${totalPaid}) != expense amount (${e.amount}) for "${e.description}"`)
     }
 
     // 參與者的 shareAmount 要扣除（變成欠款）
