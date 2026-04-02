@@ -27,13 +27,16 @@ export async function updateGroup(groupId: string, data: { name?: string; isPrim
 }
 
 export async function deleteGroup(groupId: string): Promise<void> {
-  // Delete subcollections first
-  for (const sub of ['expenses', 'settlements', 'members', 'categories', 'activityLogs', 'notifications']) {
-    const snap = await getDocs(collection(db, 'groups', groupId, sub))
-    for (const d of snap.docs) {
-      await deleteDoc(d.ref)
-    }
+  // Delete subcollections that security rules allow owner to delete
+  for (const sub of ['members', 'categories', 'expenses', 'settlements', 'notifications']) {
+    try {
+      const snap = await getDocs(collection(db, 'groups', groupId, sub))
+      for (const d of snap.docs) {
+        try { await deleteDoc(d.ref) } catch { /* skip docs we can't delete */ }
+      }
+    } catch { /* skip subcollections we can't read/delete */ }
   }
+  // activityLogs are immutable (delete: false in rules), left as orphans
   await deleteDoc(doc(db, 'groups', groupId))
 }
 

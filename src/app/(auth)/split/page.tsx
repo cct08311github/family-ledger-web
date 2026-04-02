@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useExpenses } from '@/lib/hooks/use-expenses'
@@ -127,12 +127,14 @@ export default function SplitPage() {
   const [copied, setCopied] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  // Auto-open transfer dialog when navigated with ?action=transfer
+  // Auto-open transfer dialog when navigated with ?action=transfer (once only)
+  const transferTriggered = useRef(false)
   useEffect(() => {
-    if (searchParams.get('action') === 'transfer' && !settling) {
+    if (searchParams.get('action') === 'transfer' && !transferTriggered.current) {
+      transferTriggered.current = true
       setSettling({})
     }
-  }, [searchParams.toString(), settling])
+  }, [searchParams])
 
   async function handleDeleteSettlement(id: string) {
     if (!group) return
