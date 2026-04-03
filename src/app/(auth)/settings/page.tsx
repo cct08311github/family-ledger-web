@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { writeBatch, doc } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
 import { useTheme } from 'next-themes'
 import { useAuth } from '@/lib/auth'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useMembers } from '@/lib/hooks/use-members'
+import { useCurrentMember } from '@/lib/hooks/use-current-member'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { useColorTheme, COLOR_THEMES } from '@/lib/hooks/use-color-theme'
 import { addMember, removeMember, updateMember } from '@/lib/services/member-service'
@@ -35,6 +34,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function MembersSection({ groupId }: { groupId: string }) {
   const { members, loading: membersLoading } = useMembers(groupId)
+  const { currentMemberId, setCurrentMember, loading: currentMemberLoading } = useCurrentMember(groupId)
   const { user } = useAuth()
   const [newName, setNewName] = useState('')
   const [adding, setAdding] = useState(false)
@@ -56,10 +56,10 @@ function MembersSection({ groupId }: { groupId: string }) {
     }
   }
 
-  async function handleDelete(memberId: string, memberName: string, isCurrentUser: boolean) {
+  async function handleDelete(memberId: string, memberName: string) {
     if (!confirm(`確定要刪除成員「${memberName}」嗎？此操作無法復原。`)) return
     try {
-      await removeMember(groupId, memberId, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined, memberName, isCurrentUser)
+      await removeMember(groupId, memberId, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined, memberName)
     } catch (e) {
       logger.error('[Settings] Failed to delete member:', e)
       alert('刪除失敗，請稍後再試')
@@ -78,24 +78,18 @@ function MembersSection({ groupId }: { groupId: string }) {
     }
   }
 
-  async function handleToggleCurrent(member: FamilyMember) {
-    const next = !member.isCurrentUser
-    const batch = writeBatch(db)
-    // Atomically update both members in one batch to avoid intermediate inconsistent state
-    if (next) {
-      const prev = members.find((m) => m.isCurrentUser && m.id !== member.id)
-      if (prev) batch.update(doc(db, 'groups', groupId, 'members', prev.id), { isCurrentUser: false })
-    }
-    batch.update(doc(db, 'groups', groupId, 'members', member.id), { isCurrentUser: next })
+  async function handleSetCurrentMember(member: FamilyMember) {
+    // If already selected, do nothing
+    if (currentMemberId === member.id) return
     try {
-      await batch.commit()
-      if (next && user) {
+      await setCurrentMember(member.id)
+      if (user) {
         try {
           await addActivityLog(groupId, {
             action: 'member_updated',
             actorId: user.uid,
             actorName: user.displayName ?? '未知',
-            description: `切換目前成員：${member.name}`,
+            description: `設為我：${member.name}`,
             entityId: member.id,
           })
         } catch (e) {
@@ -103,57 +97,64 @@ function MembersSection({ groupId }: { groupId: string }) {
         }
       }
     } catch (e) {
-      logger.error('[Settings] Failed to toggle current user:', e)
+      logger.error('[Settings] Failed to set current member:', e)
       alert('更新失敗，請稍後再試')
     }
   }
 
+  const isLoading = membersLoading || currentMemberLoading
+
   return (
     <div className="space-y-3">
-      {membersLoading ? (
+      {isLoading ? (
         <p className="text-sm text-[var(--muted-foreground)]">載入中...</p>
       ) : members.length === 0 ? (
         <p className="text-sm text-[var(--muted-foreground)]">還沒有成員，請新增</p>
       ) : null}
-      {members.map((m) => (
-        <div key={m.id} className="flex items-center gap-2">
-          {editingId === m.id ? (
-            <>
-              <input
-                autoFocus
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleRename(m.id)}
-                className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-              />
-              <button onClick={() => handleRename(m.id)}
-                className="text-xs px-2.5 py-1.5 rounded-lg font-medium text-white"
-                style={{ backgroundColor: 'var(--primary)' }}>儲存</button>
-              <button onClick={() => setEditingId(null)}
-                className="text-xs px-2.5 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--muted)]">取消</button>
-            </>
-          ) : (
-            <>
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 80%)', color: 'var(--primary)' }}>
-                {m.name.slice(0, 1)}
-              </div>
-              <span className="flex-1 text-sm font-medium">{m.name}</span>
-              {m.isCurrentUser && (
-                <span className="text-xs px-1.5 py-0.5 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)]">我</span>
-              )}
-              <button onClick={() => handleToggleCurrent(m)}
-                className="text-xs px-2 py-1 rounded border border-[var(--border)] hover:bg-[var(--muted)] text-[var(--muted-foreground)]">
-                {m.isCurrentUser ? '取消' : '設為我'}
-              </button>
-              <button onClick={() => { setEditingId(m.id); setEditName(m.name) }}
-                className="text-xs px-2 py-1 rounded border border-[var(--border)] hover:bg-[var(--muted)] text-[var(--muted-foreground)]">改名</button>
-              <button onClick={() => handleDelete(m.id, m.name, m.isCurrentUser)}
-                className="text-xs px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950 text-[var(--destructive)]">刪除</button>
-            </>
-          )}
-        </div>
-      ))}
+      {members.map((m) => {
+        const isMe = currentMemberId === m.id
+        return (
+          <div key={m.id} className="flex items-center gap-2">
+            {editingId === m.id ? (
+              <>
+                <input
+                  autoFocus
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleRename(m.id)}
+                  className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                />
+                <button onClick={() => handleRename(m.id)}
+                  className="text-xs px-2.5 py-1.5 rounded-lg font-medium text-white"
+                  style={{ backgroundColor: 'var(--primary)' }}>儲存</button>
+                <button onClick={() => setEditingId(null)}
+                  className="text-xs px-2.5 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--muted)]">取消</button>
+              </>
+            ) : (
+              <>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                  style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 80%)', color: 'var(--primary)' }}>
+                  {m.name.slice(0, 1)}
+                </div>
+                <span className="flex-1 text-sm font-medium">{m.name}</span>
+                {isMe && (
+                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)]">我</span>
+                )}
+                {!isMe && (
+                  <button onClick={() => handleSetCurrentMember(m)}
+                    className="text-xs px-2 py-1 rounded border border-[var(--border)] hover:bg-[var(--muted)] text-[var(--muted-foreground)]">
+                    設為我
+                  </button>
+                )}
+                <button onClick={() => { setEditingId(m.id); setEditName(m.name) }}
+                  className="text-xs px-2 py-1 rounded border border-[var(--border)] hover:bg-[var(--muted)] text-[var(--muted-foreground)]">改名</button>
+                <button onClick={() => handleDelete(m.id, m.name)}
+                  className="text-xs px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950 text-[var(--destructive)]">刪除</button>
+              </>
+            )}
+          </div>
+        )
+      })}
       <div className="flex gap-2 pt-1">
         <input
           value={newName}

@@ -152,6 +152,13 @@ service cloud.firestore {
         allow delete: if isGroupOwner(groupId);
       }
 
+      // ─── 使用者偏好（per-user current member） ───
+
+      match /userPreferences/{uid} {
+        allow read: if isGroupMember(groupId);
+        allow write: if isSignedIn() && request.auth.uid == uid;
+      }
+
       // ─── 活動日誌 ───
 
       match /activityLogs/{logId} {
