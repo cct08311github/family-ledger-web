@@ -2,12 +2,24 @@
 
 import { useMemo } from 'react'
 import { useGroupData } from '@/lib/group-data-context'
+import { useAuth } from '@/lib/auth'
 import { toDate } from '@/lib/utils'
 import type { Expense } from '@/lib/types'
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+/**
+ * Returns expenses visible to the current user.
+ * - Shared expenses (isShared=true): visible to all group members
+ * - Personal expenses (isShared=false): only visible to the creator
+ */
 export function useExpenses(_groupId?: string) {
-  const { expenses, expensesLoading: loading } = useGroupData()
+  const { expenses: allExpenses, expensesLoading: loading } = useGroupData()
+  const { user } = useAuth()
+
+  const expenses = useMemo(() => {
+    if (!user) return allExpenses
+    return allExpenses.filter((e) => e.isShared || e.createdBy === user.uid)
+  }, [allExpenses, user])
+
   return { expenses, loading }
 }
 
