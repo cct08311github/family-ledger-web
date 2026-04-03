@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useExpenses, useMonthlyExpenses, useRecentExpenses } from '@/lib/hooks/use-expenses'
 import { useSettlements } from '@/lib/hooks/use-settlements'
@@ -65,13 +65,13 @@ export default function HomePage() {
 
   const monthly = useMonthlyExpenses(expenses)
   const recent = useRecentExpenses(expenses, 5)
-  const nameMap = Object.fromEntries(members.map((m) => [m.id, m.name]))
-  const debts = simplifyDebts(expenses, settlements, nameMap)
+  const nameMap = useMemo(() => Object.fromEntries(members.map((m) => [m.id, m.name])), [members])
+  const debts = useMemo(() => simplifyDebts(expenses, settlements, nameMap), [expenses, settlements, nameMap])
 
   const now = new Date()
   const monthLabel = `${now.getFullYear()}年 ${now.getMonth() + 1}月`
-  const total = monthly.reduce((s, e) => s + e.amount, 0)
-  const sharedTotal = monthly.filter((e) => e.isShared).reduce((s, e) => s + e.amount, 0)
+  const total = useMemo(() => monthly.reduce((s, e) => s + e.amount, 0), [monthly])
+  const sharedTotal = useMemo(() => monthly.filter((e) => e.isShared).reduce((s, e) => s + e.amount, 0), [monthly])
 
   if (groupLoading) {
     return (
