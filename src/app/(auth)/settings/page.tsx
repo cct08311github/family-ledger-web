@@ -464,19 +464,19 @@ function JoinGroupBlock() {
   return (
     <div className="rounded-xl border border-dashed border-[var(--border)] p-3 space-y-2">
       <div className="text-xs text-[var(--muted-foreground)]">輸入邀請碼加入群組</div>
-      <div className="flex gap-2">
+      <div className="flex gap-2 overflow-hidden">
         <input
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
           onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-          placeholder="6 位邀請碼"
+          placeholder="邀請碼"
           maxLength={6}
-          className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm font-mono text-center tracking-[0.3em] uppercase focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+          className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-2 text-sm font-mono text-center tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
         />
         <button onClick={handleJoin} disabled={joining || code.trim().length !== 6}
-          className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50"
+          className="shrink-0 px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50"
           style={{ backgroundColor: 'var(--primary)' }}>
-          {joining ? '加入中...' : '加入'}
+          {joining ? '...' : '加入'}
         </button>
       </div>
       {error && <p className="text-xs text-[var(--destructive)]">{error}</p>}
