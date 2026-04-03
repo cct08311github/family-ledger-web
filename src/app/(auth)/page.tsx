@@ -73,13 +73,16 @@ export default function HomePage() {
   const total = monthly.reduce((s, e) => s + e.amount, 0)
   const sharedTotal = monthly.filter((e) => e.isShared).reduce((s, e) => s + e.amount, 0)
 
-  if (groupLoading || expLoading || membersLoading) {
+  if (groupLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin h-8 w-8 border-4 border-[var(--primary)] border-t-transparent rounded-full" />
       </div>
     )
   }
+
+  // Show skeleton while data loads (instead of blocking spinner)
+  const dataLoading = expLoading || membersLoading
 
   if (!group) {
     return <NoGroupView />
@@ -96,11 +99,11 @@ export default function HomePage() {
             <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
               📅 {monthLabel}
             </div>
-            <p className="text-xs text-[var(--muted-foreground)]">共 {monthly.length} 筆記錄</p>
+            <p className="text-xs text-[var(--muted-foreground)]">{dataLoading ? '載入中...' : `共 ${monthly.length} 筆記錄`}</p>
           </div>
           <div className="flex items-baseline gap-3">
             <div className="text-4xl md:text-5xl font-black tracking-tight" style={{ color: 'var(--primary)' }}>
-              {currency(total)}
+              {dataLoading ? <span className="animate-pulse">---</span> : currency(total)}
             </div>
             <p className="text-sm text-[var(--muted-foreground)]">本月總支出</p>
           </div>
