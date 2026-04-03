@@ -9,7 +9,7 @@ import { useCurrentMember } from '@/lib/hooks/use-current-member'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { useColorTheme, COLOR_THEMES } from '@/lib/hooks/use-color-theme'
 import { addMember, removeMember, updateMember } from '@/lib/services/member-service'
-import { createGroup, updateGroup, deleteGroup, refreshInviteCode } from '@/lib/services/group-service'
+import { createGroup, updateGroup, deleteGroup, refreshInviteCode, joinGroupByInviteCode } from '@/lib/services/group-service'
 import { addCategory, updateCategory } from '@/lib/services/category-service'
 import { addActivityLog } from '@/lib/services/activity-log-service'
 import { useRouter } from 'next/navigation'
@@ -383,6 +383,22 @@ function InviteCodeBlock({ group }: { group: { id: string; name: string; inviteC
     setTimeout(() => setCopied(false), 2000)
   }
 
+  function handleShareLink() {
+    if (!group.inviteCode) return
+    const url = `${window.location.origin}/family-ledger-web/settings?join=${group.inviteCode}`
+    if (navigator.share) {
+      navigator.share({ title: `加入「${group.name}」`, text: `邀請碼：${group.inviteCode}`, url }).catch(() => {
+        navigator.clipboard.writeText(url)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      })
+    } else {
+      navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
   return (
     <div className="rounded-xl border border-dashed border-[var(--border)] p-3 space-y-2">
       <div className="text-xs text-[var(--muted-foreground)]">
@@ -398,6 +414,10 @@ function InviteCodeBlock({ group }: { group: { id: string; name: string; inviteC
             className="text-xs px-2.5 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--muted)]">
             {copied ? '已複製' : '複製'}
           </button>
+          <button onClick={handleShareLink}
+            className="text-xs px-2.5 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--muted)]">
+            📤 分享連結
+          </button>
           <button onClick={handleGenerate} disabled={generating}
             className="text-xs px-2.5 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--muted)] text-[var(--muted-foreground)]">
             重新產生
@@ -409,6 +429,56 @@ function InviteCodeBlock({ group }: { group: { id: string; name: string; inviteC
           {generating ? '產生中...' : '產生邀請碼'}
         </button>
       )}
+    </div>
+  )
+}
+
+function JoinGroupBlock() {
+  const { setActiveGroupId } = useGroup()
+  const [code, setCode] = useState('')
+  const [joining, setJoining] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  async function handleJoin() {
+    const trimmed = code.trim().toUpperCase()
+    if (!trimmed) return
+    setJoining(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const groupId = await joinGroupByInviteCode(trimmed)
+      setActiveGroupId(groupId)
+      setCode('')
+      setSuccess('成功加入群組！')
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '加入失敗')
+    } finally {
+      setJoining(false)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-dashed border-[var(--border)] p-3 space-y-2">
+      <div className="text-xs text-[var(--muted-foreground)]">輸入邀請碼加入群組</div>
+      <div className="flex gap-2">
+        <input
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+          placeholder="6 位邀請碼"
+          maxLength={6}
+          className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm font-mono text-center tracking-[0.3em] uppercase focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+        />
+        <button onClick={handleJoin} disabled={joining || code.trim().length !== 6}
+          className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50"
+          style={{ backgroundColor: 'var(--primary)' }}>
+          {joining ? '加入中...' : '加入'}
+        </button>
+      </div>
+      {error && <p className="text-xs text-[var(--destructive)]">{error}</p>}
+      {success && <p className="text-xs text-green-600">{success}</p>}
     </div>
   )
 }
@@ -511,6 +581,9 @@ function GroupManagementSection() {
 
       {/* 邀請碼 */}
       {group && <InviteCodeBlock group={group} />}
+
+      {/* 加入群組 */}
+      <JoinGroupBlock />
 
       <div className="flex gap-2 pt-1">
         <input
