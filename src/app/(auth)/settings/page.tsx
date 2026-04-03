@@ -406,22 +406,24 @@ function InviteCodeBlock({ group }: { group: { id: string; name: string; inviteC
       </div>
       {error && <p className="text-xs text-[var(--destructive)]">{error}</p>}
       {group.inviteCode ? (
-        <div className="flex items-center gap-2">
-          <code className="flex-1 text-center text-xl font-mono font-bold tracking-[0.3em] py-1 rounded-lg bg-[var(--muted)]">
+        <div className="space-y-2">
+          <code className="block text-center text-2xl font-mono font-bold tracking-[0.3em] py-2 rounded-lg bg-[var(--muted)]">
             {group.inviteCode}
           </code>
-          <button onClick={handleCopy}
-            className="text-xs px-2.5 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--muted)]">
-            {copied ? '已複製' : '複製'}
-          </button>
-          <button onClick={handleShareLink}
-            className="text-xs px-2.5 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--muted)]">
-            📤 分享連結
-          </button>
-          <button onClick={handleGenerate} disabled={generating}
-            className="text-xs px-2.5 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--muted)] text-[var(--muted-foreground)]">
-            重新產生
-          </button>
+          <div className="flex gap-2">
+            <button onClick={handleCopy}
+              className="flex-1 text-xs py-2 rounded-lg border border-[var(--border)] hover:bg-[var(--muted)]">
+              {copied ? '已複製 ✓' : '📋 複製'}
+            </button>
+            <button onClick={handleShareLink}
+              className="flex-1 text-xs py-2 rounded-lg border border-[var(--border)] hover:bg-[var(--muted)]">
+              📤 分享
+            </button>
+            <button onClick={handleGenerate} disabled={generating}
+              className="flex-1 text-xs py-2 rounded-lg border border-[var(--border)] hover:bg-[var(--muted)] text-[var(--muted-foreground)]">
+              🔄 重新產生
+            </button>
+          </div>
         </div>
       ) : (
         <button onClick={handleGenerate} disabled={generating}
