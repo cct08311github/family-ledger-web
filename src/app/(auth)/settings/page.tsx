@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTheme } from 'next-themes'
 import { useAuth } from '@/lib/auth'
 import { useGroup } from '@/lib/hooks/use-group'
@@ -437,10 +437,13 @@ function InviteCodeBlock({ group }: { group: { id: string; name: string; inviteC
 
 function JoinGroupBlock() {
   const { setActiveGroupId } = useGroup()
-  const [code, setCode] = useState('')
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
+  const joinParam = searchParams?.get('join')?.toUpperCase() ?? ''
+  const [code, setCode] = useState(joinParam)
   const [joining, setJoining] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const autoJoinTriggered = useRef(false)
 
   async function handleJoin() {
     const trimmed = code.trim().toUpperCase()
@@ -460,6 +463,15 @@ function JoinGroupBlock() {
       setJoining(false)
     }
   }
+
+  // Auto-join when opened via invite link (?join=XXXXXX)
+  useEffect(() => {
+    if (joinParam && joinParam.length === 6 && !autoJoinTriggered.current) {
+      autoJoinTriggered.current = true
+      handleJoin()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [joinParam])
 
   return (
     <div className="rounded-xl border border-dashed border-[var(--border)] p-3 space-y-2">
