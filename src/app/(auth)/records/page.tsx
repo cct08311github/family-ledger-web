@@ -90,7 +90,7 @@ export default function RecordsPage() {
                         </div>
                         <div className="font-bold text-lg">{currency(e.amount)}</div>
                       </div>
-                      <div className="absolute top-3 right-3 hidden group-hover:flex gap-1">
+                      <div className="absolute top-3 right-3 flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                         <Link href={`/expense/${e.id}?groupId=${group?.id}`}
                           className="p-1.5 rounded-md hover:bg-[var(--muted)] text-[var(--muted-foreground)]" title="編輯">✏️</Link>
                         <button onClick={async () => {
