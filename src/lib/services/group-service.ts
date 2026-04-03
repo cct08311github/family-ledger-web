@@ -20,6 +20,16 @@ const DEFAULT_CATEGORIES = [
   { name: '教育', icon: '📚' },
   { name: '家庭', icon: '👨‍👩‍👧' },
   { name: '旅遊', icon: '✈️' },
+  { name: '飲料', icon: '☕' },
+  { name: '美妝', icon: '🧴' },
+  { name: '通訊', icon: '📱' },
+  { name: '運動', icon: '🏋️' },
+  { name: '寵物', icon: '🐾' },
+  { name: '禮物', icon: '🎁' },
+  { name: '汽車', icon: '🚗' },
+  { name: '服飾', icon: '👕' },
+  { name: '保險', icon: '💰' },
+  { name: '維修', icon: '🔧' },
 ]
 
 export async function createGroup(name: string, isFirst = false): Promise<string> {
@@ -108,6 +118,33 @@ export async function joinGroupByInviteCode(code: string): Promise<string> {
     updatedAt: Timestamp.now(),
   })
   return groupDoc.id
+}
+
+/** Seed missing default categories for an existing group (skips already existing names). */
+export async function seedMissingCategories(groupId: string): Promise<number> {
+  const catCol = collection(db, 'groups', groupId, 'categories')
+  const snap = await getDocs(catCol)
+  const existingNames = new Set(snap.docs.map((d) => d.data().name as string))
+
+  const missing = DEFAULT_CATEGORIES.filter((c) => !existingNames.has(c.name))
+  if (missing.length === 0) return 0
+
+  const batch = writeBatch(db)
+  const now = Timestamp.now()
+  const startOrder = snap.size
+  missing.forEach((c, i) => {
+    batch.set(doc(catCol), {
+      groupId,
+      name: c.name,
+      icon: c.icon,
+      sortOrder: startOrder + i,
+      isDefault: true,
+      isActive: true,
+      createdAt: now,
+    })
+  })
+  await batch.commit()
+  return missing.length
 }
 
 export async function leaveGroup(groupId: string): Promise<void> {

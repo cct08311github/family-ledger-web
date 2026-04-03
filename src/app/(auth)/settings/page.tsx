@@ -9,7 +9,7 @@ import { useCurrentMember } from '@/lib/hooks/use-current-member'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { useColorTheme, COLOR_THEMES } from '@/lib/hooks/use-color-theme'
 import { addMember, removeMember, updateMember } from '@/lib/services/member-service'
-import { createGroup, updateGroup, deleteGroup, refreshInviteCode, joinGroupByInviteCode } from '@/lib/services/group-service'
+import { createGroup, updateGroup, deleteGroup, refreshInviteCode, joinGroupByInviteCode, seedMissingCategories } from '@/lib/services/group-service'
 import { addCategory, updateCategory } from '@/lib/services/category-service'
 import { addActivityLog } from '@/lib/services/activity-log-service'
 import { useRouter } from 'next/navigation'
@@ -181,6 +181,15 @@ function CategoriesSection({ groupId }: { groupId: string }) {
   const [newIcon, setNewIcon] = useState('💰')
   const [adding, setAdding] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const seeded = useRef(false)
+
+  // Auto-seed missing default categories on first load
+  useEffect(() => {
+    if (!seeded.current && categories.length > 0 && categories.length < 20) {
+      seeded.current = true
+      seedMissingCategories(groupId).catch(() => {})
+    }
+  }, [groupId, categories.length])
 
   async function handleAdd() {
     const name = newName.trim()
