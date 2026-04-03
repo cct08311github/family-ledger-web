@@ -58,8 +58,8 @@ function SettleDialog({ members, defaultFromId, defaultToId, defaultAmount, onCl
   const inputCls = "w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm transition-all"
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 modal-backdrop animate-fade-in">
-      <div className="w-full sm:max-w-sm sm:mx-4 rounded-t-2xl sm:rounded-2xl bg-[var(--card)] border border-[var(--border)] p-6 space-y-4 animate-slide-up" style={{ boxShadow: 'var(--card-shadow-hover)' }}>
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/40 modal-backdrop animate-fade-in">
+      <div className="w-full sm:max-w-sm sm:mx-4 rounded-t-2xl sm:rounded-2xl bg-[var(--card)] border border-[var(--border)] p-6 pb-24 sm:pb-6 space-y-4 animate-slide-up" style={{ boxShadow: 'var(--card-shadow-hover)' }}>
         <h2 className="text-lg font-bold">記錄轉帳</h2>
 
         <div>
