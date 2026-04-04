@@ -2,6 +2,11 @@
   "journey": "settings-management",
   "version": "1.0.0",
   "baseUrl": "https://mac-mini.tailde842d.ts.net",
+  "execution": {
+    "mode": "sequential",
+    "order": 4,
+    "requiresAuth": true
+  },
   "credentials": {
     "USER": {
       "email": "test-user@example.com",
@@ -32,6 +37,7 @@
     },
     {
       "id": "SET-02",
+      "destructive": true,
       "name": "Add member",
       "role": "USER",
       "steps": [
@@ -65,6 +71,7 @@
     },
     {
       "id": "SET-03",
+      "destructive": true,
       "name": "Edit member name",
       "role": "USER",
       "steps": [
@@ -98,6 +105,7 @@
     },
     {
       "id": "SET-04",
+      "destructive": true,
       "name": "Delete member",
       "role": "USER",
       "steps": [
@@ -190,6 +198,7 @@
     },
     {
       "id": "SET-08",
+      "destructive": true,
       "name": "Add custom category",
       "role": "USER",
       "steps": [
@@ -227,6 +236,7 @@
     },
     {
       "id": "SET-09",
+      "destructive": true,
       "name": "Delete custom category",
       "role": "USER",
       "steps": [
@@ -339,6 +349,7 @@
     },
     {
       "id": "SET-14",
+      "destructive": true,
       "name": "Mark all notifications read",
       "role": "USER",
       "steps": [

@@ -2,6 +2,11 @@
   "journey": "expense-management",
   "version": "1.0.0",
   "baseUrl": "https://mac-mini.tailde842d.ts.net",
+  "execution": {
+    "mode": "sequential",
+    "order": 2,
+    "requiresAuth": true
+  },
   "credentials": {
     "USER": {
       "email": "test-user@example.com",
@@ -12,6 +17,7 @@
   "testCases": [
     {
       "id": "EXP-01",
+      "destructive": true,
       "name": "Create shared expense (equal split)",
       "tags": ["crud", "create"],
       "steps": [
@@ -67,6 +73,7 @@
     },
     {
       "id": "EXP-02",
+      "destructive": true,
       "name": "Create personal expense",
       "tags": ["crud", "create"],
       "steps": [
@@ -100,6 +107,7 @@
     },
     {
       "id": "EXP-03",
+      "destructive": true,
       "name": "Create expense with percentage split",
       "tags": ["crud", "create"],
       "steps": [
@@ -147,6 +155,7 @@
     },
     {
       "id": "EXP-04",
+      "destructive": true,
       "name": "Create expense with custom split",
       "tags": ["crud", "create"],
       "steps": [
@@ -194,6 +203,7 @@
     },
     {
       "id": "EXP-05",
+      "destructive": true,
       "name": "Create expense with credit card payment",
       "tags": ["crud", "create"],
       "steps": [
@@ -227,6 +237,7 @@
     },
     {
       "id": "EXP-06",
+      "destructive": true,
       "name": "Create expense with transfer payment",
       "tags": ["crud", "create"],
       "steps": [
@@ -260,6 +271,7 @@
     },
     {
       "id": "EXP-07",
+      "destructive": true,
       "name": "Create expense with note",
       "tags": ["crud", "create"],
       "steps": [
@@ -383,6 +395,7 @@
     },
     {
       "id": "EXP-12",
+      "destructive": true,
       "name": "Edit expense",
       "tags": ["crud", "update"],
       "steps": [
@@ -415,6 +428,7 @@
     },
     {
       "id": "EXP-13",
+      "destructive": true,
       "name": "Delete expense",
       "tags": ["crud", "delete"],
       "steps": [
@@ -523,6 +537,7 @@
     },
     {
       "id": "EXP-17",
+      "destructive": true,
       "name": "Expense with all fields",
       "tags": ["crud", "create", "regression"],
       "steps": [
