@@ -1,7 +1,7 @@
 {
   "journey": "settlement-debts",
   "version": "1.0.0",
-  "baseUrl": "http://localhost:3013",
+  "baseUrl": "https://mac-mini.tailde842d.ts.net",
   "credentials": {
     "USER": {
       "email": "test-user@example.com",
