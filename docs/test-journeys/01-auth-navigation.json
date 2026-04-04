@@ -1,0 +1,299 @@
+{
+  "journey": "auth-navigation",
+  "version": "1.0.0",
+  "baseUrl": "http://localhost:3013",
+  "credentials": {
+    "USER": {
+      "email": "test-user@example.com",
+      "password": "Test1234!",
+      "role": "USER"
+    }
+  },
+  "testCases": [
+    {
+      "id": "AUTH-01",
+      "name": "Login page renders correctly",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/login"
+        },
+        {
+          "action": "assertVisible",
+          "text": "家計本"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "button[data-testid='google-login'], button:has-text('Google'), a:has-text('Google'), [aria-label*='Google']"
+        },
+        {
+          "action": "screenshot",
+          "name": "AUTH-01-login-page"
+        }
+      ],
+      "tags": ["smoke"]
+    },
+    {
+      "id": "AUTH-02",
+      "name": "Unauthenticated redirect from home",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/"
+        },
+        {
+          "action": "wait",
+          "ms": 2000
+        },
+        {
+          "action": "assertUrlContains",
+          "value": "/login"
+        },
+        {
+          "action": "screenshot",
+          "name": "AUTH-02-redirect-home"
+        }
+      ],
+      "tags": ["smoke"]
+    },
+    {
+      "id": "AUTH-03",
+      "name": "Unauthenticated redirect from records",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/records"
+        },
+        {
+          "action": "wait",
+          "ms": 2000
+        },
+        {
+          "action": "assertUrlContains",
+          "value": "/login"
+        },
+        {
+          "action": "screenshot",
+          "name": "AUTH-03-redirect-records"
+        }
+      ],
+      "tags": ["smoke"]
+    },
+    {
+      "id": "AUTH-04",
+      "name": "Unauthenticated redirect from settings",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/settings"
+        },
+        {
+          "action": "wait",
+          "ms": 2000
+        },
+        {
+          "action": "assertUrlContains",
+          "value": "/login"
+        },
+        {
+          "action": "screenshot",
+          "name": "AUTH-04-redirect-settings"
+        }
+      ],
+      "tags": ["smoke"]
+    },
+    {
+      "id": "AUTH-05",
+      "name": "Successful login flow",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/login"
+        },
+        {
+          "action": "fill",
+          "selector": "input[type='email'], input[name='email']",
+          "value": "test-user@example.com"
+        },
+        {
+          "action": "fill",
+          "selector": "input[type='password'], input[name='password']",
+          "value": "Test1234!"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit'], button:has-text('登入'), button:has-text('Sign in')"
+        },
+        {
+          "action": "waitForNavigation"
+        },
+        {
+          "action": "assertUrlContains",
+          "value": "/family-ledger-web"
+        },
+        {
+          "action": "assertVisible",
+          "text": "月支出摘要"
+        },
+        {
+          "action": "screenshot",
+          "name": "AUTH-05-logged-in-home"
+        }
+      ],
+      "tags": ["smoke", "auth"]
+    },
+    {
+      "id": "AUTH-06",
+      "name": "Navigate to records page",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "click",
+          "selector": "a[href='/family-ledger-web/records']"
+        },
+        {
+          "action": "assertVisible",
+          "text": "所有記錄"
+        },
+        {
+          "action": "screenshot",
+          "name": "AUTH-06-records-page"
+        }
+      ],
+      "tags": ["navigation"]
+    },
+    {
+      "id": "AUTH-07",
+      "name": "Navigate to split page",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "click",
+          "selector": "a[href='/family-ledger-web/split']"
+        },
+        {
+          "action": "assertVisible",
+          "text": "拆帳"
+        },
+        {
+          "action": "screenshot",
+          "name": "AUTH-07-split-page"
+        }
+      ],
+      "tags": ["navigation"]
+    },
+    {
+      "id": "AUTH-08",
+      "name": "Navigate to statistics page",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "click",
+          "selector": "a[href='/family-ledger-web/statistics']"
+        },
+        {
+          "action": "assertVisible",
+          "text": "統計"
+        },
+        {
+          "action": "screenshot",
+          "name": "AUTH-08-statistics-page"
+        }
+      ],
+      "tags": ["navigation"]
+    },
+    {
+      "id": "AUTH-09",
+      "name": "Navigate to settings page",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "click",
+          "selector": "a[href='/family-ledger-web/settings']"
+        },
+        {
+          "action": "assertVisible",
+          "text": "設定"
+        },
+        {
+          "action": "screenshot",
+          "name": "AUTH-09-settings-page"
+        }
+      ],
+      "tags": ["navigation"]
+    },
+    {
+      "id": "AUTH-10",
+      "name": "Navigate to new expense",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "click",
+          "selector": "a[href='/family-ledger-web/expense/new']"
+        },
+        {
+          "action": "assertVisible",
+          "text": "新增支出"
+        },
+        {
+          "action": "screenshot",
+          "name": "AUTH-10-new-expense-page"
+        }
+      ],
+      "tags": ["navigation"]
+    },
+    {
+      "id": "AUTH-11",
+      "name": "Navigate to notifications",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "click",
+          "selector": "a[href='/family-ledger-web/notifications']"
+        },
+        {
+          "action": "assertVisible",
+          "text": "通知"
+        },
+        {
+          "action": "screenshot",
+          "name": "AUTH-11-notifications-page"
+        }
+      ],
+      "tags": ["navigation"]
+    },
+    {
+      "id": "AUTH-12",
+      "name": "Logout flow",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/settings"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('登出')"
+        },
+        {
+          "action": "wait",
+          "ms": 2000
+        },
+        {
+          "action": "assertUrlContains",
+          "value": "/login"
+        },
+        {
+          "action": "screenshot",
+          "name": "AUTH-12-after-logout"
+        }
+      ],
+      "tags": ["auth"]
+    }
+  ]
+}

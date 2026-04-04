@@ -1,0 +1,610 @@
+{
+  "journey": "expense-management",
+  "version": "1.0.0",
+  "baseUrl": "http://localhost:3013",
+  "credentials": {
+    "USER": {
+      "email": "test-user@example.com",
+      "password": "Test1234!",
+      "role": "USER"
+    }
+  },
+  "testCases": [
+    {
+      "id": "EXP-01",
+      "name": "Create shared expense (equal split)",
+      "tags": ["crud", "create"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/expense/new"
+        },
+        {
+          "action": "fill",
+          "selector": "input[type=\"date\"]",
+          "value": "2026-04-04"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder*=\"晚餐\"], input[placeholder*=\"描述\"], input[placeholder*=\"說明\"], input[placeholder*=\"名稱\"]",
+          "value": "測試晚餐"
+        },
+        {
+          "action": "fill",
+          "selector": "input[type=\"number\"]",
+          "value": "600"
+        },
+        {
+          "action": "selectOption",
+          "selector": "select:first-of-type",
+          "value": { "index": 0 }
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"共同支出\")"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"均分\")"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"新增支出\")"
+        },
+        {
+          "action": "waitForNavigation"
+        },
+        {
+          "action": "assertUrl",
+          "not": true,
+          "contains": "/expense/new"
+        },
+        {
+          "action": "screenshot",
+          "name": "EXP-01-shared-expense-created"
+        }
+      ]
+    },
+    {
+      "id": "EXP-02",
+      "name": "Create personal expense",
+      "tags": ["crud", "create"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/expense/new"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder*=\"晚餐\"], input[placeholder*=\"描述\"], input[placeholder*=\"說明\"], input[placeholder*=\"名稱\"]",
+          "value": "個人午餐"
+        },
+        {
+          "action": "fill",
+          "selector": "input[type=\"number\"]",
+          "value": "150"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"個人支出\")"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"新增支出\")"
+        },
+        {
+          "action": "screenshot",
+          "name": "EXP-02-personal-expense-created"
+        }
+      ]
+    },
+    {
+      "id": "EXP-03",
+      "name": "Create expense with percentage split",
+      "tags": ["crud", "create"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/expense/new"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder*=\"晚餐\"], input[placeholder*=\"描述\"], input[placeholder*=\"說明\"], input[placeholder*=\"名稱\"]",
+          "value": "聚餐"
+        },
+        {
+          "action": "fill",
+          "selector": "input[type=\"number\"]",
+          "value": "1000"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"共同支出\")"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"比例\")"
+        },
+        {
+          "action": "fill",
+          "selector": "input[type=\"number\"][placeholder*=\"%\"], input.percentage-input:first-of-type",
+          "value": "50"
+        },
+        {
+          "action": "fill",
+          "selector": "input[type=\"number\"][placeholder*=\"%\"], input.percentage-input:last-of-type",
+          "value": "50"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"新增支出\")"
+        },
+        {
+          "action": "screenshot",
+          "name": "EXP-03-percentage-split-created"
+        }
+      ]
+    },
+    {
+      "id": "EXP-04",
+      "name": "Create expense with custom split",
+      "tags": ["crud", "create"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/expense/new"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder*=\"晚餐\"], input[placeholder*=\"描述\"], input[placeholder*=\"說明\"], input[placeholder*=\"名稱\"]",
+          "value": "旅行"
+        },
+        {
+          "action": "fill",
+          "selector": "input[type=\"number\"]",
+          "value": "3000"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"共同支出\")"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"自訂\")"
+        },
+        {
+          "action": "fill",
+          "selector": "input.custom-amount-input:first-of-type",
+          "value": "1500"
+        },
+        {
+          "action": "fill",
+          "selector": "input.custom-amount-input:last-of-type",
+          "value": "1500"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"新增支出\")"
+        },
+        {
+          "action": "screenshot",
+          "name": "EXP-04-custom-split-created"
+        }
+      ]
+    },
+    {
+      "id": "EXP-05",
+      "name": "Create expense with credit card payment",
+      "tags": ["crud", "create"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/expense/new"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder*=\"晚餐\"], input[placeholder*=\"描述\"], input[placeholder*=\"說明\"], input[placeholder*=\"名稱\"]",
+          "value": "網購"
+        },
+        {
+          "action": "fill",
+          "selector": "input[type=\"number\"]",
+          "value": "500"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"信用卡\")"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"新增支出\")"
+        },
+        {
+          "action": "screenshot",
+          "name": "EXP-05-credit-card-expense-created"
+        }
+      ]
+    },
+    {
+      "id": "EXP-06",
+      "name": "Create expense with transfer payment",
+      "tags": ["crud", "create"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/expense/new"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder*=\"晚餐\"], input[placeholder*=\"描述\"], input[placeholder*=\"說明\"], input[placeholder*=\"名稱\"]",
+          "value": "轉帳付款"
+        },
+        {
+          "action": "fill",
+          "selector": "input[type=\"number\"]",
+          "value": "200"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"轉帳\")"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"新增支出\")"
+        },
+        {
+          "action": "screenshot",
+          "name": "EXP-06-transfer-expense-created"
+        }
+      ]
+    },
+    {
+      "id": "EXP-07",
+      "name": "Create expense with note",
+      "tags": ["crud", "create"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/expense/new"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder*=\"晚餐\"], input[placeholder*=\"描述\"], input[placeholder*=\"說明\"], input[placeholder*=\"名稱\"]",
+          "value": "特殊支出"
+        },
+        {
+          "action": "fill",
+          "selector": "input[type=\"number\"]",
+          "value": "999"
+        },
+        {
+          "action": "fill",
+          "selector": "textarea",
+          "value": "這是備註"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"新增支出\")"
+        },
+        {
+          "action": "screenshot",
+          "name": "EXP-07-expense-with-note-created"
+        }
+      ]
+    },
+    {
+      "id": "EXP-08",
+      "name": "Verify expense appears in records",
+      "tags": ["crud", "read", "filter"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/records"
+        },
+        {
+          "action": "assertText",
+          "text": "測試晚餐",
+          "visible": true
+        },
+        {
+          "action": "screenshot",
+          "name": "EXP-08-records-page-with-expense"
+        }
+      ]
+    },
+    {
+      "id": "EXP-09",
+      "name": "Filter shared expenses",
+      "tags": ["crud", "read", "filter"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/records"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"共同\")"
+        },
+        {
+          "action": "wait",
+          "ms": 1000
+        },
+        {
+          "action": "screenshot",
+          "name": "EXP-09-filter-shared-expenses"
+        }
+      ]
+    },
+    {
+      "id": "EXP-10",
+      "name": "Filter personal expenses",
+      "tags": ["crud", "read", "filter"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/records"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"個人\")"
+        },
+        {
+          "action": "wait",
+          "ms": 1000
+        },
+        {
+          "action": "screenshot",
+          "name": "EXP-10-filter-personal-expenses"
+        }
+      ]
+    },
+    {
+      "id": "EXP-11",
+      "name": "Filter all expenses",
+      "tags": ["crud", "read", "filter"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/records"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"全部\")"
+        },
+        {
+          "action": "wait",
+          "ms": 1000
+        },
+        {
+          "action": "screenshot",
+          "name": "EXP-11-filter-all-expenses"
+        }
+      ]
+    },
+    {
+      "id": "EXP-12",
+      "name": "Edit expense",
+      "tags": ["crud", "update"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/records"
+        },
+        {
+          "action": "click",
+          "selector": "a[href*=\"/expense/\"]:first-of-type"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "input[placeholder*=\"晚餐\"], input[placeholder*=\"描述\"], input[placeholder*=\"說明\"], input[placeholder*=\"名稱\"]"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder*=\"晚餐\"], input[placeholder*=\"描述\"], input[placeholder*=\"說明\"], input[placeholder*=\"名稱\"]",
+          "value": "已修改的支出"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"儲存變更\")"
+        },
+        {
+          "action": "screenshot",
+          "name": "EXP-12-expense-edited"
+        }
+      ]
+    },
+    {
+      "id": "EXP-13",
+      "name": "Delete expense",
+      "tags": ["crud", "delete"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/records"
+        },
+        {
+          "action": "click",
+          "selector": "button[aria-label*=\"刪除\"], button:has-text(\"刪除\"), button.delete-btn"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[role=\"dialog\"], .modal, .confirm-dialog"
+        },
+        {
+          "action": "click",
+          "selector": "[role=\"dialog\"] button:has-text(\"確認\"), [role=\"dialog\"] button:has-text(\"刪除\"), .modal button:has-text(\"確認\")"
+        },
+        {
+          "action": "screenshot",
+          "name": "EXP-13-expense-deleted"
+        }
+      ]
+    },
+    {
+      "id": "EXP-14",
+      "name": "Expense appears on home page",
+      "tags": ["smoke"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/"
+        },
+        {
+          "action": "assertText",
+          "text": "最近記錄",
+          "visible": true
+        },
+        {
+          "action": "screenshot",
+          "name": "EXP-14-home-page-recent-expenses"
+        }
+      ]
+    },
+    {
+      "id": "EXP-15",
+      "name": "Validation - empty description",
+      "tags": ["validation", "negative"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/expense/new"
+        },
+        {
+          "action": "fill",
+          "selector": "input[type=\"number\"]",
+          "value": "100"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"新增支出\")"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[role=\"alert\"], .error-message, .field-error, input:invalid"
+        },
+        {
+          "action": "screenshot",
+          "name": "EXP-15-validation-empty-description"
+        }
+      ]
+    },
+    {
+      "id": "EXP-16",
+      "name": "Validation - zero amount",
+      "tags": ["validation", "negative"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/expense/new"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder*=\"晚餐\"], input[placeholder*=\"描述\"], input[placeholder*=\"說明\"], input[placeholder*=\"名稱\"]",
+          "value": "test"
+        },
+        {
+          "action": "fill",
+          "selector": "input[type=\"number\"]",
+          "value": "0"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"新增支出\")"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[role=\"alert\"], .error-message, .field-error, input:invalid"
+        },
+        {
+          "action": "screenshot",
+          "name": "EXP-16-validation-zero-amount"
+        }
+      ]
+    },
+    {
+      "id": "EXP-17",
+      "name": "Expense with all fields",
+      "tags": ["crud", "create", "regression"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/expense/new"
+        },
+        {
+          "action": "fill",
+          "selector": "input[type=\"date\"]",
+          "value": "2026-04-04"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder*=\"晚餐\"], input[placeholder*=\"描述\"], input[placeholder*=\"說明\"], input[placeholder*=\"名稱\"]",
+          "value": "完整欄位測試"
+        },
+        {
+          "action": "fill",
+          "selector": "input[type=\"number\"]",
+          "value": "1200"
+        },
+        {
+          "action": "selectOption",
+          "selector": "select:first-of-type",
+          "value": { "index": 0 }
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"信用卡\")"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"共同支出\")"
+        },
+        {
+          "action": "selectOption",
+          "selector": "select:nth-of-type(2)",
+          "value": { "index": 0 }
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"均分\")"
+        },
+        {
+          "action": "fill",
+          "selector": "textarea",
+          "value": "完整欄位備註"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"新增支出\")"
+        },
+        {
+          "action": "screenshot",
+          "name": "EXP-17-all-fields-expense-created"
+        }
+      ]
+    },
+    {
+      "id": "EXP-18",
+      "name": "Home page shows monthly summary",
+      "tags": ["smoke"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/"
+        },
+        {
+          "action": "assertText",
+          "text": "月支出摘要",
+          "visible": true
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[data-testid=\"total-amount\"], .total-amount, .monthly-total, .summary-total"
+        },
+        {
+          "action": "screenshot",
+          "name": "EXP-18-home-monthly-summary"
+        }
+      ]
+    }
+  ]
+}
