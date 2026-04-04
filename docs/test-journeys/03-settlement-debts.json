@@ -1,0 +1,367 @@
+{
+  "journey": "settlement-debts",
+  "version": "1.0.0",
+  "baseUrl": "http://localhost:3013",
+  "credentials": {
+    "USER": {
+      "email": "test-user@example.com",
+      "password": "Test1234!",
+      "role": "USER"
+    }
+  },
+  "testCases": [
+    {
+      "id": "STL-01",
+      "name": "Split page renders",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/split"
+        },
+        {
+          "action": "assertVisible",
+          "text": "拆帳"
+        },
+        {
+          "action": "screenshot",
+          "name": "STL-01-split-page-renders"
+        }
+      ],
+      "tags": ["smoke"]
+    },
+    {
+      "id": "STL-02",
+      "name": "Balance section visible",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/split"
+        },
+        {
+          "action": "assertVisible",
+          "text": "每人餘額"
+        },
+        {
+          "action": "screenshot",
+          "name": "STL-02-balance-section-visible"
+        }
+      ],
+      "tags": ["smoke"]
+    },
+    {
+      "id": "STL-03",
+      "name": "Settlement plan visible",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/split"
+        },
+        {
+          "action": "assertVisible",
+          "text": "結算方案"
+        },
+        {
+          "action": "screenshot",
+          "name": "STL-03-settlement-plan-visible"
+        }
+      ],
+      "tags": ["smoke"]
+    },
+    {
+      "id": "STL-04",
+      "name": "Open settlement dialog",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/split"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('記錄轉帳')"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[role='dialog'], [data-testid='settlement-dialog'], .dialog, .modal"
+        },
+        {
+          "action": "assertVisible",
+          "text": "確認"
+        },
+        {
+          "action": "screenshot",
+          "name": "STL-04-settlement-dialog-open"
+        }
+      ],
+      "tags": ["crud"]
+    },
+    {
+      "id": "STL-05",
+      "name": "Create settlement",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/split"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('記錄轉帳')"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[role='dialog'], [data-testid='settlement-dialog'], .dialog, .modal"
+        },
+        {
+          "action": "fill",
+          "selector": "input[type='date']",
+          "value": "2026-04-04"
+        },
+        {
+          "action": "selectOption",
+          "selector": "select:nth-of-type(1)",
+          "index": 1
+        },
+        {
+          "action": "selectOption",
+          "selector": "select:nth-of-type(2)",
+          "index": 2
+        },
+        {
+          "action": "fill",
+          "selector": "input[type='number']",
+          "value": "500"
+        },
+        {
+          "action": "fill",
+          "selector": "input[type='text']",
+          "value": "測試結算"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('確認')"
+        },
+        {
+          "action": "wait",
+          "ms": 2000
+        },
+        {
+          "action": "screenshot",
+          "name": "STL-05-settlement-created"
+        }
+      ],
+      "tags": ["crud"]
+    },
+    {
+      "id": "STL-06",
+      "name": "Settlement appears in history",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/split"
+        },
+        {
+          "action": "assertVisible",
+          "text": "結算紀錄"
+        },
+        {
+          "action": "assertVisible",
+          "text": "測試結算"
+        },
+        {
+          "action": "screenshot",
+          "name": "STL-06-settlement-in-history"
+        }
+      ],
+      "tags": ["crud"]
+    },
+    {
+      "id": "STL-07",
+      "name": "Delete settlement",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/split"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid='settlement-item'] button[aria-label*='刪除'], [data-testid='settlement-item'] button:has-text('刪除'), .settlement-item button[aria-label*='delete'], .settlement-item button:last-child"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[role='dialog'] button:has-text('確認'), [role='alertdialog'] button:has-text('確認'), button:has-text('確定刪除')"
+        },
+        {
+          "action": "click",
+          "selector": "[role='dialog'] button:has-text('確認'), [role='alertdialog'] button:has-text('確認'), button:has-text('確定刪除')"
+        },
+        {
+          "action": "wait",
+          "ms": 1000
+        },
+        {
+          "action": "screenshot",
+          "name": "STL-07-settlement-deleted"
+        }
+      ],
+      "tags": ["crud"]
+    },
+    {
+      "id": "STL-08",
+      "name": "Settlement via URL param",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/split?action=transfer"
+        },
+        {
+          "action": "wait",
+          "ms": 1000
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[role='dialog'], [data-testid='settlement-dialog'], .dialog, .modal"
+        },
+        {
+          "action": "screenshot",
+          "name": "STL-08-settlement-dialog-via-url-param"
+        }
+      ],
+      "tags": ["navigation"]
+    },
+    {
+      "id": "STL-09",
+      "name": "Empty state - no debts zero balance display",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/split"
+        },
+        {
+          "action": "assertVisible",
+          "text": "每人餘額"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[data-testid='balance-zero'], .balance-zero, [class*='empty'], :has-text('0'), :has-text('無'), :has-text('沒有')"
+        },
+        {
+          "action": "screenshot",
+          "name": "STL-09-empty-state-zero-balance"
+        }
+      ],
+      "tags": ["edge-case"]
+    },
+    {
+      "id": "STL-10",
+      "name": "Share report",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/split"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('分享')"
+        },
+        {
+          "action": "wait",
+          "ms": 1000
+        },
+        {
+          "action": "screenshot",
+          "name": "STL-10-share-report"
+        }
+      ],
+      "tags": ["feature"]
+    },
+    {
+      "id": "STL-11",
+      "name": "Home page debts section",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/"
+        },
+        {
+          "action": "assertVisible",
+          "text": "誰欠誰"
+        },
+        {
+          "action": "screenshot",
+          "name": "STL-11-home-debts-section"
+        }
+      ],
+      "tags": ["smoke"]
+    },
+    {
+      "id": "STL-12",
+      "name": "Settlement updates balance",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/split"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('記錄轉帳')"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[role='dialog'], [data-testid='settlement-dialog'], .dialog, .modal"
+        },
+        {
+          "action": "fill",
+          "selector": "input[type='date']",
+          "value": "2026-04-04"
+        },
+        {
+          "action": "selectOption",
+          "selector": "select:nth-of-type(1)",
+          "index": 1
+        },
+        {
+          "action": "selectOption",
+          "selector": "select:nth-of-type(2)",
+          "index": 2
+        },
+        {
+          "action": "fill",
+          "selector": "input[type='number']",
+          "value": "500"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('確認')"
+        },
+        {
+          "action": "wait",
+          "ms": 2000
+        },
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/split"
+        },
+        {
+          "action": "assertVisible",
+          "text": "每人餘額"
+        },
+        {
+          "action": "screenshot",
+          "name": "STL-12-balance-after-settlement"
+        }
+      ],
+      "tags": ["regression"]
+    }
+  ]
+}

@@ -1,0 +1,390 @@
+{
+  "journey": "settings-management",
+  "version": "1.0.0",
+  "baseUrl": "http://localhost:3013",
+  "credentials": {
+    "USER": {
+      "email": "test-user@example.com",
+      "password": "Test1234!",
+      "role": "USER"
+    }
+  },
+  "testCases": [
+    {
+      "id": "SET-01",
+      "name": "Settings page renders",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/settings"
+        },
+        {
+          "action": "assertVisible",
+          "text": "設定"
+        },
+        {
+          "action": "screenshot",
+          "name": "SET-01-settings-page"
+        }
+      ],
+      "tags": ["smoke"]
+    },
+    {
+      "id": "SET-02",
+      "name": "Add member",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/settings"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder='輸入成員姓名']",
+          "value": "測試成員"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('新增')"
+        },
+        {
+          "action": "wait",
+          "ms": 1000
+        },
+        {
+          "action": "assertVisible",
+          "text": "測試成員"
+        },
+        {
+          "action": "screenshot",
+          "name": "SET-02-add-member"
+        }
+      ],
+      "tags": ["crud", "members"]
+    },
+    {
+      "id": "SET-03",
+      "name": "Edit member name",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/settings"
+        },
+        {
+          "action": "click",
+          "selector": "li:has-text('測試成員') button[aria-label*='編輯'], li:has-text('測試成員') button[title*='編輯'], li:has-text('測試成員') button:has-text('✏'), li:has-text('測試成員') [data-testid*='edit']"
+        },
+        {
+          "action": "fill",
+          "selector": "input[value='測試成員'], input[placeholder='輸入成員姓名']",
+          "value": "測試成員已編輯"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('儲存'), button:has-text('確認'), button[type='submit']"
+        },
+        {
+          "action": "wait",
+          "ms": 1000
+        },
+        {
+          "action": "screenshot",
+          "name": "SET-03-edit-member"
+        }
+      ],
+      "tags": ["crud", "members"]
+    },
+    {
+      "id": "SET-04",
+      "name": "Delete member",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/settings"
+        },
+        {
+          "action": "click",
+          "selector": "li:has-text('測試成員') button[aria-label*='刪除'], li:has-text('測試成員') button[title*='刪除'], li:has-text('測試成員') button:has-text('🗑'), li:has-text('測試成員') [data-testid*='delete']"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('確認'), button:has-text('刪除'), button:has-text('確定')"
+        },
+        {
+          "action": "wait",
+          "ms": 1000
+        },
+        {
+          "action": "screenshot",
+          "name": "SET-04-delete-member"
+        }
+      ],
+      "tags": ["crud", "members"]
+    },
+    {
+      "id": "SET-05",
+      "name": "View invite code",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/settings"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[data-testid*='invite-code'], .invite-code, code, span:has-text('邀請碼'), p:has-text('邀請碼')"
+        },
+        {
+          "action": "screenshot",
+          "name": "SET-05-invite-code"
+        }
+      ],
+      "tags": ["feature"]
+    },
+    {
+      "id": "SET-06",
+      "name": "Navigate to categories",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/settings"
+        },
+        {
+          "action": "click",
+          "selector": "a[href*='/settings/categories']"
+        },
+        {
+          "action": "assertVisible",
+          "text": "類別管理"
+        },
+        {
+          "action": "screenshot",
+          "name": "SET-06-categories-page"
+        }
+      ],
+      "tags": ["crud", "categories"]
+    },
+    {
+      "id": "SET-07",
+      "name": "Categories list shows defaults",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/settings/categories"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "li, [data-testid*='category-item'], .category-item"
+        },
+        {
+          "action": "screenshot",
+          "name": "SET-07-default-categories"
+        }
+      ],
+      "tags": ["crud", "categories"]
+    },
+    {
+      "id": "SET-08",
+      "name": "Add custom category",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/settings/categories"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('新增類別')"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder*='類別名稱'], input[placeholder*='名稱'], input[name='name']",
+          "value": "測試類別"
+        },
+        {
+          "action": "click",
+          "selector": "button[aria-label*='圖示'], button[data-testid*='icon'], .icon-picker button, button:has-text('🏷'), span[role='button']"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('儲存'), button:has-text('新增'), button:has-text('確認'), button[type='submit']"
+        },
+        {
+          "action": "wait",
+          "ms": 1000
+        },
+        {
+          "action": "screenshot",
+          "name": "SET-08-add-category"
+        }
+      ],
+      "tags": ["crud", "categories"]
+    },
+    {
+      "id": "SET-09",
+      "name": "Delete custom category",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/settings/categories"
+        },
+        {
+          "action": "click",
+          "selector": "li:has-text('測試類別') button[aria-label*='刪除'], li:has-text('測試類別') button[title*='刪除'], li:has-text('測試類別') [data-testid*='delete'], li:has-text('測試類別') button:has-text('🗑')"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('確認'), button:has-text('刪除'), button:has-text('確定')"
+        },
+        {
+          "action": "wait",
+          "ms": 1000
+        },
+        {
+          "action": "screenshot",
+          "name": "SET-09-delete-category"
+        }
+      ],
+      "tags": ["crud", "categories"]
+    },
+    {
+      "id": "SET-10",
+      "name": "Switch to dark theme",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/settings"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('🌙 暗色')"
+        },
+        {
+          "action": "wait",
+          "ms": 500
+        },
+        {
+          "action": "screenshot",
+          "name": "dark-theme"
+        }
+      ],
+      "tags": ["theme"]
+    },
+    {
+      "id": "SET-11",
+      "name": "Switch to light theme",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "click",
+          "selector": "button:has-text('☀️ 亮色')"
+        },
+        {
+          "action": "wait",
+          "ms": 500
+        },
+        {
+          "action": "screenshot",
+          "name": "light-theme"
+        }
+      ],
+      "tags": ["theme"]
+    },
+    {
+      "id": "SET-12",
+      "name": "Activity log page",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/settings/activity-log"
+        },
+        {
+          "action": "assertVisible",
+          "text": "操作記錄"
+        },
+        {
+          "action": "screenshot",
+          "name": "SET-12-activity-log"
+        }
+      ],
+      "tags": ["feature"]
+    },
+    {
+      "id": "SET-13",
+      "name": "Notifications page renders",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/notifications"
+        },
+        {
+          "action": "assertVisible",
+          "text": "通知"
+        },
+        {
+          "action": "screenshot",
+          "name": "SET-13-notifications-page"
+        }
+      ],
+      "tags": ["notifications"]
+    },
+    {
+      "id": "SET-14",
+      "name": "Mark all notifications read",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/notifications"
+        },
+        {
+          "action": "clickIfVisible",
+          "selector": "button:has-text('全部標為已讀')"
+        },
+        {
+          "action": "wait",
+          "ms": 1000
+        },
+        {
+          "action": "screenshot",
+          "name": "SET-14-mark-all-read"
+        }
+      ],
+      "tags": ["notifications"]
+    },
+    {
+      "id": "SET-15",
+      "name": "Statistics page renders charts",
+      "role": "USER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/statistics"
+        },
+        {
+          "action": "assertVisible",
+          "text": "統計"
+        },
+        {
+          "action": "wait",
+          "ms": 2000
+        },
+        {
+          "action": "screenshot",
+          "name": "SET-15-statistics-charts",
+          "fullPage": true
+        }
+      ],
+      "tags": ["smoke", "charts"]
+    }
+  ]
+}
