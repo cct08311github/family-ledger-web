@@ -1,0 +1,32 @@
+{
+  "version": "1.0.0",
+  "execution": {
+    "mode": "sequential",
+    "reason": "Playwright MCP shares a single browser instance; parallel agents cause page navigation conflicts",
+    "order": [
+      "01-auth-navigation.json",
+      "02-expense-management.json",
+      "03-settlement-debts.json",
+      "04-settings-management.json"
+    ],
+    "betweenModules": {
+      "navigateToHome": true,
+      "waitMs": 1000
+    }
+  },
+  "environment": {
+    "type": "production",
+    "skipDestructive": true,
+    "destructiveActions": ["create", "update", "delete"],
+    "destructiveNote": "Tests tagged with crud/create, crud/update, or crud/delete will be marked BLOCKED when skipDestructive is true"
+  },
+  "auth": {
+    "method": "google-oauth",
+    "automated": false,
+    "note": "Google OAuth requires manual login before test run. Firebase Emulator supports automated email/password auth."
+  },
+  "reporting": {
+    "screenshotDir": ".playwright-mcp",
+    "generateSummary": true
+  }
+}

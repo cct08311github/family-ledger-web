@@ -2,6 +2,11 @@
   "journey": "settlement-debts",
   "version": "1.0.0",
   "baseUrl": "https://mac-mini.tailde842d.ts.net",
+  "execution": {
+    "mode": "sequential",
+    "order": 3,
+    "requiresAuth": true
+  },
   "credentials": {
     "USER": {
       "email": "test-user@example.com",
@@ -100,6 +105,7 @@
     },
     {
       "id": "STL-05",
+      "destructive": true,
       "name": "Create settlement",
       "role": "USER",
       "steps": [
@@ -181,6 +187,7 @@
     },
     {
       "id": "STL-07",
+      "destructive": true,
       "name": "Delete settlement",
       "role": "USER",
       "steps": [
@@ -305,6 +312,7 @@
     },
     {
       "id": "STL-12",
+      "destructive": true,
       "name": "Settlement updates balance",
       "role": "USER",
       "steps": [
