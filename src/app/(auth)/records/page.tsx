@@ -60,7 +60,7 @@ export default function RecordsPage() {
       // Payer filter
       if (payerFilter && e.payerId !== payerFilter) return false
 
-      // Category filter
+      // Category filter (match by name since expense stores category name)
       if (categoryFilter && e.category !== categoryFilter) return false
 
       return true
@@ -188,7 +188,7 @@ export default function RecordsPage() {
               >
                 <option value="">全部分類</option>
                 {categories.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c.name} value={c.name}>{c.icon} {c.name}</option>
                 ))}
               </select>
             </div>
