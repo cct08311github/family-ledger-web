@@ -74,8 +74,16 @@ jobs:
           firebase emulators:start --only auth,firestore --project demo-test &
           EMULATOR_PID=$!
           echo "EMULATOR_PID=$EMULATOR_PID" >> $GITHUB_ENV
-          # Wait for emulators to start
-          sleep 15
+          # Wait for emulators to be ready (poll Firestore emulator port)
+          echo "Waiting for Firebase emulators to start..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080 > /dev/null 2>&1; then
+              echo "Firestore emulator is ready (attempt $i)"
+              break
+            fi
+            echo "Attempt $i: emulator not ready yet, waiting..."
+            sleep 2
+          done
 
       - name: Run Playwright tests
         env:

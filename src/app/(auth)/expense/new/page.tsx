@@ -3,14 +3,12 @@
 import { useRouter } from 'next/navigation'
 import { ExpenseForm } from '@/components/expense-form'
 import { VoiceInput } from '@/components/voice-input'
-import { useGroup } from '@/lib/hooks/use-group'
 import { useCategories } from '@/lib/hooks/use-categories'
 import type { ParsedExpense } from '@/lib/services/local-expense-parser'
 import { useRef } from 'react'
 
 export default function NewExpensePage() {
   const router = useRouter()
-  const { group } = useGroup()
   const { categories } = useCategories()
   const availableCategories = categories.filter((c) => c.isActive).map((c) => c.name)
 
