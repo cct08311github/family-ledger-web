@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: __dirname,
   compress: true,
   poweredByHeader: false,
+  serverExternalPackages: ['firebase-admin'],
   experimental: {
     optimizePackageImports: ['firebase', 'recharts'],
   },

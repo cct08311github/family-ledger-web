@@ -1,5 +1,5 @@
 import { addDoc, collection, deleteDoc, doc, serverTimestamp, Timestamp } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { db, auth } from '@/lib/firebase'
 import { addActivityLog } from './activity-log-service'
 import { currency } from '@/lib/utils'
 
@@ -31,7 +31,7 @@ export async function addSettlement(groupId: string, data: NewSettlement, actor?
     note: data.note ?? null,
     date: Timestamp.fromDate(data.date),
     createdAt: serverTimestamp(),
-    createdBy: actor?.id ?? null,
+    createdBy: auth.currentUser?.uid ?? null,
   })
   if (actor) {
     try {

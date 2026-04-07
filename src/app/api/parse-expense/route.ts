@@ -24,11 +24,19 @@ function checkRateLimit(uid: string): boolean {
   const timestamps = (rateLimitMap.get(uid) ?? []).filter((t) => t > windowStart)
 
   if (timestamps.length >= RATE_LIMIT_MAX) {
+    // Update map with pruned list so stale entries are evicted
+    rateLimitMap.set(uid, timestamps)
     return false
   }
 
   timestamps.push(now)
   rateLimitMap.set(uid, timestamps)
+
+  // Evict entry if no timestamps remain (e.g. after a full window with no usage)
+  if (timestamps.length === 0) {
+    rateLimitMap.delete(uid)
+  }
+
   return true
 }
 

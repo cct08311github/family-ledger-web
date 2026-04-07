@@ -13,7 +13,12 @@ export function signedCurrency(amount: number): string {
 
 /** Firestore Timestamp → Date */
 export function toDate(ts: Timestamp | Date | undefined): Date {
-  if (!ts) return new Date()
+  if (!ts) {
+    if (typeof window !== 'undefined') {
+      console.warn('[toDate] Received undefined timestamp, falling back to current date')
+    }
+    return new Date()
+  }
   if (ts instanceof Date) return ts
   return ts.toDate()
 }

@@ -30,11 +30,15 @@ service cloud.firestore {
 
     match /groups/{groupId} {
 
-      // 讀取：僅限群組成員（直接檢查 resource.data，相容 list query）
-      // 注意：加入群組前的邀請碼驗證應由 Cloud Function 或已知邀請碼的 list query 處理，
-      // 以避免任意已登入用戶讀取所有有邀請碼的群組資料。
-      allow read: if isSignedIn()
+      // 讀取：
+      // get（單筆）：僅限群組成員
+      // list（查詢）：成員可列出自己的群組；非成員可透過邀請碼查詢（joinGroupByInviteCode 使用）
+      allow get: if isSignedIn()
         && request.auth.uid in resource.data.memberUids;
+
+      allow list: if isSignedIn()
+        && (request.auth.uid in resource.data.memberUids
+            || resource.data.inviteCode != null);
 
       // 建立：任何已登入使用者（建群組）
       // 必須包含 ownerUid = 自己，且 memberUids 包含自己
@@ -77,7 +81,9 @@ service cloud.firestore {
         allow update: if isGroupMember(groupId)
           && request.resource.data.name is string
           && request.resource.data.name.size() > 0
-          && request.resource.data.name.size() <= 30;
+          && request.resource.data.name.size() <= 30
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])
+              || isGroupOwner(groupId));
         allow delete: if isGroupOwner(groupId);
       }
 
@@ -170,7 +176,10 @@ service cloud.firestore {
 
       match /activityLogs/{logId} {
         allow read: if isGroupMember(groupId);
-        allow create: if isGroupMember(groupId) && hasReasonableSize();
+        allow create: if isGroupMember(groupId)
+          && hasReasonableSize()
+          && request.resource.data.actorId is string
+          && request.resource.data.action is string;
         allow update, delete: if false;
       }
 

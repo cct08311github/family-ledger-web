@@ -1,6 +1,5 @@
 import { addDoc, collection, doc, updateDoc, getDocs, getDoc, query, where, Timestamp, arrayRemove, arrayUnion, writeBatch } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
-import { auth } from '@/lib/firebase'
+import { db, auth } from '@/lib/firebase'
 
 function generateInviteCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no 0/O/1/I to avoid confusion
@@ -76,7 +75,8 @@ export async function updateGroup(groupId: string, data: { name?: string; isPrim
 
 export async function deleteGroup(groupId: string): Promise<void> {
   const BATCH_LIMIT = 500
-  const subcollections = ['members', 'categories', 'expenses', 'settlements', 'notifications', 'activityLogs', 'userPreferences']
+  // Note: activityLogs intentionally excluded — Firestore rules forbid client-side deletion
+  const subcollections = ['members', 'categories', 'expenses', 'settlements', 'notifications', 'userPreferences']
 
   // Collect all refs to delete
   const allRefs: import('firebase/firestore').DocumentReference[] = []

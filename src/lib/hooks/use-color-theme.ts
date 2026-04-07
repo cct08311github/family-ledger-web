@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 export type ColorTheme = 'green' | 'blue' | 'purple' | 'orange' | 'pink' | 'teal'
 
@@ -35,11 +35,11 @@ export function useColorTheme() {
     applyColorTheme(stored)
   }, [])
 
-  const setColorTheme = (color: ColorTheme) => {
+  const setColorTheme = useCallback((color: ColorTheme) => {
     setColorThemeState(color)
     localStorage.setItem(STORAGE_KEY, color)
     applyColorTheme(color)
-  }
+  }, [])
 
   return { colorTheme, setColorTheme }
 }
