@@ -31,12 +31,6 @@ function checkRateLimit(uid: string): boolean {
 
   timestamps.push(now)
   rateLimitMap.set(uid, timestamps)
-
-  // Evict entry if no timestamps remain (e.g. after a full window with no usage)
-  if (timestamps.length === 0) {
-    rateLimitMap.delete(uid)
-  }
-
   return true
 }
 

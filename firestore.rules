@@ -33,6 +33,13 @@ service cloud.firestore {
       // 讀取：
       // get（單筆）：僅限群組成員
       // list（查詢）：成員可列出自己的群組；非成員可透過邀請碼查詢（joinGroupByInviteCode 使用）
+      //
+      // 安全性說明：Firestore rules 無法限制 list 查詢的 where 子句內容，
+      // 因此 `resource.data.inviteCode != null` 條件會允許任何已驗證用戶列舉
+      // 具有有效邀請碼的群組（可見群組名稱與成員列表）。
+      // 對於家庭帳本應用而言，邀請碼本身即作為共享秘密授權，此為可接受的取捨。
+      // 如需更強的隔離性，應將 joinGroupByInviteCode 遷移至 Cloud Function，
+      // 或改用獨立的 inviteCodes 集合。
       allow get: if isSignedIn()
         && request.auth.uid in resource.data.memberUids;
 
