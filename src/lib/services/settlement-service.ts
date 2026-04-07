@@ -1,5 +1,5 @@
 import { addDoc, collection, deleteDoc, doc, serverTimestamp, Timestamp } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { db, auth } from '@/lib/firebase'
 import { addActivityLog } from './activity-log-service'
 import { currency } from '@/lib/utils'
 
@@ -21,6 +21,9 @@ interface Actor {
 }
 
 export async function addSettlement(groupId: string, data: NewSettlement, actor?: Actor): Promise<string> {
+  const uid = auth.currentUser?.uid
+  if (!uid) throw new Error('Not authenticated')
+
   const ref = await addDoc(collection(db, 'groups', groupId, 'settlements'), {
     groupId,
     fromMemberId: data.fromMemberId,
@@ -31,7 +34,7 @@ export async function addSettlement(groupId: string, data: NewSettlement, actor?
     note: data.note ?? null,
     date: Timestamp.fromDate(data.date),
     createdAt: serverTimestamp(),
-    createdBy: actor?.id ?? null,
+    createdBy: uid,
   })
   if (actor) {
     try {
@@ -50,6 +53,8 @@ export async function addSettlement(groupId: string, data: NewSettlement, actor?
 }
 
 export async function deleteSettlement(groupId: string, settlementId: string, actor?: Actor): Promise<void> {
+  if (!auth.currentUser?.uid) throw new Error('Not authenticated')
+
   await deleteDoc(doc(db, 'groups', groupId, 'settlements', settlementId))
   if (actor) {
     try {

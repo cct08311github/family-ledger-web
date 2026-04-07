@@ -19,6 +19,7 @@ interface GroupDataContextType {
   membersLoading: boolean
   settlementsLoading: boolean
   categoriesLoading: boolean
+  notificationsLoading: boolean
 }
 
 const GroupDataContext = createContext<GroupDataContextType>({
@@ -32,6 +33,7 @@ const GroupDataContext = createContext<GroupDataContextType>({
   membersLoading: true,
   settlementsLoading: true,
   categoriesLoading: true,
+  notificationsLoading: true,
 })
 
 export function GroupDataProvider({ children }: { children: ReactNode }) {
@@ -48,6 +50,7 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
   const [membersLoading, setMembersLoading] = useState(true)
   const [settlementsLoading, setSettlementsLoading] = useState(true)
   const [categoriesLoading, setCategoriesLoading] = useState(true)
+  const [notificationsLoading, setNotificationsLoading] = useState(true)
 
   // Reset all data when group changes
   useEffect(() => {
@@ -60,6 +63,7 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
     setMembersLoading(true)
     setSettlementsLoading(true)
     setCategoriesLoading(true)
+    setNotificationsLoading(true)
   }, [groupId])
 
   // Expenses subscription
@@ -87,7 +91,7 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
   // Settlements subscription
   useEffect(() => {
     if (!groupId) { setSettlementsLoading(false); return }
-    const q = query(collection(db, 'groups', groupId, 'settlements'), orderBy('date', 'desc'))
+    const q = query(collection(db, 'groups', groupId, 'settlements'), orderBy('date', 'desc'), limit(200))
     const unsub = onSnapshot(q,
       (snap) => { setSettlements(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Settlement)); setSettlementsLoading(false) },
       (err) => { logger.error('[GroupData] settlements error:', err); setSettlementsLoading(false) },
@@ -108,7 +112,7 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
 
   // Notifications subscription (per-user, with limit)
   useEffect(() => {
-    if (!groupId || !user) { setNotifications([]); return }
+    if (!groupId || !user) { setNotifications([]); setNotificationsLoading(false); return }
     const q = query(
       collection(db, 'groups', groupId, 'notifications'),
       where('recipientId', '==', user.uid),
@@ -116,8 +120,8 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
       limit(50),
     )
     const unsub = onSnapshot(q,
-      (snap) => { setNotifications(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AppNotification)) },
-      (err) => { logger.error('[GroupData] notifications error:', err.message) },
+      (snap) => { setNotifications(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AppNotification)); setNotificationsLoading(false) },
+      (err) => { logger.error('[GroupData] notifications error:', err.message); setNotificationsLoading(false) },
     )
     return unsub
   }, [groupId, user])
@@ -126,9 +130,9 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({
     expenses, members, settlements, categories, notifications, unreadCount,
-    expensesLoading, membersLoading, settlementsLoading, categoriesLoading,
+    expensesLoading, membersLoading, settlementsLoading, categoriesLoading, notificationsLoading,
   }), [expenses, members, settlements, categories, notifications, unreadCount,
-       expensesLoading, membersLoading, settlementsLoading, categoriesLoading])
+       expensesLoading, membersLoading, settlementsLoading, categoriesLoading, notificationsLoading])
 
   return (
     <GroupDataContext.Provider value={value}>

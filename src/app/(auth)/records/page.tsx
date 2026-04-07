@@ -15,9 +15,9 @@ type FilterType = '全部' | '共同' | '個人'
 
 export default function RecordsPage() {
   const { group } = useGroup()
-  const { expenses, loading } = useExpenses(group?.id)
-  const { members } = useMembers(group?.id)
-  const { categories } = useCategories(group?.id)
+  const { expenses, loading } = useExpenses()
+  const { members } = useMembers()
+  const { categories } = useCategories()
   const { user } = useAuth()
 
   const [filter, setFilter] = useState<FilterType>('全部')

@@ -40,11 +40,15 @@ export async function markAllNotificationsRead(groupId: string, recipientId: str
   const snap = await getDocs(q)
   if (snap.empty) return
 
-  // Use writeBatch (max 500 ops) for atomic, efficient bulk update
-  const batch = writeBatch(db)
-  snap.docs.forEach((d) => batch.update(d.ref, { isRead: true }))
+  // Firestore batches have a 500-op limit; chunk to stay safely under it
+  const BATCH_LIMIT = 499
   try {
-    await batch.commit()
+    for (let i = 0; i < snap.docs.length; i += BATCH_LIMIT) {
+      const batch = writeBatch(db)
+      const chunk = snap.docs.slice(i, i + BATCH_LIMIT)
+      chunk.forEach((d) => batch.update(d.ref, { isRead: true }))
+      await batch.commit()
+    }
   } catch (err) {
     logger.error('[notification-service] markAllNotificationsRead failed:', err)
     throw err

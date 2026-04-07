@@ -1,6 +1,5 @@
-import { addDoc, collection, doc, updateDoc, deleteDoc, getDocs, query, where, Timestamp, arrayRemove, arrayUnion, writeBatch } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
-import { auth } from '@/lib/firebase'
+import { addDoc, collection, doc, updateDoc, getDocs, getDoc, query, where, Timestamp, arrayRemove, arrayUnion, writeBatch } from 'firebase/firestore'
+import { db, auth } from '@/lib/firebase'
 
 function generateInviteCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no 0/O/1/I to avoid confusion
@@ -75,17 +74,26 @@ export async function updateGroup(groupId: string, data: { name?: string; isPrim
 }
 
 export async function deleteGroup(groupId: string): Promise<void> {
-  // Delete subcollections that security rules allow owner to delete
-  for (const sub of ['members', 'categories', 'expenses', 'settlements', 'notifications']) {
+  const BATCH_LIMIT = 500
+  // Note: activityLogs intentionally excluded — Firestore rules forbid client-side deletion
+  const subcollections = ['members', 'categories', 'expenses', 'settlements', 'notifications', 'userPreferences']
+
+  // Collect all refs to delete
+  const allRefs: import('firebase/firestore').DocumentReference[] = []
+  for (const sub of subcollections) {
     try {
       const snap = await getDocs(collection(db, 'groups', groupId, sub))
-      for (const d of snap.docs) {
-        try { await deleteDoc(d.ref) } catch { /* skip docs we can't delete */ }
-      }
-    } catch { /* skip subcollections we can't read/delete */ }
+      snap.docs.forEach((d) => allRefs.push(d.ref))
+    } catch { /* skip subcollections we can't read (e.g. activityLogs with delete:false) */ }
   }
-  // activityLogs are immutable (delete: false in rules), left as orphans
-  await deleteDoc(doc(db, 'groups', groupId))
+  allRefs.push(doc(db, 'groups', groupId))
+
+  // Chunk into batches of up to BATCH_LIMIT operations
+  for (let i = 0; i < allRefs.length; i += BATCH_LIMIT) {
+    const batch = writeBatch(db)
+    allRefs.slice(i, i + BATCH_LIMIT).forEach((ref) => batch.delete(ref))
+    await batch.commit()
+  }
 }
 
 export async function refreshInviteCode(groupId: string): Promise<string> {
@@ -150,13 +158,15 @@ export async function seedMissingCategories(groupId: string): Promise<number> {
 export async function leaveGroup(groupId: string): Promise<void> {
   const user = auth.currentUser
   if (!user) throw new Error('User not authenticated')
-  const ref = doc(db, 'groups', groupId)
-  const snap = await getDocs(query(collection(db, 'groups'), where('__name__', '==', groupId)))
-  const data = snap.docs[0]?.data()
-  if (data?.ownerUid === user.uid) {
-    throw new Error('群組擁有者無法退出，請先轉移擁有者或刪除群組')
+  const snap = await getDoc(doc(db, 'groups', groupId))
+  if (!snap.exists()) {
+    throw new Error('Group not found')
   }
-  await updateDoc(ref, {
+  const data = snap.data()
+  if (data.ownerUid === user.uid) {
+    throw new Error('群組擁有者不能離開群組，請先轉移擁有權或刪除群組')
+  }
+  await updateDoc(snap.ref, {
     memberUids: arrayRemove(user.uid),
     updatedAt: Timestamp.now(),
   })

@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from 'react'
 import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut as fbSignOut } from 'firebase/auth'
 import { auth } from './firebase'
 
@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = useCallback(async () => {
     setAuthError(null)
     try {
       const provider = new GoogleAuthProvider()
@@ -59,18 +59,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logger.error('[Auth] signInWithGoogle failed:', e)
       }
     }
-  }
+  }, [])
 
-  const signOut = async () => {
+  const handleSignOut = useCallback(async () => {
     try {
       await fbSignOut(auth)
     } catch (e) {
       logger.error('[Auth] signOut failed:', e)
     }
-  }
+  }, [])
+
+  const value = useMemo(() => ({
+    user,
+    loading,
+    authError,
+    signInWithGoogle,
+    signOut: handleSignOut,
+  }), [user, loading, authError, signInWithGoogle, handleSignOut])
 
   return (
-    <AuthContext.Provider value={{ user, loading, authError, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   )

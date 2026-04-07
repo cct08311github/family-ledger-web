@@ -18,7 +18,7 @@ const TYPE_ICONS: Record<string, string> = {
 export default function NotificationsPage() {
   const { group } = useGroup()
   const { user } = useAuth()
-  const { notifications, unreadCount } = useNotifications(group?.id, user?.uid)
+  const { notifications, unreadCount } = useNotifications()
 
   async function handleMarkAllRead() {
     if (!group || !user) return

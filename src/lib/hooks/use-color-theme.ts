@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 export type ColorTheme = 'green' | 'blue' | 'purple' | 'orange' | 'pink' | 'teal'
 
@@ -29,16 +29,17 @@ export function useColorTheme() {
 
   // Hydrate from localStorage on mount
   useEffect(() => {
-    const stored = (localStorage.getItem(STORAGE_KEY) as ColorTheme) ?? 'green'
+    const raw = localStorage.getItem(STORAGE_KEY)
+    const stored: ColorTheme = COLOR_THEMES.some((t) => t.id === raw) ? (raw as ColorTheme) : 'green'
     setColorThemeState(stored)
     applyColorTheme(stored)
   }, [])
 
-  const setColorTheme = (color: ColorTheme) => {
+  const setColorTheme = useCallback((color: ColorTheme) => {
     setColorThemeState(color)
     localStorage.setItem(STORAGE_KEY, color)
     applyColorTheme(color)
-  }
+  }, [])
 
   return { colorTheme, setColorTheme }
 }

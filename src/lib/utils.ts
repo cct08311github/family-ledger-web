@@ -1,4 +1,5 @@
 import { Timestamp } from 'firebase/firestore'
+import { logger } from './logger'
 
 /** NT$ 格式化 */
 export function currency(amount: number): string {
@@ -13,7 +14,10 @@ export function signedCurrency(amount: number): string {
 
 /** Firestore Timestamp → Date */
 export function toDate(ts: Timestamp | Date | undefined): Date {
-  if (!ts) return new Date()
+  if (!ts) {
+    logger.warn('[toDate] Received undefined timestamp, falling back to current date')
+    return new Date()
+  }
   if (ts instanceof Date) return ts
   return ts.toDate()
 }

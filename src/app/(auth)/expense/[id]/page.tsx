@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { ExpenseForm } from '@/components/expense-form'
+import { useExpenses } from '@/lib/hooks/use-expenses'
+import { logger } from '@/lib/logger'
 import type { Expense } from '@/lib/types'
 
 export default function EditExpensePage({ params }: { params: Promise<{ id: string }> }) {
@@ -12,18 +14,36 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
   const router = useRouter()
   const searchParams = useSearchParams()
   const groupId = searchParams.get('groupId')
-  const [expense, setExpense] = useState<Expense | null>(null)
-  const [loading, setLoading] = useState(true)
 
+  // Prefer the expense already in context to avoid an extra Firestore read
+  const { expenses, loading: expensesLoading } = useExpenses()
+  const contextExpense = expenses.find((e) => e.id === id)
+
+  const [fetchedExpense, setFetchedExpense] = useState<Expense | null>(null)
+  const [fetchLoading, setFetchLoading] = useState(false)
+
+  // Fall back to a direct getDoc only when the expense is not in context
+  // (e.g. deep-link before GroupDataProvider has finished syncing)
   useEffect(() => {
+    if (contextExpense || expensesLoading) return
     if (!groupId) return
-    getDoc(doc(db, 'groups', groupId, 'expenses', id)).then((snap) => {
-      if (snap.exists()) {
-        setExpense({ id: snap.id, ...snap.data() } as Expense)
-      }
-      setLoading(false)
-    })
-  }, [id, groupId])
+    setFetchLoading(true)
+    getDoc(doc(db, 'groups', groupId, 'expenses', id))
+      .then((snap) => {
+        if (snap.exists()) {
+          setFetchedExpense({ id: snap.id, ...snap.data() } as Expense)
+        }
+      })
+      .catch((err) => {
+        logger.error('[EditExpense] Failed to load expense:', err)
+      })
+      .finally(() => {
+        setFetchLoading(false)
+      })
+  }, [id, groupId, contextExpense, expensesLoading])
+
+  const loading = expensesLoading || fetchLoading
+  const expense = contextExpense ?? fetchedExpense
 
   if (loading) {
     return (

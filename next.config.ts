@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: __dirname,
   compress: true,
   poweredByHeader: false,
+  serverExternalPackages: ['firebase-admin'],
   experimental: {
     optimizePackageImports: ['firebase', 'recharts'],
   },
@@ -22,7 +23,14 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/(.*)',
-        headers: [{ key: 'Content-Security-Policy', value: csp }],
+        headers: [
+          { key: 'Content-Security-Policy', value: csp },
+          { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+        ],
       },
       {
         source: '/login',

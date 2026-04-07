@@ -30,9 +30,20 @@ service cloud.firestore {
 
     match /groups/{groupId} {
 
-      // 讀取：群組成員（直接檢查 resource.data，相容 list query）
-      // 或已登入使用者查詢有邀請碼的群組
-      allow read: if isSignedIn()
+      // 讀取：
+      // get（單筆）：僅限群組成員
+      // list（查詢）：成員可列出自己的群組；非成員可透過邀請碼查詢（joinGroupByInviteCode 使用）
+      //
+      // 安全性說明：Firestore rules 無法限制 list 查詢的 where 子句內容，
+      // 因此 `resource.data.inviteCode != null` 條件會允許任何已驗證用戶列舉
+      // 具有有效邀請碼的群組（可見群組名稱與成員列表）。
+      // 對於家庭帳本應用而言，邀請碼本身即作為共享秘密授權，此為可接受的取捨。
+      // 如需更強的隔離性，應將 joinGroupByInviteCode 遷移至 Cloud Function，
+      // 或改用獨立的 inviteCodes 集合。
+      allow get: if isSignedIn()
+        && request.auth.uid in resource.data.memberUids;
+
+      allow list: if isSignedIn()
         && (request.auth.uid in resource.data.memberUids
             || resource.data.inviteCode != null);
 
@@ -70,11 +81,16 @@ service cloud.firestore {
         allow create: if isGroupMember(groupId)
           && request.resource.data.name is string
           && request.resource.data.name.size() > 0
-          && request.resource.data.name.size() <= 30;
+          && request.resource.data.name.size() <= 30
+          && (!('role' in request.resource.data)
+              || request.resource.data.role == 'member'
+              || (request.resource.data.role == 'admin' && isGroupOwner(groupId)));
         allow update: if isGroupMember(groupId)
           && request.resource.data.name is string
           && request.resource.data.name.size() > 0
-          && request.resource.data.name.size() <= 30;
+          && request.resource.data.name.size() <= 30
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])
+              || isGroupOwner(groupId));
         allow delete: if isGroupOwner(groupId);
       }
 
@@ -96,7 +112,9 @@ service cloud.firestore {
           && request.resource.data.createdBy == request.auth.uid
           && hasReasonableSize();
 
+        // 更新：僅建立者或群組 owner（防止成員任意修改他人支出）
         allow update: if isGroupMember(groupId)
+          && (resource.data.createdBy == request.auth.uid || isGroupOwner(groupId))
           && request.resource.data.description is string
           && request.resource.data.description.size() > 0
           && request.resource.data.description.size() <= 200
@@ -125,7 +143,9 @@ service cloud.firestore {
           && request.resource.data.fromMemberId != request.resource.data.toMemberId
           && hasReasonableSize();
 
+        // 更新：僅建立者或群組 owner（防止成員任意修改他人結算）
         allow update: if isGroupMember(groupId)
+          && (resource.data.createdBy == request.auth.uid || isGroupOwner(groupId))
           && request.resource.data.amount is number
           && request.resource.data.amount > 0
           && request.resource.data.amount < 100000000;
@@ -163,7 +183,10 @@ service cloud.firestore {
 
       match /activityLogs/{logId} {
         allow read: if isGroupMember(groupId);
-        allow create: if isGroupMember(groupId) && hasReasonableSize();
+        allow create: if isGroupMember(groupId)
+          && hasReasonableSize()
+          && request.resource.data.actorId is string
+          && request.resource.data.action is string;
         allow update, delete: if false;
       }
 

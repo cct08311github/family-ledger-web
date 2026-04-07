@@ -23,9 +23,9 @@ interface Props {
 
 export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoiceParsedRef }: Props) {
   const { group } = useGroup()
-  const { members } = useMembers(group?.id)
-  const { expenses } = useExpenses(group?.id)
-  const { categories: firestoreCategories } = useCategories(group?.id)
+  const { members } = useMembers()
+  const { expenses } = useExpenses()
+  const { categories: firestoreCategories } = useCategories()
   const categoryList = firestoreCategories.length > 0
     ? firestoreCategories.filter((c) => c.isActive).map((c) => c.name)
     : FALLBACK_CATEGORIES
@@ -139,8 +139,8 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
       return
     }
     const saveAmt = parseFloat(amount) || 0
+    const splits = isShared ? buildSplits() : []
     if (isShared && splitMethod !== 'equal') {
-      const splits = buildSplits()
       const splitSum = splits.reduce((s, sp) => s + sp.shareAmount, 0)
       if (splitSum !== saveAmt) {
         setError(`分帳金額合計 (NT$ ${splitSum}) 與支出金額 (NT$ ${saveAmt}) 不符`)
@@ -159,7 +159,7 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         splitMethod,
         payerId,
         payerName: members.find((m) => m.id === payerId)?.name ?? '',
-        splits: isShared ? buildSplits() : [],
+        splits,
         paymentMethod,
         receiptPaths: [],
         note: note.trim() || undefined,
