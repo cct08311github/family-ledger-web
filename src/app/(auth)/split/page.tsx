@@ -114,9 +114,9 @@ function SettleDialog({ members, defaultFromId, defaultToId, defaultAmount, onCl
 export default function SplitPage() {
   const searchParams = useSearchParams()
   const { group, loading: groupLoading } = useGroup()
-  const { expenses, loading: expLoading } = useExpenses(group?.id)
-  const { settlements, loading: settlementsLoading } = useSettlements(group?.id)
-  const { members, loading: membersLoading } = useMembers(group?.id)
+  const { expenses, loading: expLoading } = useExpenses()
+  const { settlements, loading: settlementsLoading } = useSettlements()
+  const { members, loading: membersLoading } = useMembers()
   const { user } = useAuth()
   const nameMap = Object.fromEntries(members.map((m) => [m.id, m.name]))
 

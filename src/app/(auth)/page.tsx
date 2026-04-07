@@ -59,9 +59,9 @@ function NoGroupView() {
 
 export default function HomePage() {
   const { group, loading: groupLoading } = useGroup()
-  const { expenses, loading: expLoading } = useExpenses(group?.id)
-  const { settlements } = useSettlements(group?.id)
-  const { members, loading: membersLoading } = useMembers(group?.id)
+  const { expenses, loading: expLoading } = useExpenses()
+  const { settlements } = useSettlements()
+  const { members, loading: membersLoading } = useMembers()
 
   const monthly = useMonthlyExpenses(expenses)
   const recent = useRecentExpenses(expenses, 5)

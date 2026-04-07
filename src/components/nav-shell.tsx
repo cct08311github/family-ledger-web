@@ -20,7 +20,7 @@ export function NavShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { group } = useGroup()
   const { user } = useAuth()
-  const { unreadCount } = useNotifications(group?.id, user?.uid)
+  const { unreadCount } = useNotifications()
   const [fabOpen, setFabOpen] = useState(false)
   const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false)
 

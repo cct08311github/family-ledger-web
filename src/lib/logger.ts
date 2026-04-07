@@ -9,13 +9,18 @@ type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
 const isDev = process.env.NODE_ENV !== 'production'
 
-function format(level: LogLevel, message: string, data?: unknown) {
+function format(level: LogLevel, message: string, data?: unknown): string {
   const timestamp = new Date().toISOString().slice(11, 19)
   const prefix = `[${timestamp}][${level.toUpperCase()}]`
-  if (data !== undefined) {
-    return `${prefix} ${message} ${JSON.stringify(data)}`
+  if (data === undefined) return `${prefix} ${message}`
+  if (data instanceof Error) {
+    return `${prefix} ${message} ${data.message}${data.stack ? '\n' + data.stack : ''}`
   }
-  return `${prefix} ${message}`
+  try {
+    return `${prefix} ${message} ${JSON.stringify(data)}`
+  } catch {
+    return `${prefix} ${message} [unserializable data]`
+  }
 }
 
 export const logger = {
@@ -23,7 +28,7 @@ export const logger = {
     if (isDev) console.debug(format('debug', message, data))
   },
   info(message: string, data?: unknown) {
-    console.info(format('info', message, data))
+    if (isDev) console.info(format('info', message, data))
   },
   warn(message: string, data?: unknown) {
     console.warn(format('warn', message, data))

@@ -11,7 +11,7 @@ import type { Expense } from '@/lib/types'
  * - Shared expenses (isShared=true): visible to all group members
  * - Personal expenses (isShared=false): only visible to the creator
  */
-export function useExpenses(_groupId?: string) {
+export function useExpenses() {
   const { expenses: allExpenses, expensesLoading: loading } = useGroupData()
   const { user } = useAuth()
 

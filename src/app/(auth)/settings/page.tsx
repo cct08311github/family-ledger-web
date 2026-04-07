@@ -33,7 +33,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 // ── Members section ────────────────────────────────────────────
 
 function MembersSection({ groupId }: { groupId: string }) {
-  const { members, loading: membersLoading } = useMembers(groupId)
+  const { members, loading: membersLoading } = useMembers()
   const { currentMemberId, setCurrentMember, loading: currentMemberLoading } = useCurrentMember(groupId)
   const { user } = useAuth()
   const [newName, setNewName] = useState('')
@@ -176,7 +176,7 @@ function MembersSection({ groupId }: { groupId: string }) {
 const EMOJI_PRESETS = ['🍜', '🚌', '🛒', '🏠', '💡', '🏥', '🎮', '👨‍👩‍👧', '📚', '🧴', '📱', '💰', '✈️', '🎁', '⚽', '🐾']
 
 function CategoriesSection({ groupId }: { groupId: string }) {
-  const { categories } = useCategories(groupId)
+  const { categories } = useCategories()
   const [newName, setNewName] = useState('')
   const [newIcon, setNewIcon] = useState('💰')
   const [adding, setAdding] = useState(false)
@@ -335,7 +335,7 @@ function ApiKeySection() {
   return (
     <div className="space-y-3">
       <p className="text-sm text-[var(--muted-foreground)]">
-        用於語音輸入的 AI 解析功能。Key 僅儲存於您的瀏覽器，不傳送至伺服器。
+        用於語音輸入的 AI 解析功能。Key 儲存於瀏覽器，使用時經由伺服器轉發至 Gemini API。
       </p>
       <div className="flex gap-2">
         <input type={show ? 'text' : 'password'} value={key}
@@ -394,7 +394,8 @@ function InviteCodeBlock({ group }: { group: { id: string; name: string; inviteC
 
   function handleShareLink() {
     if (!group.inviteCode) return
-    const url = `${window.location.origin}/family-ledger-web/settings?join=${group.inviteCode}`
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '/family-ledger-web'
+    const url = `${window.location.origin}${basePath}/settings?join=${group.inviteCode}`
     if (navigator.share) {
       navigator.share({ title: `加入「${group.name}」`, text: `邀請碼：${group.inviteCode}`, url }).catch(() => {
         navigator.clipboard.writeText(url)

@@ -1,20 +1,65 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import { getAdminAuth } from '@/lib/firebase-admin'
 import { logger } from '@/lib/logger'
 
 /**
  * POST /api/parse-expense
  * Server-side Gemini 2.0 Flash call to parse natural language expense input.
- * Expects: { text: string; apiKey: string; categories?: string[] }
+ * Expects: { text: string; categories?: string[] }
+ * Headers: Authorization: Bearer <Firebase ID token>, x-gemini-key: <Gemini API key>
  * Returns: { description, amount, category, date } | { error }
  */
+
+// ── In-memory rate limiter ───────────────────────────────────────────────────
+// Allows max 20 requests per 60-second window per authenticated UID.
+const RATE_LIMIT_MAX = 20
+const RATE_LIMIT_WINDOW_MS = 60_000
+
+const rateLimitMap = new Map<string, number[]>()
+
+function checkRateLimit(uid: string): boolean {
+  const now = Date.now()
+  const windowStart = now - RATE_LIMIT_WINDOW_MS
+  const timestamps = (rateLimitMap.get(uid) ?? []).filter((t) => t > windowStart)
+
+  if (timestamps.length >= RATE_LIMIT_MAX) {
+    return false
+  }
+
+  timestamps.push(now)
+  rateLimitMap.set(uid, timestamps)
+  return true
+}
+
+// ── Route handler ────────────────────────────────────────────────────────────
+
 export async function POST(req: NextRequest) {
-  // Verify Firebase auth token to prevent unauthorized access
+  // 1. Extract and verify Firebase ID token
   const authHeader = req.headers.get('authorization')
   if (!authHeader?.startsWith('Bearer ')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const idToken = authHeader.slice(7)
+  let uid: string
+  try {
+    const decoded = await getAdminAuth().verifyIdToken(idToken)
+    uid = decoded.uid
+  } catch (err) {
+    logger.debug('[parse-expense] Token verification failed:', err)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // 2. Rate limit per authenticated user
+  if (!checkRateLimit(uid)) {
+    return NextResponse.json(
+      { error: '請求過於頻繁，請稍後再試（每分鐘最多 20 次）' },
+      { status: 429 },
+    )
+  }
+
+  // 3. Validate request payload
   // API key is transmitted via header (not body) to avoid logging in request payloads
   const apiKey = req.headers.get('x-gemini-key')
   const body = await req.json().catch(() => null)
@@ -31,9 +76,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '輸入文字過長（最多 500 字）' }, { status: 400 })
   }
 
-  const catList = Array.isArray(categories) && categories.length > 0
-    ? categories
-    : ['餐飲', '交通', '購物', '房租', '水電', '醫療', '娛樂', '孝親', '子女教育', '日用品', '通訊', '其他']
+  const catList =
+    Array.isArray(categories) && categories.length > 0
+      ? categories
+      : ['餐飲', '交通', '購物', '房租', '水電', '醫療', '娛樂', '孝親', '子女教育', '日用品', '通訊', '其他']
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -81,18 +127,20 @@ export async function POST(req: NextRequest) {
     const parsed = JSON.parse(rawText) as Record<string, unknown>
 
     // Validate and sanitize all fields before returning to client
-    const description = typeof parsed.description === 'string'
-      ? parsed.description.slice(0, 200)
-      : ''
-    const amount = typeof parsed.amount === 'number' && isFinite(parsed.amount) && parsed.amount >= 0
-      ? Math.round(parsed.amount)
-      : 0
-    const category = typeof parsed.category === 'string' && catList.includes(parsed.category)
-      ? parsed.category
-      : catList[0]
-    const dateStr = typeof parsed.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date)
-      ? parsed.date
-      : today
+    const description =
+      typeof parsed.description === 'string' ? parsed.description.slice(0, 200) : ''
+    const amount =
+      typeof parsed.amount === 'number' && isFinite(parsed.amount) && parsed.amount >= 0
+        ? Math.round(parsed.amount)
+        : 0
+    const category =
+      typeof parsed.category === 'string' && catList.includes(parsed.category)
+        ? parsed.category
+        : catList[0]
+    const dateStr =
+      typeof parsed.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date)
+        ? parsed.date
+        : today
 
     return NextResponse.json({ description, amount, category, date: dateStr })
   } catch {

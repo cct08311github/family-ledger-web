@@ -67,16 +67,20 @@ export function simplifyDebts(
 ): Debt[] {
   const balances = calculateNetBalances(expenses, settlements)
 
-  const creditors: { id: string; amount: number }[] = []
-  const debtors: { id: string; amount: number }[] = []
+  const rawCreditors: { id: string; amount: number }[] = []
+  const rawDebtors: { id: string; amount: number }[] = []
 
   for (const [id, amount] of Object.entries(balances)) {
-    if (Math.round(amount) > 0) creditors.push({ id, amount: Math.round(amount) })
-    if (Math.round(amount) < 0) debtors.push({ id, amount: -Math.round(amount) })
+    if (Math.round(amount) > 0) rawCreditors.push({ id, amount: Math.round(amount) })
+    if (Math.round(amount) < 0) rawDebtors.push({ id, amount: -Math.round(amount) })
   }
 
-  creditors.sort((a, b) => b.amount - a.amount)
-  debtors.sort((a, b) => b.amount - a.amount)
+  rawCreditors.sort((a, b) => b.amount - a.amount)
+  rawDebtors.sort((a, b) => b.amount - a.amount)
+
+  // Clone to working copies to avoid mutating the sorted arrays
+  const creditors = rawCreditors.map((c) => ({ ...c }))
+  const debtors = rawDebtors.map((d) => ({ ...d }))
 
   const result: Debt[] = []
   let ci = 0
@@ -95,10 +99,10 @@ export function simplifyDebts(
         amount: amt,
       })
     }
-    c.amount -= amt
-    d.amount -= amt
-    if (Math.round(c.amount) <= 0) ci++
-    if (Math.round(d.amount) <= 0) di++
+    creditors[ci] = { ...creditors[ci], amount: creditors[ci].amount - amt }
+    debtors[di] = { ...debtors[di], amount: debtors[di].amount - amt }
+    if (Math.round(creditors[ci].amount) <= 0) ci++
+    if (Math.round(debtors[di].amount) <= 0) di++
   }
 
   return result

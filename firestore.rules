@@ -30,11 +30,11 @@ service cloud.firestore {
 
     match /groups/{groupId} {
 
-      // 讀取：群組成員（直接檢查 resource.data，相容 list query）
-      // 或已登入使用者查詢有邀請碼的群組
+      // 讀取：僅限群組成員（直接檢查 resource.data，相容 list query）
+      // 注意：加入群組前的邀請碼驗證應由 Cloud Function 或已知邀請碼的 list query 處理，
+      // 以避免任意已登入用戶讀取所有有邀請碼的群組資料。
       allow read: if isSignedIn()
-        && (request.auth.uid in resource.data.memberUids
-            || resource.data.inviteCode != null);
+        && request.auth.uid in resource.data.memberUids;
 
       // 建立：任何已登入使用者（建群組）
       // 必須包含 ownerUid = 自己，且 memberUids 包含自己
@@ -70,7 +70,10 @@ service cloud.firestore {
         allow create: if isGroupMember(groupId)
           && request.resource.data.name is string
           && request.resource.data.name.size() > 0
-          && request.resource.data.name.size() <= 30;
+          && request.resource.data.name.size() <= 30
+          && (!('role' in request.resource.data)
+              || request.resource.data.role == 'member'
+              || (request.resource.data.role == 'admin' && isGroupOwner(groupId)));
         allow update: if isGroupMember(groupId)
           && request.resource.data.name is string
           && request.resource.data.name.size() > 0
@@ -96,7 +99,9 @@ service cloud.firestore {
           && request.resource.data.createdBy == request.auth.uid
           && hasReasonableSize();
 
+        // 更新：僅建立者或群組 owner（防止成員任意修改他人支出）
         allow update: if isGroupMember(groupId)
+          && (resource.data.createdBy == request.auth.uid || isGroupOwner(groupId))
           && request.resource.data.description is string
           && request.resource.data.description.size() > 0
           && request.resource.data.description.size() <= 200
@@ -125,7 +130,9 @@ service cloud.firestore {
           && request.resource.data.fromMemberId != request.resource.data.toMemberId
           && hasReasonableSize();
 
+        // 更新：僅建立者或群組 owner（防止成員任意修改他人結算）
         allow update: if isGroupMember(groupId)
+          && (resource.data.createdBy == request.auth.uid || isGroupOwner(groupId))
           && request.resource.data.amount is number
           && request.resource.data.amount > 0
           && request.resource.data.amount < 100000000;

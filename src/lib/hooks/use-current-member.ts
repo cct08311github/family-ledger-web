@@ -16,7 +16,7 @@ import { logger } from '@/lib/logger'
  */
 export function useCurrentMember(groupId: string | undefined) {
   const { user } = useAuth()
-  const { members } = useMembers(groupId)
+  const { members } = useMembers()
   const [currentMemberId, setCurrentMemberId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   // Track whether a userPreference doc exists (null = not yet checked)
