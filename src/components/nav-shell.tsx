@@ -7,6 +7,7 @@ import { useGroup } from '@/lib/hooks/use-group'
 import { useAuth } from '@/lib/auth'
 import { useNotifications } from '@/lib/hooks/use-notifications'
 import { GroupSwitcher } from '@/components/group-switcher'
+import { OfflineBanner } from '@/components/offline-banner'
 
 const navItems = [
   { href: `/`, label: '首頁', icon: '🏠' },
@@ -99,6 +100,7 @@ export function NavShell({ children }: { children: React.ReactNode }) {
             <GroupSwitcher />
           </div>
         </div>
+        <OfflineBanner />
         {children}
       </main>
 
