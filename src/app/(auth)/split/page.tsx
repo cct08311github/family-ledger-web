@@ -137,6 +137,11 @@ export default function SplitPage() {
 
   async function handleDeleteSettlement(id: string) {
     if (!group) return
+    const settlement = settlements.find(s => s.id === id)
+    const desc = settlement
+      ? `${settlement.fromMemberName} → ${settlement.toMemberName}（${currency(settlement.amount)}）`
+      : '此結算紀錄'
+    if (!confirm(`確定要刪除${desc}嗎？刪除後將影響債務計算。`)) return
     setDeletingId(id)
     try {
       await deleteSettlement(group.id, id, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
