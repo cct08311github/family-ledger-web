@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useNotifications } from '@/lib/hooks/use-notifications'
@@ -19,6 +19,19 @@ export function NavShell({ children }: { children: React.ReactNode }) {
   const { unreadCount } = useNotifications()
   const [fabOpen, setFabOpen] = useState(false)
   const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false)
+  const [isOnline, setIsOnline] = useState(true)
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => setIsOnline(false)
+    setIsOnline(navigator.onLine)
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
@@ -88,6 +101,18 @@ export function NavShell({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <main className="flex-1 pb-20 md:pb-0 overflow-auto">
+        {/* Offline banner */}
+        {!isOnline && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="sticky top-0 z-40 flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold"
+            style={{ background: 'oklch(0.82 0.15 85)', color: 'oklch(0.25 0.06 85)' }}
+          >
+            <span aria-hidden="true">⚠</span>
+            目前離線，顯示的是快取資料
+          </div>
+        )}
         {/* Mobile header */}
         <div className="md:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-2.5 bg-[var(--card)]/80 backdrop-blur-lg border-b border-[var(--border)]">
           <span className="text-sm font-black" style={{ color: 'var(--primary)' }}>💰 家計本</span>

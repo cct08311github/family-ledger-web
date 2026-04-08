@@ -7,6 +7,7 @@ import { useGroupContext } from '@/lib/group-context'
 import { useAuth } from '@/lib/auth'
 import type { Expense, FamilyMember, Settlement, Category, AppNotification } from '@/lib/types'
 import { logger } from '@/lib/logger'
+import { useToast } from '@/components/toast'
 
 interface GroupDataContextType {
   expenses: Expense[]
@@ -39,6 +40,7 @@ const GroupDataContext = createContext<GroupDataContextType>({
 export function GroupDataProvider({ children }: { children: ReactNode }) {
   const { activeGroup } = useGroupContext()
   const { user } = useAuth()
+  const { addToast } = useToast()
   const groupId = activeGroup?.id
 
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -72,7 +74,7 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
     const q = query(collection(db, 'groups', groupId, 'expenses'), orderBy('date', 'desc'), limit(200))
     const unsub = onSnapshot(q,
       (snap) => { setExpenses(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Expense)); setExpensesLoading(false) },
-      (err) => { logger.error('[GroupData] expenses error:', err); setExpensesLoading(false) },
+      (err) => { logger.error('[GroupData] expenses error:', err); addToast('資料同步失敗，請檢查網路連線', 'error'); setExpensesLoading(false) },
     )
     return unsub
   }, [groupId])
@@ -83,7 +85,7 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
     const q = query(collection(db, 'groups', groupId, 'members'), orderBy('sortOrder'))
     const unsub = onSnapshot(q,
       (snap) => { setMembers(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as FamilyMember)); setMembersLoading(false) },
-      (err) => { logger.error('[GroupData] members error:', err); setMembersLoading(false) },
+      (err) => { logger.error('[GroupData] members error:', err); addToast('資料同步失敗，請檢查網路連線', 'error'); setMembersLoading(false) },
     )
     return unsub
   }, [groupId])
@@ -94,7 +96,7 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
     const q = query(collection(db, 'groups', groupId, 'settlements'), orderBy('date', 'desc'), limit(200))
     const unsub = onSnapshot(q,
       (snap) => { setSettlements(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Settlement)); setSettlementsLoading(false) },
-      (err) => { logger.error('[GroupData] settlements error:', err); setSettlementsLoading(false) },
+      (err) => { logger.error('[GroupData] settlements error:', err); addToast('資料同步失敗，請檢查網路連線', 'error'); setSettlementsLoading(false) },
     )
     return unsub
   }, [groupId])
@@ -105,7 +107,7 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
     const q = query(collection(db, 'groups', groupId, 'categories'), orderBy('sortOrder'))
     const unsub = onSnapshot(q,
       (snap) => { setCategories(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Category)); setCategoriesLoading(false) },
-      (err) => { logger.error('[GroupData] categories error:', err); setCategoriesLoading(false) },
+      (err) => { logger.error('[GroupData] categories error:', err); addToast('資料同步失敗，請檢查網路連線', 'error'); setCategoriesLoading(false) },
     )
     return unsub
   }, [groupId])
@@ -121,7 +123,7 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
     )
     const unsub = onSnapshot(q,
       (snap) => { setNotifications(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AppNotification)); setNotificationsLoading(false) },
-      (err) => { logger.error('[GroupData] notifications error:', err.message); setNotificationsLoading(false) },
+      (err) => { logger.error('[GroupData] notifications error:', err.message); addToast('資料同步失敗，請檢查網路連線', 'error'); setNotificationsLoading(false) },
     )
     return unsub
   }, [groupId, user])
