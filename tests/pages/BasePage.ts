@@ -1,12 +1,16 @@
 import { type Page, type Locator, expect } from '@playwright/test'
 
+// App basePath — always '/family-ledger-web' per next.config.ts
+const BASE_PATH = '/family-ledger-web'
+
 export abstract class BasePage {
   readonly page: Page
   readonly url: string
 
   constructor(page: Page, url: string = '') {
     this.page = page
-    this.url = url
+    // Prepend basePath so page objects resolve correctly from the origin.
+    this.url = `${BASE_PATH}${url}`
   }
 
   async goto(): Promise<void> {

@@ -1,5 +1,4 @@
 import { defineConfig, devices } from '@playwright/test'
-import path from 'path'
 
 export default defineConfig({
   testDir: './tests',
@@ -12,7 +11,9 @@ export default defineConfig({
     ['list'],
   ],
   use: {
-    baseURL: process.env.CI ? 'http://localhost:3013/family-ledger-web' : 'http://localhost:3013',
+    // baseURL is always the origin — the app always runs under /family-ledger-web basePath.
+    // Tests use explicit /family-ledger-web/ paths so absolute paths resolve correctly.
+    baseURL: 'http://localhost:3013',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -25,7 +26,7 @@ export default defineConfig({
   ],
   webServer: {
     command: process.env.CI ? 'npx next start -p 3013' : 'PORT=3013 npm run dev',
-    url: process.env.CI ? 'http://localhost:3013/family-ledger-web' : 'http://localhost:3013',
+    url: 'http://localhost:3013/family-ledger-web',
     reuseExistingServer: true,
     timeout: 180 * 1000,
     env: {
