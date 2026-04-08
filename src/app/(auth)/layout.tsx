@@ -6,6 +6,7 @@ import { GroupDataProvider } from '@/lib/group-data-context'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { NavShell } from '@/components/nav-shell'
+import { ConnectionBanner } from '@/components/connection-banner'
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -28,6 +29,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <GroupProvider>
       <GroupDataProvider>
+        <ConnectionBanner />
         <NavShell>{children}</NavShell>
       </GroupDataProvider>
     </GroupProvider>
