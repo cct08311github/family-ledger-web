@@ -36,3 +36,30 @@ export function useMonthlyExpenses(expenses: Expense[]) {
 export function useRecentExpenses(expenses: Expense[], count: number) {
   return useMemo(() => expenses.slice(0, count), [expenses, count])
 }
+
+/** 取得今日支出 */
+export function getTodayExpenses(expenses: Expense[]): Expense[] {
+  const today = new Date()
+  const y = today.getFullYear()
+  const m = today.getMonth()
+  const d = today.getDate()
+  return expenses.filter((e) => {
+    const ed = toDate(e.date)
+    return ed.getFullYear() === y && ed.getMonth() === m && ed.getDate() === d
+  })
+}
+
+/** 取得指定週的支出（weekOffset: 0=本週, -1=上週） */
+export function getWeekExpenses(expenses: Expense[], weekOffset = 0): Expense[] {
+  const now = new Date()
+  const day = now.getDay()
+  const diffToMonday = day === 0 ? 6 : day - 1
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diffToMonday + weekOffset * 7)
+  monday.setHours(0, 0, 0, 0)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 7)
+  return expenses.filter((e) => {
+    const ed = toDate(e.date)
+    return ed >= monday && ed < sunday
+  })
+}

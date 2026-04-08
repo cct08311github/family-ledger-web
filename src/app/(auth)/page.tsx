@@ -6,6 +6,7 @@ import { useExpenses, useMonthlyExpenses, useRecentExpenses } from '@/lib/hooks/
 import { useSettlements } from '@/lib/hooks/use-settlements'
 import { useMembers } from '@/lib/hooks/use-members'
 import { simplifyDebts } from '@/lib/services/split-calculator'
+import { TodaySummary } from '@/components/today-summary'
 import { joinGroupByInviteCode } from '@/lib/services/group-service'
 import { currency, toDate, fmtDate } from '@/lib/utils'
 
@@ -90,8 +91,11 @@ export default function HomePage() {
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto">
+      {/* 今日/本週摘要 */}
+      <TodaySummary expenses={expenses} loading={dataLoading} />
+
       {/* Dashboard grid: 桌面版 2 欄，手機版單欄 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-4 md:mt-6">
 
         {/* 月支出摘要 — 桌面版橫跨兩欄 */}
         <div className="md:col-span-2 card p-6 md:p-8 space-y-4 animate-fade-up stagger-1">
