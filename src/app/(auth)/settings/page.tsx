@@ -480,7 +480,6 @@ function JoinGroupBlock() {
       autoJoinTriggered.current = true
       handleJoin()
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [joinParam])
 
   return (

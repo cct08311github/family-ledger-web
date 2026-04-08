@@ -3,8 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useGroup } from '@/lib/hooks/use-group'
-import { useAuth } from '@/lib/auth'
 import { useNotifications } from '@/lib/hooks/use-notifications'
 import { GroupSwitcher } from '@/components/group-switcher'
 
@@ -18,8 +16,6 @@ const navItems = [
 
 export function NavShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const { group } = useGroup()
-  const { user } = useAuth()
   const { unreadCount } = useNotifications()
   const [fabOpen, setFabOpen] = useState(false)
   const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false)

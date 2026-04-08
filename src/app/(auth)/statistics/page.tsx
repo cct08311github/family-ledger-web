@@ -118,7 +118,7 @@ function SummaryCards({ expenses }: { expenses: Expense[] }) {
 // ── Page ───────────────────────────────────────────────────────
 
 export default function StatisticsPage() {
-  const { group, loading: groupLoading } = useGroup()
+  const { loading: groupLoading } = useGroup()
   const { expenses, loading: expLoading } = useExpenses()
   const { members, loading: membersLoading } = useMembers()
 
