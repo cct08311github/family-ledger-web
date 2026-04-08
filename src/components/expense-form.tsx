@@ -138,7 +138,11 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
       setError('請填寫必要欄位')
       return
     }
-    const saveAmt = parseFloat(amount) || 0
+    const saveAmt = parseFloat(amount)
+    if (!saveAmt || saveAmt <= 0) {
+      setError('金額必須大於 0')
+      return
+    }
     const splits = isShared ? buildSplits() : []
     if (isShared && splitMethod !== 'equal') {
       const splitSum = splits.reduce((s, sp) => s + sp.shareAmount, 0)
@@ -181,6 +185,12 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   const amt = parseFloat(amount) || 0
   const pCount = participantIds.size || 1
 
+  // Compute derived values for real-time indicators
+  const percentParticipants = members.filter((m) => participantIds.has(m.id))
+  const percentTotal = percentParticipants.reduce((s, m) => s + (percentages[m.id] ?? 0), 0)
+  const customParticipants = members.filter((m) => participantIds.has(m.id))
+  const customTotal = customParticipants.reduce((s, m) => s + (customAmounts[m.id] ?? 0), 0)
+
   return (
     <div className="space-y-5">
       {/* 日期 */}
@@ -215,7 +225,7 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         <label className="text-sm font-medium mb-1 block">金額</label>
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted-foreground)]">NT$</span>
-          <input type="number" value={amount} placeholder="0"
+          <input type="number" inputMode="decimal" min="1" step="1" value={amount} placeholder="0"
             onChange={(e) => setAmount(e.target.value)}
             className="w-full h-11 rounded-lg border border-[var(--border)] bg-[var(--card)] pl-12 pr-3 text-sm" />
         </div>
@@ -303,35 +313,50 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
             })}
           </div>
 
-          {/* 比例/自訂輸入 */}
-          {splitMethod === 'percentage' && members.filter((m) => participantIds.has(m.id)).map((m) => (
-            <div key={m.id} className="flex items-center gap-2">
-              <span className="w-16 text-sm">{m.name}</span>
-              <input type="number" placeholder="%" value={percentages[m.id] ?? ''}
-                onChange={(e) => setPercentages({ ...percentages, [m.id]: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) })}
-                className="flex-1 h-9 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm" />
-              <span className="text-xs text-[var(--muted-foreground)]">%</span>
-            </div>
-          ))}
+          {/* 比例輸入 */}
+          {splitMethod === 'percentage' && (
+            <>
+              {percentParticipants.map((m) => (
+                <div key={m.id} className="flex items-center gap-2">
+                  <span className="w-16 text-sm">{m.name}</span>
+                  <input type="number" placeholder="%" value={percentages[m.id] ?? ''}
+                    onChange={(e) => setPercentages({ ...percentages, [m.id]: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) })}
+                    className="flex-1 h-9 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm" />
+                  <span className="text-xs text-[var(--muted-foreground)]">%</span>
+                </div>
+              ))}
+              <div className={`text-xs ${percentTotal !== 100 ? 'text-[var(--destructive)]' : 'text-[var(--muted-foreground)]'}`}>
+                目前合計: {percentTotal}%{percentTotal !== 100 ? ' （須等於 100%）' : ''}
+              </div>
+            </>
+          )}
 
-          {splitMethod === 'custom' && members.filter((m) => participantIds.has(m.id)).map((m) => (
-            <div key={m.id} className="flex items-center gap-2">
-              <span className="w-16 text-sm">{m.name}</span>
-              <input type="number" placeholder="NT$" value={customAmounts[m.id] ?? ''}
-                onChange={(e) => setCustomAmounts({ ...customAmounts, [m.id]: Math.max(0, parseFloat(e.target.value) || 0) })}
-                className="flex-1 h-9 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm" />
-            </div>
-          ))}
+          {/* 自訂金額輸入 */}
+          {splitMethod === 'custom' && (
+            <>
+              {customParticipants.map((m) => (
+                <div key={m.id} className="flex items-center gap-2">
+                  <span className="w-16 text-sm">{m.name}</span>
+                  <input type="number" placeholder="NT$" value={customAmounts[m.id] ?? ''}
+                    onChange={(e) => setCustomAmounts({ ...customAmounts, [m.id]: Math.max(0, parseFloat(e.target.value) || 0) })}
+                    className="flex-1 h-9 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm" />
+                </div>
+              ))}
+              <div className={`text-xs ${amt > 0 && customTotal !== amt ? 'text-[var(--destructive)]' : 'text-[var(--muted-foreground)]'}`}>
+                已分配 NT$ {customTotal} / NT$ {amt}{amt > 0 && customTotal !== amt ? ' （總和須等於支出金額）' : ''}
+              </div>
+            </>
+          )}
 
           {/* 預覽 */}
           {amt > 0 && (
             <div className="rounded-lg p-3 text-sm space-y-1" style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 90%)' }}>
               <div className="font-medium">拆帳預覽</div>
               {splitMethod === 'equal' && <div>每人 NT$ {Math.round(amt / pCount)}（共 {pCount} 人）</div>}
-              {splitMethod === 'percentage' && members.filter((m) => participantIds.has(m.id)).map((m) => (
+              {splitMethod === 'percentage' && percentParticipants.map((m) => (
                 <div key={m.id}>{m.name}：{percentages[m.id] ?? 0}% = NT$ {Math.round(amt * (percentages[m.id] ?? 0) / 100)}</div>
               ))}
-              {splitMethod === 'custom' && members.filter((m) => participantIds.has(m.id)).map((m) => (
+              {splitMethod === 'custom' && customParticipants.map((m) => (
                 <div key={m.id}>{m.name}：NT$ {customAmounts[m.id] ?? 0}</div>
               ))}
             </div>
