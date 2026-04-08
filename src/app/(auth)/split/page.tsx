@@ -7,7 +7,8 @@ import { useExpenses } from '@/lib/hooks/use-expenses'
 import { useSettlements } from '@/lib/hooks/use-settlements'
 import { useMembers } from '@/lib/hooks/use-members'
 import { calculateNetBalances, simplifyDebts } from '@/lib/services/split-calculator'
-import { addSettlement, deleteSettlement } from '@/lib/services/settlement-service'
+import { addSettlement, addSettlements, deleteSettlement } from '@/lib/services/settlement-service'
+import { useToast } from '@/components/toast'
 import { currency, signedCurrency, toDate, fmtDateFull } from '@/lib/utils'
 import { useAuth } from '@/lib/auth'
 
@@ -125,6 +126,8 @@ export default function SplitPage() {
   } | null>(null)
   const [copied, setCopied] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [settlingAll, setSettlingAll] = useState(false)
+  const { addToast } = useToast()
 
   // Auto-open transfer dialog when navigated with ?action=transfer (once only)
   const transferTriggered = useRef(false)
@@ -134,6 +137,28 @@ export default function SplitPage() {
       setSettling({})
     }
   }, [searchParams])
+
+  async function handleSettleAll() {
+    if (!group || debts.length === 0) return
+    if (!confirm(`確定要一次結清 ${debts.length} 筆債務嗎？`)) return
+    setSettlingAll(true)
+    try {
+      const actor = user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined
+      await addSettlements(group.id, debts.map((d) => ({
+        fromMemberId: d.from,
+        toMemberId: d.to,
+        fromMemberName: d.fromName,
+        toMemberName: d.toName,
+        amount: d.amount,
+      })), actor)
+      addToast(`已結清 ${debts.length} 筆債務`, 'success')
+    } catch (e) {
+      logger.error('[SplitPage] Failed to settle all:', e)
+      addToast('批次結清失敗', 'error')
+    } finally {
+      setSettlingAll(false)
+    }
+  }
 
   async function handleDeleteSettlement(id: string) {
     if (!group) return
@@ -260,6 +285,15 @@ export default function SplitPage() {
           >
             + 記錄轉帳
           </button>
+          {debts.length > 1 && (
+            <button
+              onClick={handleSettleAll}
+              disabled={settlingAll}
+              className="rounded-2xl px-5 py-3 text-sm font-semibold btn-primary btn-press transition-all disabled:opacity-50"
+            >
+              {settlingAll ? '結清中...' : `✅ 全部結清 (${debts.length})`}
+            </button>
+          )}
           <button
             onClick={shareReport}
             className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm font-semibold text-[var(--muted-foreground)] hover:bg-[var(--muted)] btn-press transition-all"

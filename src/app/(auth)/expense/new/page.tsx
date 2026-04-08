@@ -1,16 +1,22 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ExpenseForm } from '@/components/expense-form'
 import { VoiceInput } from '@/components/voice-input'
 import { useCategories } from '@/lib/hooks/use-categories'
+import { useExpenses } from '@/lib/hooks/use-expenses'
 import type { ParsedExpense } from '@/lib/services/local-expense-parser'
 import { useRef } from 'react'
 
 export default function NewExpensePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { categories } = useCategories()
+  const { expenses } = useExpenses()
   const availableCategories = categories.filter((c) => c.isActive).map((c) => c.name)
+
+  const duplicateId = searchParams.get('duplicate')
+  const duplicateSource = duplicateId ? expenses.find((e) => e.id === duplicateId) : undefined
 
   // Expose a setter that ExpenseForm can call back to us via ref
   const onVoiceParsedRef = useRef<((_result: ParsedExpense) => void) | null>(null)
@@ -29,6 +35,7 @@ export default function NewExpensePage() {
         />
       </div>
       <ExpenseForm
+        duplicateFrom={duplicateSource}
         onSaved={() => router.push('/records')}
         onVoiceParsedRef={onVoiceParsedRef}
       />

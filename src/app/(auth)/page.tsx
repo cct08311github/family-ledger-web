@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useExpenses, useMonthlyExpenses, useRecentExpenses } from '@/lib/hooks/use-expenses'
 import { useSettlements } from '@/lib/hooks/use-settlements'
@@ -9,6 +10,7 @@ import { simplifyDebts } from '@/lib/services/split-calculator'
 import { TodaySummary } from '@/components/today-summary'
 import { joinGroupByInviteCode } from '@/lib/services/group-service'
 import { currency, toDate, fmtDate } from '@/lib/utils'
+import { QuickAddBar } from '@/components/quick-add-bar'
 
 function NoGroupView() {
   const [code, setCode] = useState('')
@@ -59,6 +61,7 @@ function NoGroupView() {
 }
 
 export default function HomePage() {
+  const router = useRouter()
   const { group, loading: groupLoading } = useGroup()
   const { expenses, loading: expLoading } = useExpenses()
   const { settlements } = useSettlements()
@@ -90,7 +93,10 @@ export default function HomePage() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-4 md:space-y-6">
+      {/* 快速記帳 */}
+      <QuickAddBar />
+
       {/* 今日/本週摘要 */}
       <TodaySummary expenses={expenses} loading={dataLoading} />
 
@@ -168,7 +174,7 @@ export default function HomePage() {
           ) : (
             <div className="space-y-1">
               {recent.map((e) => (
-                <div key={e.id} className="flex items-center gap-3 py-2 rounded-lg hover:bg-[var(--muted)] px-2 -mx-2 transition-colors">
+                <div key={e.id} className="group flex items-center gap-3 py-2 rounded-lg hover:bg-[var(--muted)] px-2 -mx-2 transition-colors">
                   <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0" style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 85%)' }}>
                     {e.isShared ? '👥' : '👤'}
                   </div>
@@ -179,6 +185,13 @@ export default function HomePage() {
                     </div>
                   </div>
                   <div className="font-semibold text-sm">{currency(e.amount)}</div>
+                  <button
+                    onClick={() => router.push(`/expense/new?duplicate=${e.id}`)}
+                    title="複製此筆"
+                    className="opacity-0 group-hover:opacity-100 md:block hidden text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-opacity text-xs"
+                  >
+                    📋
+                  </button>
                 </div>
               ))}
             </div>
