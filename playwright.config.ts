@@ -12,7 +12,7 @@ export default defineConfig({
     ['list'],
   ],
   use: {
-    baseURL: 'http://localhost:3013',
+    baseURL: process.env.CI ? 'http://localhost:3013/family-ledger-web' : 'http://localhost:3013',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
