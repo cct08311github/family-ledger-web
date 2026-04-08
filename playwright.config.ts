@@ -25,7 +25,7 @@ export default defineConfig({
   ],
   webServer: {
     command: process.env.CI ? 'npx next start -p 3013' : 'PORT=3013 npm run dev',
-    url: 'http://localhost:3013',
+    url: process.env.CI ? 'http://localhost:3013/family-ledger-web' : 'http://localhost:3013',
     reuseExistingServer: true,
     timeout: 180 * 1000,
     env: {
