@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, serverTimestamp, Timestamp } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, serverTimestamp, Timestamp, writeBatch } from 'firebase/firestore'
 import { db, auth } from '@/lib/firebase'
 import { addActivityLog } from './activity-log-service'
 import { currency } from '@/lib/utils'
@@ -50,6 +50,52 @@ export async function addSettlement(groupId: string, data: NewSettlement, actor?
     }
   }
   return ref.id
+}
+
+export async function addSettlements(
+  groupId: string,
+  settlements: Array<{ fromMemberId: string; toMemberId: string; fromMemberName: string; toMemberName: string; amount: number }>,
+  actor?: Actor,
+): Promise<void> {
+  const uid = auth.currentUser?.uid
+  if (!uid) throw new Error('Not authenticated')
+
+  const batch = writeBatch(db)
+  const today = Timestamp.fromDate(new Date())
+
+  for (const s of settlements) {
+    const ref = doc(collection(db, 'groups', groupId, 'settlements'))
+    batch.set(ref, {
+      groupId,
+      fromMemberId: s.fromMemberId,
+      toMemberId: s.toMemberId,
+      fromMemberName: s.fromMemberName,
+      toMemberName: s.toMemberName,
+      amount: s.amount,
+      note: '批次結清',
+      date: today,
+      createdAt: serverTimestamp(),
+      createdBy: uid,
+    })
+  }
+
+  await batch.commit()
+
+  if (actor) {
+    try {
+      for (const s of settlements) {
+        await addActivityLog(groupId, {
+          action: 'settlement_created',
+          actorId: actor.id,
+          actorName: actor.name,
+          description: `批次結清：${s.fromMemberName} → ${s.toMemberName} ${currency(s.amount)}`,
+          entityId: '',
+        })
+      }
+    } catch (e) {
+      logger.error('[SettlementService] Failed to log batch activity:', e)
+    }
+  }
 }
 
 export async function deleteSettlement(groupId: string, settlementId: string, actor?: Actor): Promise<void> {
