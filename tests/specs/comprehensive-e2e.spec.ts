@@ -1,7 +1,7 @@
 /**
  * Comprehensive E2E Tests — family-ledger-web
  *
- * Targets: http://127.0.0.1:3001/family-ledger-web (production build via PM2)
+ * Targets: http://localhost:3013/family-ledger-web (via Playwright webServer)
  * No Firebase Emulator required — tests run against live app.
  *
  * Coverage:
@@ -15,11 +15,16 @@
  *  8. Settings page — renders
  *  9. Records page — renders
  * 10. Statistics page — renders
+ *
+ * Note: The app always runs under /family-ledger-web basePath (next.config.ts).
+ * baseURL in playwright.config.ts is the bare origin (http://localhost:3013),
+ * so all page.goto() calls must include the /family-ledger-web prefix explicitly.
  */
 
 import { test, expect, type Page } from '@playwright/test'
 
-const BASE = 'http://127.0.0.1:3001/family-ledger-web'
+// App basePath — always '/family-ledger-web' per next.config.ts
+const BASE = '/family-ledger-web'
 const SS = 'playwright-report/screenshots'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────

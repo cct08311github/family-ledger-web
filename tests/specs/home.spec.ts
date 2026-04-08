@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test'
 import { HomePage } from '../pages/HomePage'
 import { createTestUser, signInWithEmailPassword, deleteTestUser, skipIfEmulatorUnavailable } from '../helpers/test-auth'
 
+// App basePath — always '/family-ledger-web' per next.config.ts
+const BASE = '/family-ledger-web'
+
 /**
  * 首頁儀表板測試
  *
@@ -36,14 +39,14 @@ test.describe('首頁儀表板 (Home Dashboard)', () => {
 
   test('TC-HOME-001: 首頁 URL 可訪問', async ({ page }) => {
     // 測試首頁是否可訪問（可能會 redirect 到 login）
-    const response = await page.goto('/')
+    const response = await page.goto(`${BASE}/`)
     expect(response?.ok()).toBeTruthy()
     await page.waitForLoadState('domcontentloaded')
   })
 
   test('TC-HOME-002: 響應式設計 - 桌面視圖', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 })
-    await page.goto('/')
+    await page.goto(`${BASE}/`)
     await page.waitForLoadState('domcontentloaded')
 
     // 檢查頁面有基本結構
@@ -53,7 +56,7 @@ test.describe('首頁儀表板 (Home Dashboard)', () => {
 
   test('TC-HOME-003: 響應式設計 - 移動視圖', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 })
-    await page.goto('/')
+    await page.goto(`${BASE}/`)
     await page.waitForLoadState('domcontentloaded')
 
     // 檢查頁面有基本結構

@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test'
 import { createTestUser, signInWithEmailPassword, deleteTestUser, skipIfEmulatorUnavailable } from '../helpers/test-auth'
 
+// App basePath — always '/family-ledger-web' per next.config.ts
+const BASE = '/family-ledger-web'
+
 /**
  * 語音輸入測試
  *
@@ -33,7 +36,7 @@ test.describe('語音輸入 (Voice Input)', () => {
   })
 
   test('TC-VOICE-001: 語音輸入按鈕需要認證', async ({ page }) => {
-    await page.goto('/expense/new')
+    await page.goto(`${BASE}/expense/new`)
     await page.waitForLoadState('networkidle')
 
     const voiceButton = page.locator('button[title*="語音"], button:has-text("🎤")')
@@ -41,7 +44,7 @@ test.describe('語音輸入 (Voice Input)', () => {
   })
 
   test('TC-VOICE-002: 語音按鈕可點擊需要認證', async ({ page }) => {
-    await page.goto('/expense/new')
+    await page.goto(`${BASE}/expense/new`)
     await page.waitForLoadState('networkidle')
 
     const voiceButton = page.locator('button[title*="語音"], button:has-text("🎤")').first()
@@ -49,7 +52,7 @@ test.describe('語音輸入 (Voice Input)', () => {
   })
 
   test('TC-VOICE-003: 描述自動完成需要認證', async ({ page }) => {
-    await page.goto('/expense/new')
+    await page.goto(`${BASE}/expense/new`)
     await page.waitForLoadState('networkidle')
 
     const descInput = page.locator('input[placeholder*="晚餐"]')
@@ -58,7 +61,7 @@ test.describe('語音輸入 (Voice Input)', () => {
   })
 
   test('TC-VOICE-004: 語音 API 可用性檢測需要認證', async ({ page }) => {
-    await page.goto('/expense/new')
+    await page.goto(`${BASE}/expense/new`)
     await page.waitForLoadState('networkidle')
 
     const speechApiAvailable = await page.evaluate(() => {
