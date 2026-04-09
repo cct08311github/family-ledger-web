@@ -192,7 +192,7 @@ export default function HomePage() {
                   <button
                     onClick={() => router.push(`/expense/new?duplicate=${e.id}`)}
                     title="複製此筆"
-                    className="opacity-0 group-hover:opacity-100 md:block hidden text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-opacity text-xs"
+                    className="md:opacity-0 md:group-hover:opacity-100 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-opacity text-xs flex-shrink-0"
                   >
                     📋
                   </button>
