@@ -51,6 +51,8 @@ export interface FamilyGroup {
   ownerUid?: string
   memberUids: string[]
   inviteCode?: string | null
+  /** Optional monthly budget target in NT$. null/undefined = not set. */
+  monthlyBudget?: number | null
   createdAt: Timestamp
   updatedAt: Timestamp
 }

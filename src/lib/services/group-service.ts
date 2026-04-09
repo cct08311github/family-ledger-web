@@ -68,7 +68,10 @@ export async function createGroup(name: string, isFirst = false): Promise<string
   return ref.id
 }
 
-export async function updateGroup(groupId: string, data: { name?: string; isPrimary?: boolean }): Promise<void> {
+export async function updateGroup(
+  groupId: string,
+  data: { name?: string; isPrimary?: boolean; monthlyBudget?: number | null },
+): Promise<void> {
   const ref = doc(db, 'groups', groupId)
   await updateDoc(ref, { ...data, updatedAt: Timestamp.now() })
 }

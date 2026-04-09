@@ -13,6 +13,7 @@ import { createGroup, updateGroup, deleteGroup, refreshInviteCode, joinGroupByIn
 import { addCategory, updateCategory } from '@/lib/services/category-service'
 import { addActivityLog } from '@/lib/services/activity-log-service'
 import { useRouter } from 'next/navigation'
+import { BudgetSection } from '@/components/budget-section'
 import type { FamilyMember, Category } from '@/lib/types'
 
 import { logger } from '@/lib/logger'
@@ -655,6 +656,10 @@ export default function SettingsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <Section title="📂 群組管理">
           <GroupManagementSection />
+        </Section>
+
+        <Section title="🎯 月度預算">
+          <BudgetSection />
         </Section>
 
         <Section title={`👥 成員管理${group ? ` — ${group.name}` : ''}`}>

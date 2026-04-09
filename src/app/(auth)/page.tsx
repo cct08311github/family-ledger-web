@@ -12,6 +12,7 @@ import { joinGroupByInviteCode } from '@/lib/services/group-service'
 import { currency, toDate, fmtDate } from '@/lib/utils'
 import { QuickAddBar } from '@/components/quick-add-bar'
 import { WeeklyDigest } from '@/components/weekly-digest'
+import { BudgetProgress } from '@/components/budget-progress'
 
 function NoGroupView() {
   const [code, setCode] = useState('')
@@ -103,6 +104,9 @@ export default function HomePage() {
 
       {/* 今日/本週摘要 */}
       <TodaySummary expenses={expenses} loading={dataLoading} />
+
+      {/* 月度預算進度 */}
+      <BudgetProgress group={group} expenses={expenses} />
 
       {/* Dashboard grid: 桌面版 2 欄，手機版單欄 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-4 md:mt-6">
