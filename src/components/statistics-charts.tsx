@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import Link from 'next/link'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -108,7 +109,24 @@ function CategoryPieChart({ expenses }: { expenses: Expense[] }) {
   )
 }
 
-function CategoryLeaderboard({ expenses, prevExpenses }: { expenses: Expense[]; prevExpenses: Expense[] }) {
+function CategoryLeaderboard({
+  expenses,
+  prevExpenses,
+  selectedMonth,
+}: {
+  expenses: Expense[]
+  prevExpenses: Expense[]
+  selectedMonth: { year: number; month: number }
+}) {
+  // Build date range for the selected month: first day → last day
+  const monthRange = useMemo(() => {
+    const start = new Date(selectedMonth.year, selectedMonth.month, 1)
+    const end = new Date(selectedMonth.year, selectedMonth.month + 1, 0)
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    return { start: fmt(start), end: fmt(end) }
+  }, [selectedMonth])
+
   const data = useMemo(() => {
     const cur: Record<string, number> = {}
     for (const e of expenses) {
@@ -133,9 +151,14 @@ function CategoryLeaderboard({ expenses, prevExpenses }: { expenses: Expense[]; 
   if (data.length === 0) return <EmptyState message="本月尚無支出資料" />
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-1">
       {data.map(({ cat, amount, diff, pct }) => (
-        <div key={cat} className="flex items-center gap-3 text-sm">
+        <Link
+          key={cat}
+          href={`/records?category=${encodeURIComponent(cat)}&start=${monthRange.start}&end=${monthRange.end}`}
+          className="flex items-center gap-3 text-sm py-1.5 px-2 -mx-2 rounded-lg hover:bg-[var(--muted)] transition-colors cursor-pointer"
+          title={`查看 ${cat} 的所有記錄`}
+        >
           <div className="w-20 font-medium truncate">{cat}</div>
           <div className="flex-1 h-2 rounded-full bg-[var(--muted)] overflow-hidden">
             <div
@@ -155,7 +178,7 @@ function CategoryLeaderboard({ expenses, prevExpenses }: { expenses: Expense[]; 
               </span>
             )}
           </div>
-        </div>
+        </Link>
       ))}
     </div>
   )
@@ -232,7 +255,11 @@ export default function StatisticsCharts({
           </h2>
         </div>
         <div className="p-5">
-          <CategoryLeaderboard expenses={monthExpenses} prevExpenses={prevMonthExpenses} />
+          <CategoryLeaderboard
+            expenses={monthExpenses}
+            prevExpenses={prevMonthExpenses}
+            selectedMonth={selectedMonth}
+          />
         </div>
       </div>
 

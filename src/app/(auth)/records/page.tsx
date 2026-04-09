@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useExpenses } from '@/lib/hooks/use-expenses'
 import { useMembers } from '@/lib/hooks/use-members'
@@ -20,15 +21,16 @@ export default function RecordsPage() {
   const { members } = useMembers()
   const { categories } = useCategories()
   const { user } = useAuth()
+  const searchParams = useSearchParams()
 
   const [filter, setFilter] = useState<FilterType>('全部')
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [dateStart, setDateStart] = useState('')
-  const [dateEnd, setDateEnd] = useState('')
+  const [dateStart, setDateStart] = useState(() => searchParams.get('start') ?? '')
+  const [dateEnd, setDateEnd] = useState(() => searchParams.get('end') ?? '')
   const [payerFilter, setPayerFilter] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState(() => searchParams.get('category') ?? '')
 
   // Debounce search input by 300ms
   useEffect(() => {
