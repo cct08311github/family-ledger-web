@@ -130,6 +130,7 @@ export default function SplitPage() {
   const [copied, setCopied] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [settlingAll, setSettlingAll] = useState(false)
+  const [showAllSettlements, setShowAllSettlements] = useState(false)
   const { addToast } = useToast()
 
   // Auto-open transfer dialog when navigated with ?action=transfer (once only)
@@ -412,7 +413,7 @@ export default function SplitPage() {
           <div className="card p-5 space-y-3 animate-fade-up stagger-3">
             <div className="font-semibold">🧾 結算紀錄</div>
             <div className="space-y-2">
-              {settlements.slice(0, 10).map((s) => (
+              {(showAllSettlements ? settlements : settlements.slice(0, 10)).map((s) => (
                 <div key={s.id} className="flex items-center gap-3 py-1">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
                     ✓
@@ -437,10 +438,21 @@ export default function SplitPage() {
                   </button>
                 </div>
               ))}
-              {settlements.length > 10 && (
-                <p className="text-xs text-[var(--muted-foreground)] text-center pt-1">
-                  還有 {settlements.length - 10} 筆歷史記錄
-                </p>
+              {settlements.length > 10 && !showAllSettlements && (
+                <button
+                  onClick={() => setShowAllSettlements(true)}
+                  className="w-full text-xs text-[var(--primary)] hover:text-[var(--foreground)] font-medium text-center pt-2 transition-colors"
+                >
+                  展開全部（還有 {settlements.length - 10} 筆）
+                </button>
+              )}
+              {showAllSettlements && settlements.length > 10 && (
+                <button
+                  onClick={() => setShowAllSettlements(false)}
+                  className="w-full text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] text-center pt-2 transition-colors"
+                >
+                  收合
+                </button>
               )}
             </div>
           </div>
