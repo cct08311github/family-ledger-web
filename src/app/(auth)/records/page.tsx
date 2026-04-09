@@ -286,6 +286,13 @@ export default function RecordsPage() {
                         >
                           ✏️
                         </Link>
+                        <Link
+                          href={`/expense/new?duplicate=${e.id}`}
+                          className="p-1.5 rounded-md hover:bg-[var(--muted)] text-[var(--muted-foreground)]"
+                          title="複製"
+                        >
+                          📋
+                        </Link>
                         <button
                           onClick={async () => {
                             if (!confirm(`確定要刪除「${e.description}」嗎？`)) return
