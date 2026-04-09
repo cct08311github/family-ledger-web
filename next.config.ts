@@ -2,6 +2,7 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   basePath: '/family-ledger-web',
+  skipTrailingSlashRedirect: true,
   outputFileTracingRoot: __dirname,
   compress: true,
   poweredByHeader: false,

@@ -8,14 +8,15 @@ const port = process.env.PORT || 3013
 app.prepare().then(() => {
   const BASE = '/family-ledger-web'
   createServer((req, res) => {
-    // Tailscale serve strips the /family-ledger-web prefix before forwarding.
-    // Prepend it back so Next.js basePath routing works correctly.
-    if (!req.url.startsWith(BASE)) {
-      req.url = BASE + req.url
-    }
-    // Strip trailing slash to prevent Next.js 308 redirects (which browsers cache permanently)
-    if (req.url !== BASE && req.url.endsWith('/')) {
-      req.url = req.url.slice(0, -1)
+    // Tailscale serve proxies /family-ledger-web/* to this server,
+    // stripping the prefix. Prepend it back for Next.js basePath routing.
+    const qIdx = (req.url || '/').indexOf('?')
+    const pathname = qIdx >= 0 ? req.url.slice(0, qIdx) : req.url
+    const search = qIdx >= 0 ? req.url.slice(qIdx) : ''
+
+    if (!pathname.startsWith(BASE)) {
+      const clean = pathname !== '/' && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
+      req.url = BASE + clean + search
     }
     handle(req, res)
   }).listen(port, () => {
