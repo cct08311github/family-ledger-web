@@ -89,26 +89,45 @@ function MonthPicker({ value, onChange }: { value: { year: number; month: number
 
 // ── Summary cards ──────────────────────────────────────────────
 
-function SummaryCards({ expenses }: { expenses: Expense[] }) {
+function DiffBadge({ current, previous }: { current: number; previous: number }) {
+  if (previous === 0) {
+    if (current === 0) return null
+    return <span className="text-[10px] text-[var(--muted-foreground)]">上月無資料</span>
+  }
+  const diff = Math.round(((current - previous) / previous) * 100)
+  if (diff === 0) return <span className="text-[10px] text-[var(--muted-foreground)]">與上月持平</span>
+  const isUp = diff > 0
+  return (
+    <span className={`text-[10px] font-medium ${isUp ? 'text-[var(--destructive)]' : 'text-green-600 dark:text-green-400'}`}>
+      {isUp ? '↑' : '↓'} {Math.abs(diff)}% vs 上月
+    </span>
+  )
+}
+
+function SummaryCards({ expenses, prevExpenses }: { expenses: Expense[]; prevExpenses: Expense[] }) {
   const total = expenses.reduce((s, e) => s + e.amount, 0)
   const shared = expenses.filter((e) => e.isShared).reduce((s, e) => s + e.amount, 0)
   const personal = total - shared
 
+  const prevTotal = prevExpenses.reduce((s, e) => s + e.amount, 0)
+  const prevShared = prevExpenses.filter((e) => e.isShared).reduce((s, e) => s + e.amount, 0)
+  const prevPersonal = prevTotal - prevShared
+
   const items = [
-    { label: '總支出', value: total, color: 'var(--primary)' },
-    { label: '共同支出', value: shared, color: 'oklch(0.55 0.15 220)', note: '含分攤' },
-    { label: '個人支出', value: personal, color: 'oklch(0.60 0.15 60)', note: '自行負擔' },
+    { label: '總支出', value: total, prev: prevTotal, color: 'var(--primary)' },
+    { label: '共同支出', value: shared, prev: prevShared, color: 'oklch(0.55 0.15 220)' },
+    { label: '個人支出', value: personal, prev: prevPersonal, color: 'oklch(0.60 0.15 60)' },
   ]
 
   return (
     <div className="grid grid-cols-3 gap-3">
-      {items.map(({ label, value, color, note }) => (
-        <div key={label} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 text-center">
-          <p className="text-xs text-[var(--muted-foreground)] mb-1">{label}</p>
+      {items.map(({ label, value, prev, color }) => (
+        <div key={label} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 text-center space-y-1">
+          <p className="text-xs text-[var(--muted-foreground)]">{label}</p>
           <p className="text-lg font-bold" style={{ color }}>
             NT$ {value.toLocaleString()}
           </p>
-          {note && <p className="text-[10px] text-[var(--muted-foreground)] mt-0.5">{note}</p>}
+          <DiffBadge current={value} previous={prev} />
         </div>
       ))}
     </div>
@@ -137,6 +156,11 @@ export default function StatisticsPage() {
     [expenses, selectedMonth],
   )
 
+  const prevMonthExpenses = useMemo(() => {
+    const prev = new Date(selectedMonth.year, selectedMonth.month - 1, 1)
+    return filterByMonth(expenses, prev.getFullYear(), prev.getMonth())
+  }, [expenses, selectedMonth])
+
   if (groupLoading || expLoading || membersLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -153,12 +177,13 @@ export default function StatisticsPage() {
       </div>
 
       {/* Summary */}
-      <SummaryCards expenses={monthExpenses} />
+      <SummaryCards expenses={monthExpenses} prevExpenses={prevMonthExpenses} />
 
       {/* Charts — lazily loaded to avoid including recharts in initial bundle */}
       <StatisticsCharts
         allExpenses={expenses}
         monthExpenses={monthExpenses}
+        prevMonthExpenses={prevMonthExpenses}
         memberNames={memberNames}
         selectedMonth={selectedMonth}
       />

@@ -108,6 +108,59 @@ function CategoryPieChart({ expenses }: { expenses: Expense[] }) {
   )
 }
 
+function CategoryLeaderboard({ expenses, prevExpenses }: { expenses: Expense[]; prevExpenses: Expense[] }) {
+  const data = useMemo(() => {
+    const cur: Record<string, number> = {}
+    for (const e of expenses) {
+      cur[e.category] = (cur[e.category] ?? 0) + e.amount
+    }
+    const prev: Record<string, number> = {}
+    for (const e of prevExpenses) {
+      prev[e.category] = (prev[e.category] ?? 0) + e.amount
+    }
+    const total = Object.values(cur).reduce((s, v) => s + v, 0)
+    return Object.entries(cur)
+      .map(([cat, amount]) => {
+        const prevAmt = prev[cat] ?? 0
+        const diff = prevAmt > 0 ? Math.round(((amount - prevAmt) / prevAmt) * 100) : null
+        const pct = total > 0 ? Math.round((amount / total) * 100) : 0
+        return { cat, amount, prevAmt, diff, pct }
+      })
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 8)
+  }, [expenses, prevExpenses])
+
+  if (data.length === 0) return <EmptyState message="本月尚無支出資料" />
+
+  return (
+    <div className="space-y-2.5">
+      {data.map(({ cat, amount, diff, pct }) => (
+        <div key={cat} className="flex items-center gap-3 text-sm">
+          <div className="w-20 font-medium truncate">{cat}</div>
+          <div className="flex-1 h-2 rounded-full bg-[var(--muted)] overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all"
+              style={{ width: `${pct}%`, backgroundColor: 'var(--primary)', opacity: 0.7 }}
+            />
+          </div>
+          <div className="w-24 text-right font-semibold">NT$ {amount.toLocaleString()}</div>
+          <div className="w-16 text-right text-xs">
+            {diff === null ? (
+              <span className="text-[var(--muted-foreground)]">新增</span>
+            ) : diff === 0 ? (
+              <span className="text-[var(--muted-foreground)]">持平</span>
+            ) : (
+              <span className={diff > 0 ? 'text-[var(--destructive)]' : 'text-green-600 dark:text-green-400'}>
+                {diff > 0 ? '↑' : '↓'} {Math.abs(diff)}%
+              </span>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function MemberBarChart({ expenses, memberNames }: { expenses: Expense[]; memberNames: Record<string, string> }) {
   const data = useMemo(() => {
     const map: Record<string, number> = {}
@@ -147,6 +200,7 @@ function MemberBarChart({ expenses, memberNames }: { expenses: Expense[]; member
 export interface StatisticsChartsProps {
   allExpenses: Expense[]
   monthExpenses: Expense[]
+  prevMonthExpenses: Expense[]
   memberNames: Record<string, string>
   selectedMonth: { year: number; month: number }
 }
@@ -154,6 +208,7 @@ export interface StatisticsChartsProps {
 export default function StatisticsCharts({
   allExpenses,
   monthExpenses,
+  prevMonthExpenses,
   memberNames,
   selectedMonth,
 }: StatisticsChartsProps) {
@@ -166,6 +221,18 @@ export default function StatisticsCharts({
         </div>
         <div className="p-5">
           <TrendChart expenses={allExpenses} />
+        </div>
+      </div>
+
+      {/* Category leaderboard with month-over-month comparison */}
+      <div className="card overflow-hidden">
+        <div className="px-5 py-3 border-b border-[var(--border)]">
+          <h2 className="font-semibold text-sm text-[var(--muted-foreground)]">
+            🏆 類別排行榜 — {selectedMonth.year}/{String(selectedMonth.month + 1).padStart(2, '0')}（vs 上月）
+          </h2>
+        </div>
+        <div className="p-5">
+          <CategoryLeaderboard expenses={monthExpenses} prevExpenses={prevMonthExpenses} />
         </div>
       </div>
 
