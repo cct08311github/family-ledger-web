@@ -45,8 +45,12 @@ export function QuickAddBar() {
   async function handleSave() {
     if (!group?.id || !user) return
     const amt = parseFloat(amount)
-    if (!description.trim() || !amt || amt <= 0) {
+    if (!description.trim() || !Number.isFinite(amt) || amt <= 0) {
       addToast('請輸入描述和金額', 'warning')
+      return
+    }
+    if (amt >= 100_000_000) {
+      addToast('金額不能超過一億', 'warning')
       return
     }
 

@@ -82,6 +82,7 @@ export async function addSettlements(
 ): Promise<void> {
   const uid = auth.currentUser?.uid
   if (!uid) throw new Error('Not authenticated')
+  if (settlements.length > 50) throw new Error('Cannot settle more than 50 debts at once')
 
   const batch = writeBatch(db)
   const today = Timestamp.fromDate(new Date())
@@ -118,6 +119,26 @@ export async function addSettlements(
     } catch (e) {
       logger.error('[SettlementService] Failed to log batch activity:', e)
     }
+  }
+
+  // Notify other group members about the batch settlement
+  try {
+    const groupSnap = await getDoc(doc(db, 'groups', groupId))
+    const memberUids: string[] = groupSnap.data()?.memberUids ?? []
+    await Promise.all(
+      memberUids
+        .filter((u) => u !== uid)
+        .map((u) =>
+          addNotification(groupId, {
+            type: 'settlement_created',
+            title: '批次結清',
+            body: `已結清 ${settlements.length} 筆債務`,
+            recipientId: u,
+          }),
+        ),
+    )
+  } catch (e) {
+    logger.error('[SettlementService] Failed to send batch notifications:', e)
   }
 }
 
