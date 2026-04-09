@@ -11,6 +11,7 @@ import { TodaySummary } from '@/components/today-summary'
 import { joinGroupByInviteCode } from '@/lib/services/group-service'
 import { currency, toDate, fmtDate } from '@/lib/utils'
 import { QuickAddBar } from '@/components/quick-add-bar'
+import { WeeklyDigest } from '@/components/weekly-digest'
 
 function NoGroupView() {
   const [code, setCode] = useState('')
@@ -96,6 +97,9 @@ export default function HomePage() {
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-4 md:space-y-6">
       {/* 快速記帳 */}
       <QuickAddBar />
+
+      {/* 每週回顧（可關閉） */}
+      <WeeklyDigest expenses={expenses} />
 
       {/* 今日/本週摘要 */}
       <TodaySummary expenses={expenses} loading={dataLoading} />
