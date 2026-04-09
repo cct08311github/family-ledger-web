@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useMembers } from '@/lib/hooks/use-members'
 import { useCategories } from '@/lib/hooks/use-categories'
@@ -164,12 +165,12 @@ export function QuickAddBar() {
         >
           {saving ? '儲存中...' : '儲存'}
         </button>
-        <a
+        <Link
           href="/expense/new"
           className="px-4 py-2 rounded-xl text-sm text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-colors flex items-center"
         >
           更多選項
-        </a>
+        </Link>
       </div>
     </div>
   )
