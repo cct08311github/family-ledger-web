@@ -11,6 +11,7 @@ import { addSettlement, addSettlements, deleteSettlement } from '@/lib/services/
 import { useToast } from '@/components/toast'
 import { currency, signedCurrency, toDate, fmtDateFull } from '@/lib/utils'
 import { useAuth } from '@/lib/auth'
+import { useCurrentMember } from '@/lib/hooks/use-current-member'
 
 import { logger } from '@/lib/logger'
 
@@ -119,6 +120,8 @@ export default function SplitPage() {
   const { settlements, loading: settlementsLoading } = useSettlements()
   const { members, loading: membersLoading } = useMembers()
   const { user } = useAuth()
+  const { currentMemberId } = useCurrentMember(group?.id)
+  const currentMember = members.find((m) => m.id === currentMemberId)
   const nameMap = Object.fromEntries(members.map((m) => [m.id, m.name]))
 
   const [settling, setSettling] = useState<{
@@ -143,7 +146,7 @@ export default function SplitPage() {
     if (!confirm(`確定要一次結清 ${debts.length} 筆債務嗎？`)) return
     setSettlingAll(true)
     try {
-      const actor = user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined
+      const actor = currentMember ? { id: currentMember.id, name: currentMember.name } : undefined
       await addSettlements(group.id, debts.map((d) => ({
         fromMemberId: d.from,
         toMemberId: d.to,
@@ -169,7 +172,7 @@ export default function SplitPage() {
     if (!confirm(`確定要刪除${desc}嗎？刪除後將影響債務計算。`)) return
     setDeletingId(id)
     try {
-      await deleteSettlement(group.id, id, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
+      await deleteSettlement(group.id, id, currentMember ? { id: currentMember.id, name: currentMember.name } : undefined)
     } catch (e) {
       logger.error('[SplitPage] Failed to delete settlement:', e)
     } finally {

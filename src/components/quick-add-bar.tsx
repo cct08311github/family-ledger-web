@@ -50,6 +50,11 @@ export function QuickAddBar() {
       return
     }
 
+    if (members.length === 0) {
+      addToast('成員資料載入中，請稍候', 'warning')
+      return
+    }
+
     const payerId = currentMemberId ?? members[0]?.id
     const payerName = members.find((m) => m.id === payerId)?.name ?? ''
     if (!payerId) {

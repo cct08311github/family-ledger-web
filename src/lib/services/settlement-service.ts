@@ -55,17 +55,19 @@ export async function addSettlement(groupId: string, data: NewSettlement, actor?
     const groupSnap = await getDoc(doc(db, 'groups', groupId))
     const memberUids: string[] = groupSnap.data()?.memberUids ?? []
     const currentUid = auth.currentUser?.uid
-    for (const uid of memberUids) {
-      if (uid !== currentUid) {
-        await addNotification(groupId, {
-          type: 'settlement_created',
-          title: '新增結算',
-          body: `${data.fromMemberName} → ${data.toMemberName}（${currency(data.amount)}）`,
-          recipientId: uid,
-          entityId: ref.id,
-        })
-      }
-    }
+    await Promise.all(
+      memberUids
+        .filter((uid) => uid !== currentUid)
+        .map((uid) =>
+          addNotification(groupId, {
+            type: 'settlement_created',
+            title: '新增結算',
+            body: `${data.fromMemberName} → ${data.toMemberName}（${currency(data.amount)}）`,
+            recipientId: uid,
+            entityId: ref.id,
+          }),
+        ),
+    )
   } catch (e) {
     logger.error('[SettlementService] Failed to send notifications:', e)
   }

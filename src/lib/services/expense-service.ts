@@ -65,17 +65,19 @@ export async function addExpense(groupId: string, input: ExpenseInput, actor?: A
       const groupSnap = await getDoc(doc(db, 'groups', groupId))
       const memberUids: string[] = groupSnap.data()?.memberUids ?? []
       const currentUid = auth.currentUser?.uid
-      for (const uid of memberUids) {
-        if (uid !== currentUid) {
-          await addNotification(groupId, {
-            type: 'expense_added',
-            title: '新增共同支出',
-            body: `${actor?.name ?? '成員'}新增了 ${input.description}（${currency(input.amount)}）`,
-            recipientId: uid,
-            entityId: id,
-          })
-        }
-      }
+      await Promise.all(
+        memberUids
+          .filter((uid) => uid !== currentUid)
+          .map((uid) =>
+            addNotification(groupId, {
+              type: 'expense_added',
+              title: '新增共同支出',
+              body: `${actor?.name ?? '成員'}新增了 ${input.description}（${currency(input.amount)}）`,
+              recipientId: uid,
+              entityId: id,
+            }),
+          ),
+      )
     } catch (e) {
       logger.error('[ExpenseService] Failed to send notifications:', e)
     }

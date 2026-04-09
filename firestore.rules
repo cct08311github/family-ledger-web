@@ -196,6 +196,7 @@ service cloud.firestore {
         allow read: if isGroupMember(groupId) && resource.data.recipientId == request.auth.uid;
         allow create: if isGroupMember(groupId)
           && request.resource.data.recipientId is string
+          && request.resource.data.recipientId in get(/databases/$(database)/documents/groups/$(groupId)).data.memberUids
           && hasReasonableSize();
         allow update: if isGroupMember(groupId)
           && resource.data.recipientId == request.auth.uid
