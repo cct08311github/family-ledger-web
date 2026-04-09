@@ -9,6 +9,7 @@ import { useCategories } from '@/lib/hooks/use-categories'
 import { deleteExpense } from '@/lib/services/expense-service'
 import { currency, toDate, fmtDateFull, paymentLabel } from '@/lib/utils'
 import { useAuth } from '@/lib/auth'
+import { FilterChips } from '@/components/filter-chips'
 import type { Expense } from '@/lib/types'
 
 type FilterType = '全部' | '共同' | '個人'
@@ -109,6 +110,18 @@ export default function RecordsPage() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Quick filter chips */}
+      <div className="mb-3">
+        <FilterChips
+          expenses={expenses}
+          dateStart={dateStart}
+          dateEnd={dateEnd}
+          categoryFilter={categoryFilter}
+          onDateRangeChange={(s, e) => { setDateStart(s); setDateEnd(e) }}
+          onCategoryChange={setCategoryFilter}
+        />
       </div>
 
       {/* Search bar + advanced toggle */}
