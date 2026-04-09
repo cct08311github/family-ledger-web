@@ -1,6 +1,7 @@
-import { addDoc, collection, deleteDoc, doc, serverTimestamp, Timestamp, writeBatch } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDoc, serverTimestamp, Timestamp, writeBatch } from 'firebase/firestore'
 import { db, auth } from '@/lib/firebase'
 import { addActivityLog } from './activity-log-service'
+import { addNotification } from './notification-service'
 import { currency } from '@/lib/utils'
 
 import { logger } from '@/lib/logger'
@@ -49,6 +50,26 @@ export async function addSettlement(groupId: string, data: NewSettlement, actor?
       logger.error('[SettlementService] Failed to log activity:', e)
     }
   }
+  // Notify other group members about the settlement
+  try {
+    const groupSnap = await getDoc(doc(db, 'groups', groupId))
+    const memberUids: string[] = groupSnap.data()?.memberUids ?? []
+    const currentUid = auth.currentUser?.uid
+    for (const uid of memberUids) {
+      if (uid !== currentUid) {
+        await addNotification(groupId, {
+          type: 'settlement_created',
+          title: '新增結算',
+          body: `${data.fromMemberName} → ${data.toMemberName}（${currency(data.amount)}）`,
+          recipientId: uid,
+          entityId: ref.id,
+        })
+      }
+    }
+  } catch (e) {
+    logger.error('[SettlementService] Failed to send notifications:', e)
+  }
+
   return ref.id
 }
 

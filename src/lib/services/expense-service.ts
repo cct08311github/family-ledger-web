@@ -1,6 +1,8 @@
-import { collection, doc, setDoc, deleteDoc, Timestamp } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { collection, doc, setDoc, deleteDoc, Timestamp, getDoc } from 'firebase/firestore'
+import { db, auth } from '@/lib/firebase'
 import { addActivityLog } from './activity-log-service'
+import { addNotification } from './notification-service'
+import { currency } from '@/lib/utils'
 import type { SplitDetail, SplitMethod, PaymentMethod } from '@/lib/types'
 
 import { logger } from '@/lib/logger'
@@ -57,6 +59,28 @@ export async function addExpense(groupId: string, input: ExpenseInput, actor?: A
       logger.error('[ExpenseService] Failed to log activity:', e)
     }
   }
+  // Notify other group members about shared expenses
+  if (input.isShared) {
+    try {
+      const groupSnap = await getDoc(doc(db, 'groups', groupId))
+      const memberUids: string[] = groupSnap.data()?.memberUids ?? []
+      const currentUid = auth.currentUser?.uid
+      for (const uid of memberUids) {
+        if (uid !== currentUid) {
+          await addNotification(groupId, {
+            type: 'expense_added',
+            title: '新增共同支出',
+            body: `${actor?.name ?? '成員'}新增了 ${input.description}（${currency(input.amount)}）`,
+            recipientId: uid,
+            entityId: id,
+          })
+        }
+      }
+    } catch (e) {
+      logger.error('[ExpenseService] Failed to send notifications:', e)
+    }
+  }
+
   return id
 }
 
