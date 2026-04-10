@@ -30,6 +30,27 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   const categoryList = firestoreCategories.length > 0
     ? firestoreCategories.filter((c) => c.isActive).map((c) => c.name)
     : FALLBACK_CATEGORIES
+
+  // Build hierarchy: top-level + their children for grouped <select>
+  const categoryGroups = (() => {
+    if (firestoreCategories.length === 0) {
+      return [{ parent: null as string | null, children: FALLBACK_CATEGORIES }]
+    }
+    const active = firestoreCategories.filter((c) => c.isActive)
+    const top = active.filter((c) => !c.parentCategoryName)
+    const childMap = new Map<string, string[]>()
+    for (const c of active) {
+      if (c.parentCategoryName) {
+        const arr = childMap.get(c.parentCategoryName) ?? []
+        arr.push(c.name)
+        childMap.set(c.parentCategoryName, arr)
+      }
+    }
+    return top.map((p) => ({
+      parent: p.name,
+      children: childMap.get(p.name) ?? [],
+    }))
+  })()
   const { user } = useAuth()
   const isEditing = !!existingExpense
 
@@ -271,7 +292,21 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         </label>
         <select value={category} onChange={(e) => { setCategory(e.target.value); setAutoCategoryFilled(false) }}
           className="w-full h-11 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm">
-          {categoryList.map((c) => <option key={c} value={c}>{c}</option>)}
+          {categoryGroups.map((group) => {
+            // If a top-level category has children, render as optgroup with parent itself + children
+            if (group.parent && group.children.length > 0) {
+              return (
+                <optgroup key={group.parent} label={group.parent}>
+                  <option value={group.parent}>{group.parent}</option>
+                  {group.children.map((c) => <option key={c} value={c}>　{c}</option>)}
+                </optgroup>
+              )
+            }
+            // Top-level without children — flat option
+            return group.parent
+              ? <option key={group.parent} value={group.parent}>{group.parent}</option>
+              : group.children.map((c) => <option key={c} value={c}>{c}</option>)
+          })}
         </select>
       </div>
 

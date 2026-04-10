@@ -8,6 +8,8 @@ export interface CategoryInput {
   sortOrder: number
   isDefault?: boolean
   isActive?: boolean
+  /** Optional: name of the parent category for sub-categories. */
+  parentCategoryName?: string | null
 }
 
 interface Actor {
@@ -16,11 +18,13 @@ interface Actor {
 }
 
 export async function addCategory(groupId: string, input: CategoryInput, actor?: Actor): Promise<string> {
+  const { parentCategoryName, ...rest } = input
   const ref = await addDoc(collection(db, 'groups', groupId, 'categories'), {
     groupId,
-    ...input,
+    ...rest,
     isDefault: input.isDefault ?? false,
     isActive: input.isActive ?? true,
+    ...(parentCategoryName ? { parentCategoryName } : {}),
     createdAt: Timestamp.now(),
   })
   if (actor) {

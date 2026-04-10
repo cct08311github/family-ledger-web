@@ -79,6 +79,8 @@ export interface Category {
   sortOrder: number
   isDefault: boolean
   isActive: boolean
+  /** Optional: parent category name for sub-categories. undefined = top-level. */
+  parentCategoryName?: string | null
 }
 
 export interface ActivityLog {
