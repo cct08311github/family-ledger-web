@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { addCategory, updateCategory, deleteCategory, reorderCategories } from '@/lib/services/category-service'
@@ -14,6 +14,7 @@ const ICONS = ['🍜', '🚗', '🛒', '🏠', '💡', '🏥', '🎬', '💰', '
 interface CategoryFormData {
   name: string
   icon: string
+  parentCategoryName: string | null
 }
 
 export default function CategoriesPage() {
@@ -23,18 +24,34 @@ export default function CategoriesPage() {
 
   const [editing, setEditing] = useState<Category | null>(null)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState<CategoryFormData>({ name: '', icon: '📱' })
+  const [form, setForm] = useState<CategoryFormData>({ name: '', icon: '📱', parentCategoryName: null })
   const [saving, setSaving] = useState(false)
 
-  function openAdd() {
+  // Group categories: top-level + their children
+  const { topLevel, childrenByParent } = useMemo(() => {
+    const top: Category[] = []
+    const childMap = new Map<string, Category[]>()
+    for (const c of categories) {
+      if (c.parentCategoryName) {
+        const arr = childMap.get(c.parentCategoryName) ?? []
+        arr.push(c)
+        childMap.set(c.parentCategoryName, arr)
+      } else {
+        top.push(c)
+      }
+    }
+    return { topLevel: top, childrenByParent: childMap }
+  }, [categories])
+
+  function openAdd(parentName: string | null = null) {
     setEditing(null)
-    setForm({ name: '', icon: '📱' })
+    setForm({ name: '', icon: '📱', parentCategoryName: parentName })
     setShowForm(true)
   }
 
   function openEdit(cat: Category) {
     setEditing(cat)
-    setForm({ name: cat.name, icon: cat.icon })
+    setForm({ name: cat.name, icon: cat.icon, parentCategoryName: cat.parentCategoryName ?? null })
     setShowForm(true)
   }
 
@@ -43,13 +60,23 @@ export default function CategoriesPage() {
     setSaving(true)
     try {
       if (editing?.id) {
-        await updateCategory(group.id, editing.id, { name: form.name.trim(), icon: form.icon }, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
+        await updateCategory(
+          group.id,
+          editing.id,
+          { name: form.name.trim(), icon: form.icon, parentCategoryName: form.parentCategoryName },
+          user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined,
+        )
       } else {
-        await addCategory(group.id, {
-          name: form.name.trim(),
-          icon: form.icon,
-          sortOrder: categories.length,
-        }, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
+        await addCategory(
+          group.id,
+          {
+            name: form.name.trim(),
+            icon: form.icon,
+            sortOrder: categories.length,
+            parentCategoryName: form.parentCategoryName,
+          },
+          user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined,
+        )
       }
       setShowForm(false)
     } catch (e) {
@@ -90,7 +117,7 @@ export default function CategoriesPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">類別管理</h1>
         <button
-          onClick={openAdd}
+          onClick={() => openAdd(null)}
           className="text-xs px-3 py-1.5 rounded-lg font-medium text-white"
           style={{ backgroundColor: 'var(--primary)' }}
         >
@@ -105,48 +132,81 @@ export default function CategoriesPage() {
         </div>
       ) : (
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
-          {categories.map((cat, i) => (
-            <div
-              key={cat.id}
-              className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border)] last:border-b-0"
-            >
-              <span className="text-xl flex-shrink-0">{cat.icon}</span>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium">{cat.name}</div>
-                {cat.isDefault && (
-                  <span className="text-xs text-[var(--muted-foreground)]">預設</span>
+          {topLevel.map((cat, i) => (
+            <div key={cat.id}>
+              {/* Top-level row */}
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border)]">
+                <span className="text-xl flex-shrink-0">{cat.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium">{cat.name}</div>
+                  {cat.isDefault && (
+                    <span className="text-xs text-[var(--muted-foreground)]">預設</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => handleReorder(i, 'up')}
+                    disabled={i === 0}
+                    className="w-7 h-7 rounded text-xs hover:bg-[var(--muted)] disabled:opacity-30 transition-colors"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    onClick={() => handleReorder(i, 'down')}
+                    disabled={i === topLevel.length - 1}
+                    className="w-7 h-7 rounded text-xs hover:bg-[var(--muted)] disabled:opacity-30 transition-colors"
+                  >
+                    ↓
+                  </button>
+                </div>
+                <button
+                  onClick={() => openAdd(cat.name)}
+                  title="新增子分類"
+                  className="text-xs px-2 py-1 rounded-lg text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
+                >
+                  ＋ 子
+                </button>
+                <button
+                  onClick={() => openEdit(cat)}
+                  className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--muted)] transition-colors text-[var(--muted-foreground)]"
+                >
+                  編輯
+                </button>
+                {!cat.isDefault && (
+                  <button
+                    onClick={() => handleDelete(cat)}
+                    className="text-xs px-2 py-1 rounded-lg text-[var(--destructive)] hover:bg-[var(--destructive)]/10 transition-colors"
+                  >
+                    刪除
+                  </button>
                 )}
               </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => handleReorder(i, 'up')}
-                  disabled={i === 0}
-                  className="w-7 h-7 rounded text-xs hover:bg-[var(--muted)] disabled:opacity-30 transition-colors"
+
+              {/* Sub-category rows */}
+              {(childrenByParent.get(cat.name) ?? []).map((sub) => (
+                <div
+                  key={sub.id}
+                  className="flex items-center gap-3 pl-12 pr-4 py-2.5 border-b border-[var(--border)] bg-[var(--muted)]/30"
                 >
-                  ↑
-                </button>
-                <button
-                  onClick={() => handleReorder(i, 'down')}
-                  disabled={i === categories.length - 1}
-                  className="w-7 h-7 rounded text-xs hover:bg-[var(--muted)] disabled:opacity-30 transition-colors"
-                >
-                  ↓
-                </button>
-              </div>
-              <button
-                onClick={() => openEdit(cat)}
-                className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--muted)] transition-colors text-[var(--muted-foreground)]"
-              >
-                編輯
-              </button>
-              {!cat.isDefault && (
-                <button
-                  onClick={() => handleDelete(cat)}
-                  className="text-xs px-2 py-1 rounded-lg text-[var(--destructive)] hover:bg-[var(--destructive)]/10 transition-colors"
-                >
-                  刪除
-                </button>
-              )}
+                  <span className="text-base flex-shrink-0">{sub.icon}</span>
+                  <div className="flex-1 min-w-0 text-sm">
+                    <span className="text-[var(--muted-foreground)] text-xs mr-2">↳</span>
+                    {sub.name}
+                  </div>
+                  <button
+                    onClick={() => openEdit(sub)}
+                    className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--muted)] transition-colors text-[var(--muted-foreground)]"
+                  >
+                    編輯
+                  </button>
+                  <button
+                    onClick={() => handleDelete(sub)}
+                    className="text-xs px-2 py-1 rounded-lg text-[var(--destructive)] hover:bg-[var(--destructive)]/10 transition-colors"
+                  >
+                    刪除
+                  </button>
+                </div>
+              ))}
             </div>
           ))}
         </div>
@@ -156,7 +216,9 @@ export default function CategoriesPage() {
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-sm mx-4 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xl p-6 space-y-4">
-            <h2 className="text-lg font-bold">{editing ? '編輯類別' : '新增類別'}</h2>
+            <h2 className="text-lg font-bold">
+              {editing ? '編輯類別' : form.parentCategoryName ? `新增「${form.parentCategoryName}」的子分類` : '新增類別'}
+            </h2>
 
             <div>
               <label className="text-xs text-[var(--muted-foreground)] mb-1 block">名稱</label>
