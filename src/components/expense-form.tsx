@@ -71,9 +71,12 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   const [participantIds, setParticipantIds] = useState<Set<string>>(new Set())
   const [percentages, setPercentages] = useState<Record<string, number>>({})
   const [customAmounts, setCustomAmounts] = useState<Record<string, number>>({})
+  const [weights, setWeights] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [autoCategoryFilled, setAutoCategoryFilled] = useState(false)
+  const [draftRestored, setDraftRestored] = useState(false)
+  const [hasDraft, setHasDraft] = useState(false)
 
   // 語音解析回填：父元件透過 ref 呼叫此函數填入欄位
   useEffect(() => {
@@ -93,6 +96,91 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   const filteredDescs = description
     ? recentDescs.filter((d) => d.toLowerCase().includes(description.toLowerCase())).slice(0, 5)
     : recentDescs.slice(0, 5)
+
+  // 草稿 key（per group + user，僅用於新增模式）
+  const draftKey = !isEditing && group?.id && user?.uid
+    ? `expense-draft-${group.id}-${user.uid}`
+    : null
+  const DRAFT_MAX_AGE_MS = 24 * 60 * 60 * 1000 // 24 hours
+
+  // 偵測既有草稿（mount-only）
+  useEffect(() => {
+    if (!draftKey || isEditing) return
+    if (typeof window === 'undefined') return
+    try {
+      const raw = sessionStorage.getItem(draftKey)
+      if (!raw) return
+      const data = JSON.parse(raw) as { savedAt: number; description?: string }
+      if (Date.now() - data.savedAt > DRAFT_MAX_AGE_MS) {
+        sessionStorage.removeItem(draftKey)
+        return
+      }
+      // Only show banner if there's something meaningful in the draft
+      if (data.description && data.description.trim()) {
+        setHasDraft(true)
+      }
+    } catch {
+      sessionStorage.removeItem(draftKey)
+    }
+  }, [draftKey, isEditing])
+
+  // 自動儲存草稿（debounced）
+  useEffect(() => {
+    if (!draftKey || isEditing) return
+    if (typeof window === 'undefined') return
+    // Don't auto-save until user has typed something
+    if (!description.trim() && !amount) return
+    const handle = setTimeout(() => {
+      try {
+        sessionStorage.setItem(
+          draftKey,
+          JSON.stringify({
+            savedAt: Date.now(),
+            description,
+            amount,
+            category,
+            paymentMethod,
+            isShared,
+            splitMethod,
+            note,
+          }),
+        )
+      } catch { /* quota exceeded — silent */ }
+    }, 500)
+    return () => clearTimeout(handle)
+  }, [draftKey, isEditing, description, amount, category, paymentMethod, isShared, splitMethod, note])
+
+  function restoreDraft() {
+    if (!draftKey) return
+    try {
+      const raw = sessionStorage.getItem(draftKey)
+      if (!raw) return
+      const data = JSON.parse(raw) as {
+        description?: string
+        amount?: string
+        category?: string
+        paymentMethod?: PaymentMethod
+        isShared?: boolean
+        splitMethod?: SplitMethod
+        note?: string
+      }
+      if (data.description) setDescription(data.description)
+      if (data.amount) setAmount(data.amount)
+      if (data.category) setCategory(data.category)
+      if (data.paymentMethod) setPaymentMethod(data.paymentMethod)
+      if (typeof data.isShared === 'boolean') setIsShared(data.isShared)
+      if (data.splitMethod) setSplitMethod(data.splitMethod)
+      if (data.note) setNote(data.note)
+      setDraftRestored(true)
+      setHasDraft(false)
+    } catch { /* silent */ }
+  }
+
+  function dismissDraft() {
+    if (!draftKey) return
+    sessionStorage.removeItem(draftKey)
+    setHasDraft(false)
+  }
 
   // 智能分類建議：描述變更時查詢學習到的規則（僅新增模式，不影響編輯）
   useEffect(() => {
@@ -139,6 +227,16 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
           }
           setCustomAmounts(customs)
         }
+        if (source.splitMethod === 'weight') {
+          // Can't recover exact original weights from share amounts; derive proportional integers
+          const participantSplits = source.splits.filter((s) => s.isParticipant)
+          const minShare = Math.min(...participantSplits.map((s) => s.shareAmount).filter((a) => a > 0))
+          const ws: Record<string, number> = {}
+          for (const s of participantSplits) {
+            ws[s.memberId] = minShare > 0 ? Math.max(1, Math.round(s.shareAmount / minShare)) : 1
+          }
+          setWeights(ws)
+        }
       } else {
         setParticipantIds(new Set(members.map((m) => m.id)))
       }
@@ -162,6 +260,18 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         // Distribute rounding remainder to last participant to ensure sum matches amount
         if (i === participants.length - 1) {
           const total = participants.reduce((s, pm) => s + Math.round(amt * (percentages[pm.id] ?? 0) / 100), 0)
+          share += amt - total
+        }
+      } else if (splitMethod === 'weight') {
+        const totalWeight = participants.reduce((s, pm) => s + (weights[pm.id] ?? 1), 0)
+        const myWeight = weights[m.id] ?? 1
+        share = totalWeight > 0 ? Math.round((amt * myWeight) / totalWeight) : 0
+        // Distribute rounding remainder to last participant
+        if (i === participants.length - 1) {
+          const total = participants.reduce((s, pm) => {
+            const w = weights[pm.id] ?? 1
+            return s + Math.round((amt * w) / (totalWeight || 1))
+          }, 0)
           share += amt - total
         }
       } else {
@@ -220,6 +330,10 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
       }
       // Learn from this save to improve future auto-categorization
       learnFromExpense(group.id, input.description, input.category).catch(() => { /* silent */ })
+      // Clear draft after successful save
+      if (draftKey && typeof window !== 'undefined') {
+        sessionStorage.removeItem(draftKey)
+      }
       onSaved()
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '儲存失敗')
@@ -236,9 +350,41 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   const percentTotal = percentParticipants.reduce((s, m) => s + (percentages[m.id] ?? 0), 0)
   const customParticipants = members.filter((m) => participantIds.has(m.id))
   const customTotal = customParticipants.reduce((s, m) => s + (customAmounts[m.id] ?? 0), 0)
+  const weightParticipants = members.filter((m) => participantIds.has(m.id))
+  const totalWeight = weightParticipants.reduce((s, m) => s + (weights[m.id] ?? 1), 0)
 
   return (
     <div className="space-y-5">
+      {/* 草稿恢復 banner */}
+      {hasDraft && !draftRestored && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-xl border border-[var(--border)] p-3"
+          style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 92%)' }}
+        >
+          <span className="text-lg" aria-hidden>📝</span>
+          <div className="flex-1 text-sm">
+            <div className="font-medium">發現未完成的記帳草稿</div>
+            <div className="text-xs text-[var(--muted-foreground)] mt-0.5">
+              要繼續上次的編輯嗎？
+            </div>
+          </div>
+          <button
+            onClick={restoreDraft}
+            className="text-xs px-3 py-1.5 rounded-lg font-medium text-white"
+            style={{ backgroundColor: 'var(--primary)' }}
+          >
+            恢復
+          </button>
+          <button
+            onClick={dismissDraft}
+            className="text-xs px-2 py-1.5 rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--muted)]"
+          >
+            捨棄
+          </button>
+        </div>
+      )}
+
       {/* 日期 */}
       <div>
         <label className="text-sm font-medium mb-1 block">日期</label>
@@ -353,10 +499,10 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
       {isShared && (
         <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 space-y-3">
           <label className="text-sm font-medium block">分帳方式</label>
-          <div className="flex gap-2">
-            {([['equal', '均分'], ['percentage', '比例'], ['custom', '自訂']] as const).map(([v, l]) => (
+          <div className="grid grid-cols-4 gap-2">
+            {([['equal', '均分'], ['weight', '加權'], ['percentage', '比例'], ['custom', '自訂']] as const).map(([v, l]) => (
               <button key={v} onClick={() => setSplitMethod(v)}
-                className={`flex-1 h-9 rounded-lg text-sm font-medium border transition ${
+                className={`h-9 rounded-lg text-sm font-medium border transition ${
                   splitMethod === v
                     ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]'
                     : 'border-[var(--border)] hover:bg-[var(--muted)]'
@@ -401,6 +547,41 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
             </>
           )}
 
+          {/* 加權輸入 */}
+          {splitMethod === 'weight' && (
+            <>
+              <div className="text-xs text-[var(--muted-foreground)]">
+                💡 適合情侶 2:1、大人 2、小孩 1 等場景
+              </div>
+              {weightParticipants.map((m) => {
+                const w = weights[m.id] ?? 1
+                const pct = totalWeight > 0 ? ((w / totalWeight) * 100) : 0
+                const myAmt = totalWeight > 0 ? Math.round((amt * w) / totalWeight) : 0
+                return (
+                  <div key={m.id} className="flex items-center gap-2">
+                    <span className="w-16 text-sm">{m.name}</span>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min="1"
+                      step="1"
+                      placeholder="權重"
+                      value={w}
+                      onChange={(e) => setWeights({ ...weights, [m.id]: Math.max(1, Math.round(parseFloat(e.target.value) || 1)) })}
+                      className="w-20 h-9 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm text-center"
+                    />
+                    <span className="flex-1 text-xs text-[var(--muted-foreground)]">
+                      = {pct.toFixed(0)}% · NT$ {myAmt.toLocaleString()}
+                    </span>
+                  </div>
+                )
+              })}
+              <div className="text-xs text-[var(--muted-foreground)]">
+                總權重 {totalWeight}
+              </div>
+            </>
+          )}
+
           {/* 自訂金額輸入 */}
           {splitMethod === 'custom' && (
             <>
@@ -429,6 +610,11 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
               {splitMethod === 'custom' && customParticipants.map((m) => (
                 <div key={m.id}>{m.name}：NT$ {customAmounts[m.id] ?? 0}</div>
               ))}
+              {splitMethod === 'weight' && weightParticipants.map((m) => {
+                const w = weights[m.id] ?? 1
+                const myAmt = totalWeight > 0 ? Math.round((amt * w) / totalWeight) : 0
+                return <div key={m.id}>{m.name}（權重 {w}）：NT$ {myAmt.toLocaleString()}</div>
+              })}
             </div>
           )}
         </div>
