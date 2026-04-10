@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useExpenses, useMonthlyExpenses, useRecentExpenses } from '@/lib/hooks/use-expenses'
@@ -13,6 +13,9 @@ import { currency, toDate, fmtDate } from '@/lib/utils'
 import { QuickAddBar } from '@/components/quick-add-bar'
 import { WeeklyDigest } from '@/components/weekly-digest'
 import { BudgetProgress } from '@/components/budget-progress'
+import { generatePendingRecurring } from '@/lib/services/recurring-generator'
+import { confirmPendingExpense } from '@/lib/services/recurring-generator'
+import { logger } from '@/lib/logger'
 
 function NoGroupView() {
   const [code, setCode] = useState('')
@@ -74,6 +77,17 @@ export default function HomePage() {
   const nameMap = useMemo(() => Object.fromEntries(members.map((m) => [m.id, m.name])), [members])
   const debts = useMemo(() => simplifyDebts(expenses, settlements, nameMap), [expenses, settlements, nameMap])
 
+  // Pending confirmation: auto-generated recurring expenses
+  const pendingExpenses = useMemo(() => expenses.filter((e) => e.pendingConfirm), [expenses])
+
+  // Trigger recurring expense generation on page load
+  useEffect(() => {
+    if (!group?.id) return
+    generatePendingRecurring(group.id).catch((err) =>
+      logger.error('[Home] recurring generation failed:', err),
+    )
+  }, [group?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const now = new Date()
   const monthLabel = `${now.getFullYear()}年 ${now.getMonth() + 1}月`
   const total = useMemo(() => monthly.reduce((s, e) => s + e.amount, 0), [monthly])
@@ -98,6 +112,35 @@ export default function HomePage() {
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-4 md:space-y-6">
       {/* 快速記帳 */}
       <QuickAddBar />
+
+      {/* 定期支出待確認 */}
+      {pendingExpenses.length > 0 && (
+        <div className="card p-4 flex items-center gap-3 animate-fade-up"
+          style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 92%)' }}>
+          <span className="text-xl">📌</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">{pendingExpenses.length} 筆定期支出已自動記錄</p>
+            <p className="text-xs text-[var(--muted-foreground)]">點擊確認或前往記錄頁檢視</p>
+          </div>
+          <button
+            onClick={async () => {
+              for (const e of pendingExpenses) {
+                if (e.amount > 0) {
+                  await confirmPendingExpense(group!.id, e.id)
+                }
+              }
+            }}
+            className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium text-white"
+            style={{ backgroundColor: 'var(--primary)' }}>
+            全部確認
+          </button>
+          <button
+            onClick={() => router.push('/records')}
+            className="shrink-0 px-3 py-1.5 rounded-lg text-xs border border-[var(--border)] hover:bg-[var(--muted)]">
+            查看
+          </button>
+        </div>
+      )}
 
       {/* 每週回顧（可關閉） */}
       <WeeklyDigest expenses={expenses} />

@@ -30,6 +30,10 @@ export interface Expense {
   createdBy: string
   createdAt: Timestamp
   updatedAt: Timestamp
+  /** Source recurring expense template ID */
+  recurringId?: string | null
+  /** Auto-generated expense pending user confirmation */
+  pendingConfirm?: boolean
 }
 
 export interface FamilyMember {
@@ -119,4 +123,35 @@ export interface TransactionRule {
   hitCount: number
   createdAt: Timestamp
   lastUsed: Timestamp
+}
+
+export type RecurringFrequency = 'monthly' | 'weekly' | 'yearly'
+
+export interface RecurringExpense {
+  id: string
+  groupId: string
+  description: string
+  /** null = variable amount (generates draft requiring user to fill in) */
+  amount: number | null
+  category: string
+  payerId: string
+  payerName: string
+  isShared: boolean
+  splitMethod: SplitMethod
+  splits: SplitDetail[]
+  paymentMethod: PaymentMethod
+  frequency: RecurringFrequency
+  /** Day of month (1-31) for monthly frequency */
+  dayOfMonth?: number
+  /** Day of week (0=Sun, 1=Mon, ..., 6=Sat) for weekly frequency */
+  dayOfWeek?: number
+  /** Month (1-12) for yearly frequency */
+  monthOfYear?: number
+  startDate: Timestamp
+  endDate?: Timestamp | null
+  lastGeneratedAt?: Timestamp | null
+  isPaused: boolean
+  createdBy: string
+  createdAt: Timestamp
+  updatedAt: Timestamp
 }
