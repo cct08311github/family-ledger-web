@@ -6,6 +6,7 @@ import { useMembers } from '@/lib/hooks/use-members'
 import { useExpenses } from '@/lib/hooks/use-expenses'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { addExpense, updateExpense, type ExpenseInput } from '@/lib/services/expense-service'
+import { learnFromExpense, suggestCategory } from '@/lib/services/transaction-rules-service'
 import { useAuth } from '@/lib/auth'
 import { toDate } from '@/lib/utils'
 import type { Expense, SplitMethod, PaymentMethod, SplitDetail } from '@/lib/types'
@@ -51,6 +52,7 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   const [customAmounts, setCustomAmounts] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [autoCategoryFilled, setAutoCategoryFilled] = useState(false)
 
   // 語音解析回填：父元件透過 ref 呼叫此函數填入欄位
   useEffect(() => {
@@ -70,6 +72,27 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   const filteredDescs = description
     ? recentDescs.filter((d) => d.toLowerCase().includes(description.toLowerCase())).slice(0, 5)
     : recentDescs.slice(0, 5)
+
+  // 智能分類建議：描述變更時查詢學習到的規則（僅新增模式，不影響編輯）
+  useEffect(() => {
+    if (isEditing || !group?.id || description.trim().length < 2) {
+      setAutoCategoryFilled(false)
+      return
+    }
+    const trimmed = description.trim()
+    const handle = setTimeout(() => {
+      suggestCategory(group.id, trimmed)
+        .then((suggested) => {
+          if (suggested && categoryList.includes(suggested)) {
+            setCategory(suggested)
+            setAutoCategoryFilled(true)
+          }
+        })
+        .catch(() => { /* silent */ })
+    }, 300)
+    return () => clearTimeout(handle)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [description, group?.id, isEditing])
 
   // 初始化參與者和付款人
   useEffect(() => {
@@ -174,6 +197,8 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
       } else {
         await addExpense(group.id, input, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
       }
+      // Learn from this save to improve future auto-categorization
+      learnFromExpense(group.id, input.description, input.category).catch(() => { /* silent */ })
       onSaved()
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '儲存失敗')
@@ -233,8 +258,18 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
 
       {/* 類別 */}
       <div>
-        <label className="text-sm font-medium mb-1 block">類別</label>
-        <select value={category} onChange={(e) => setCategory(e.target.value)}
+        <label className="text-sm font-medium mb-1 flex items-center gap-2">
+          類別
+          {autoCategoryFilled && (
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--primary)]/10 text-[var(--primary)]"
+              title="根據過去記錄自動分類，你可以手動修改"
+            >
+              ⚡ 自動分類
+            </span>
+          )}
+        </label>
+        <select value={category} onChange={(e) => { setCategory(e.target.value); setAutoCategoryFilled(false) }}
           className="w-full h-11 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm">
           {categoryList.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>

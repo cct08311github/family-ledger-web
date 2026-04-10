@@ -9,6 +9,7 @@ import { useCurrentMember } from '@/lib/hooks/use-current-member'
 import { useAuth } from '@/lib/auth'
 import { addExpense, type ExpenseInput } from '@/lib/services/expense-service'
 import { parseExpense } from '@/lib/services/local-expense-parser'
+import { learnFromExpense, suggestCategory } from '@/lib/services/transaction-rules-service'
 import { useToast } from '@/components/toast'
 import { logger } from '@/lib/logger'
 
@@ -24,6 +25,7 @@ export function QuickAddBar() {
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState('')
+  const [autoFilled, setAutoFilled] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const activeCategories = useMemo(
@@ -33,13 +35,32 @@ export function QuickAddBar() {
 
   function handleDescriptionChange(text: string) {
     setDescription(text)
+    // Clear auto-fill marker when user types (rule lookup will re-apply if matched)
+    setAutoFilled(false)
     if (text.length >= 2) {
       try {
         const parsed = parseExpense(text)
         if (parsed.amount > 0 && !amount) setAmount(String(parsed.amount))
         if (parsed.category && parsed.category !== '其他') setCategory(parsed.category)
       } catch { /* ignore parse errors */ }
+
+      // Query learned rules for category suggestion (non-blocking)
+      if (group?.id) {
+        suggestCategory(group.id, text)
+          .then((suggested) => {
+            if (suggested) {
+              setCategory(suggested)
+              setAutoFilled(true)
+            }
+          })
+          .catch(() => { /* silent */ })
+      }
     }
+  }
+
+  function handleCategoryClick(cat: string) {
+    setCategory(cat === category ? '' : cat)
+    setAutoFilled(false) // user-picked, no longer auto-filled
   }
 
   async function handleSave() {
@@ -93,10 +114,13 @@ export function QuickAddBar() {
     setSaving(true)
     try {
       await addExpense(group.id, input, { id: payerId, name: payerName })
+      // Learn the (description, category) pair for future auto-fill suggestions
+      learnFromExpense(group.id, description.trim(), input.category).catch(() => { /* silent */ })
       addToast(`已記錄 ${description.trim()} $${amt}`, 'success')
       setDescription('')
       setAmount('')
       setCategory('')
+      setAutoFilled(false)
       setExpanded(false)
     } catch (e) {
       logger.error('[QuickAdd] Failed:', e)
@@ -150,11 +174,19 @@ export function QuickAddBar() {
       </div>
 
       {/* 類別 chips */}
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {autoFilled && category && (
+          <span
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--primary)]/10 text-[var(--primary)]"
+            title="根據過去記錄自動分類"
+          >
+            ⚡ 自動分類
+          </span>
+        )}
         {activeCategories.map((cat) => (
           <button
             key={cat}
-            onClick={() => setCategory(cat === category ? '' : cat)}
+            onClick={() => handleCategoryClick(cat)}
             className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
               cat === category
                 ? 'bg-[var(--primary)] text-white'

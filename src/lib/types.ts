@@ -101,3 +101,20 @@ export interface AppNotification {
   isRead: boolean
   createdAt: Timestamp
 }
+
+/**
+ * Smart transaction rule learned from user behavior.
+ * When the same description+category pair appears 3+ times, a rule is created.
+ * Subsequent entries with matching description auto-fill the category.
+ */
+export interface TransactionRule {
+  id: string
+  /** Normalized description pattern (lowercased, trimmed) */
+  pattern: string
+  /** Category name (matches Category.name since expenses store category by name) */
+  category: string
+  /** Number of times this (description, category) pair has been seen */
+  hitCount: number
+  createdAt: Timestamp
+  lastUsed: Timestamp
+}

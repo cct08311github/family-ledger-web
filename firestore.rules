@@ -190,6 +190,28 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
+      // ─── 智能分類規則（Smart Transaction Rules） ───
+      // 由 expense-form 在使用者儲存費用時自動累計同 (pattern, category) 的命中次數
+      // 達到門檻（3+）後下次輸入相同描述會自動建議類別
+
+      match /transactionRules/{ruleId} {
+        allow read: if isGroupMember(groupId);
+        allow create: if isGroupMember(groupId)
+          && hasReasonableSize()
+          && request.resource.data.pattern is string
+          && request.resource.data.pattern.size() > 0
+          && request.resource.data.pattern.size() <= 200
+          && request.resource.data.category is string
+          && request.resource.data.hitCount is number
+          && request.resource.data.hitCount >= 1;
+        allow update: if isGroupMember(groupId)
+          && hasReasonableSize()
+          && request.resource.data.pattern == resource.data.pattern
+          && request.resource.data.category == resource.data.category
+          && request.resource.data.hitCount is number;
+        allow delete: if isGroupMember(groupId);
+      }
+
       // ─── 通知 ───
 
       match /notifications/{notifId} {
