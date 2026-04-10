@@ -674,6 +674,16 @@ export default function SettingsPage() {
           </Section>
         )}
 
+        <Section title="🔄 定期支出">
+          <div className="space-y-2">
+            <p className="text-sm text-[var(--muted-foreground)]">自動記錄每月房租、訂閱、保險等固定支出</p>
+            <button onClick={() => router.push('/settings/recurring')}
+              className="w-full py-2.5 rounded-lg text-sm font-medium border border-[var(--border)] hover:bg-[var(--muted)] transition-colors">
+              管理定期支出 →
+            </button>
+          </div>
+        </Section>
+
         <Section title="🎨 外觀與主題">
           <ThemeSection />
         </Section>

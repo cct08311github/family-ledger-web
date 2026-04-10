@@ -6,6 +6,7 @@ import { useMembers } from '@/lib/hooks/use-members'
 import { useExpenses } from '@/lib/hooks/use-expenses'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { addExpense, updateExpense, type ExpenseInput } from '@/lib/services/expense-service'
+import { addRecurringExpense } from '@/lib/services/recurring-expense-service'
 import { learnFromExpense, suggestCategory } from '@/lib/services/transaction-rules-service'
 import { useAuth } from '@/lib/auth'
 import { toDate } from '@/lib/utils'
@@ -77,6 +78,8 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   const [autoCategoryFilled, setAutoCategoryFilled] = useState(false)
   const [draftRestored, setDraftRestored] = useState(false)
   const [hasDraft, setHasDraft] = useState(false)
+  const [setAsRecurring, setSetAsRecurring] = useState(false)
+  const [recurringDayOfMonth, setRecurringDayOfMonth] = useState(() => new Date().getDate())
 
   // 語音解析回填：父元件透過 ref 呼叫此函數填入欄位
   useEffect(() => {
@@ -327,6 +330,24 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         await updateExpense(group.id, existingExpense!.id, input, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
       } else {
         await addExpense(group.id, input, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
+      }
+      // Create recurring template if toggled
+      if (setAsRecurring && !isEditing) {
+        addRecurringExpense(group.id, {
+          description: input.description,
+          amount: input.amount,
+          category: input.category,
+          payerId: input.payerId,
+          payerName: input.payerName,
+          isShared: input.isShared,
+          splitMethod: input.splitMethod,
+          splits: input.splits,
+          paymentMethod: input.paymentMethod,
+          frequency: 'monthly',
+          dayOfMonth: recurringDayOfMonth,
+          startDate: input.date,
+          createdBy: input.createdBy,
+        }).catch(() => { /* silent — template creation is non-critical */ })
       }
       // Learn from this save to improve future auto-categorization
       learnFromExpense(group.id, input.description, input.category).catch(() => { /* silent */ })
@@ -626,6 +647,30 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="備註..."
           className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm resize-none" />
       </div>
+
+      {/* 設為定期 — 僅新增模式顯示 */}
+      {!isEditing && (
+        <div className="rounded-xl border border-[var(--border)] p-3 space-y-2">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={setAsRecurring} onChange={(e) => setSetAsRecurring(e.target.checked)}
+              className="w-4 h-4 rounded" />
+            <span className="text-sm font-medium">🔁 同時設為每月定期支出</span>
+          </label>
+          {setAsRecurring && (
+            <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
+              <span>每月</span>
+              <select value={recurringDayOfMonth}
+                onChange={(e) => setRecurringDayOfMonth(Number(e.target.value))}
+                className="rounded border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-sm">
+                {Array.from({ length: 31 }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>{i + 1}</option>
+                ))}
+              </select>
+              <span>號自動記錄</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {error && <p className="text-sm" style={{ color: 'var(--destructive)' }}>{error}</p>}
 
