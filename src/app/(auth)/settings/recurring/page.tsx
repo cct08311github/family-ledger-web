@@ -94,7 +94,7 @@ export default function RecurringPage() {
       orderBy('createdAt', 'desc'),
     )
     const unsub = onSnapshot(q, (snap) => {
-      setItems(snap.docs.map((d) => d.data() as RecurringExpense))
+      setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as RecurringExpense))
     })
     return unsub
   }, [group?.id])
@@ -134,13 +134,15 @@ export default function RecurringPage() {
 
   function buildSplits(payerId: string) {
     if (!form.isShared || members.length === 0) return []
-    const share = Math.round(100 / members.length)
-    const remainder = 100 - share * (members.length - 1)
+    const amount = form.amount ? Number(form.amount) : 0
+    const perPerson = members.length > 0 ? Math.round(amount / members.length) : 0
+    const remainder = members.length > 0 ? amount - perPerson * (members.length - 1) : 0
+    // Store actual currency amounts; the generator will recompute these from the template amount
     return members.map((m, i) => ({
       memberId: m.id,
       memberName: m.name,
-      shareAmount: i === 0 ? remainder : share,
-      paidAmount: m.id === payerId ? 100 : 0,
+      shareAmount: i === 0 ? remainder : perPerson,
+      paidAmount: m.id === payerId ? amount : 0,
       isParticipant: true,
     }))
   }
