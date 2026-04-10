@@ -298,7 +298,7 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
               return (
                 <optgroup key={group.parent} label={group.parent}>
                   <option value={group.parent}>{group.parent}</option>
-                  {group.children.map((c) => <option key={c} value={c}>　{c}</option>)}
+                  {group.children.map((c) => <option key={c} value={c}>&emsp;{c}</option>)}
                 </optgroup>
               )
             }

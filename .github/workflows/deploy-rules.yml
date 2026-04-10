@@ -27,9 +27,9 @@ jobs:
       - name: Deploy Firestore Rules
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_DEPLOY_TOKEN }}
-        run: firebase deploy --only firestore:rules --project ${{ vars.FIREBASE_PROJECT_ID }}
+        run: firebase deploy --only firestore:rules --project family-ledger-784ed
 
       - name: Deploy Storage Rules
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_DEPLOY_TOKEN }}
-        run: firebase deploy --only storage:rules --project ${{ vars.FIREBASE_PROJECT_ID }}
+        run: firebase deploy --only storage:rules --project family-ledger-784ed
