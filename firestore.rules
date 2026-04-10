@@ -212,6 +212,29 @@ service cloud.firestore {
         allow delete: if isGroupMember(groupId);
       }
 
+      // ─── 定期支出範本（Recurring Expenses） ───
+
+      match /recurringExpenses/{recurringId} {
+        allow read: if isGroupMember(groupId);
+        allow create: if isGroupMember(groupId)
+          && hasReasonableSize()
+          && request.resource.data.description is string
+          && request.resource.data.description.size() > 0
+          && request.resource.data.description.size() <= 200
+          && request.resource.data.category is string
+          && request.resource.data.payerId is string
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.frequency in ['monthly', 'weekly', 'yearly'];
+        allow update: if isGroupMember(groupId)
+          && (resource.data.createdBy == request.auth.uid || isGroupOwner(groupId))
+          && hasReasonableSize()
+          && request.resource.data.description is string
+          && request.resource.data.description.size() > 0
+          && request.resource.data.description.size() <= 200;
+        allow delete: if isGroupMember(groupId)
+          && (resource.data.createdBy == request.auth.uid || isGroupOwner(groupId));
+      }
+
       // ─── 通知 ───
 
       match /notifications/{notifId} {
