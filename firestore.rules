@@ -230,7 +230,8 @@ service cloud.firestore {
           && hasReasonableSize()
           && request.resource.data.description is string
           && request.resource.data.description.size() > 0
-          && request.resource.data.description.size() <= 200;
+          && request.resource.data.description.size() <= 200
+          && request.resource.data.createdBy == resource.data.createdBy;
         allow delete: if isGroupMember(groupId)
           && (resource.data.createdBy == request.auth.uid || isGroupOwner(groupId));
       }

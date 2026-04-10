@@ -23,15 +23,19 @@ export interface RecurringExpenseInput {
   monthOfYear?: number
   startDate: Date
   endDate?: Date | null
-  createdBy: string
+  // createdBy is resolved from auth.currentUser inside addRecurringExpense
+  createdBy?: string
 }
 
 export async function addRecurringExpense(groupId: string, input: RecurringExpenseInput): Promise<string> {
+  const uid = auth.currentUser?.uid
+  if (!uid) throw new Error('User must be authenticated to create a recurring expense')
+
   const id = genId()
   const now = Timestamp.now()
   const ref = doc(collection(db, 'groups', groupId, 'recurringExpenses'), id)
 
-  const { startDate, endDate, ...rest } = input
+  const { startDate, endDate, createdBy: _ignored, ...rest } = input
   // Filter out undefined values — Firestore rejects them
   const cleaned = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined))
   await setDoc(ref, {
@@ -42,6 +46,7 @@ export async function addRecurringExpense(groupId: string, input: RecurringExpen
     endDate: endDate ? Timestamp.fromDate(endDate) : null,
     lastGeneratedAt: null,
     isPaused: false,
+    createdBy: uid,
     createdAt: now,
     updatedAt: now,
   })

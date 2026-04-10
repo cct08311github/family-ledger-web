@@ -1,5 +1,5 @@
 import { collection, doc, getDocs, writeBatch, Timestamp, getDoc, setDoc } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { db, auth } from '@/lib/firebase'
 import { logger } from '@/lib/logger'
 import type { RecurringExpense } from '@/lib/types'
 
@@ -22,6 +22,7 @@ export function getNextOccurrences(template: RecurringExpense, after: Date, befo
     while (cursor <= before) {
       if (cursor.getDay() === targetDay) {
         dates.push(new Date(cursor))
+        if (dates.length >= 12) break
       }
       cursor.setDate(cursor.getDate() + 1)
     }
@@ -40,6 +41,7 @@ export function getNextOccurrences(template: RecurringExpense, after: Date, befo
       const candidate = new Date(year, month, day, 0, 0, 0, 0)
       if (candidate > after && candidate <= before) {
         dates.push(candidate)
+        if (dates.length >= 12) break
       }
       cursor.setMonth(cursor.getMonth() + 1)
     }
@@ -53,6 +55,7 @@ export function getNextOccurrences(template: RecurringExpense, after: Date, befo
       const candidate = new Date(year, targetMonth, day, 0, 0, 0, 0)
       if (candidate > after && candidate <= before) {
         dates.push(candidate)
+        if (dates.length >= 12) break
       }
     }
   }
@@ -66,6 +69,13 @@ export function getNextOccurrences(template: RecurringExpense, after: Date, befo
  * Returns the number of expense documents written.
  */
 export async function generatePendingRecurring(groupId: string): Promise<number> {
+  // S1: ensure user is authenticated before generating expenses
+  const currentUid = auth.currentUser?.uid
+  if (!currentUid) {
+    logger.info('[RecurringGenerator] Skipping sweep — user not authenticated')
+    return 0
+  }
+
   // --- Throttle check ---
   const groupRef = doc(db, 'groups', groupId)
   const groupSnap = await getDoc(groupRef)
@@ -105,32 +115,56 @@ export async function generatePendingRecurring(groupId: string): Promise<number>
     // Skip if past endDate
     if (template.endDate && template.endDate.toDate() < now) continue
 
+    // S2: skip variable-amount templates — they can't be auto-generated meaningfully
+    if (template.amount === null) continue
+
     const after = template.lastGeneratedAt ? template.lastGeneratedAt.toDate() : template.startDate.toDate()
     const occurrences = getNextOccurrences(template, after, now)
 
     if (occurrences.length === 0) continue
 
     for (const date of occurrences) {
-      const expenseId = crypto.randomUUID()
+      // S4: use deterministic ID to prevent duplicate writes from concurrent sweeps
+      const dateKey = date.toISOString().split('T')[0]
+      const expenseId = `${template.id}_${dateKey}`
       const expenseRef = doc(db, 'groups', groupId, 'expenses', expenseId)
       const nowTs = Timestamp.now()
+
+      // C2: recompute equal splits based on the actual template amount
+      const amount = template.amount
+      const participants = template.splits.filter((s) => s.isParticipant)
+      const perPerson = participants.length > 0 ? Math.round(amount / participants.length) : 0
+      const remainder = participants.length > 0 ? amount - perPerson * (participants.length - 1) : 0
+      let participantIndex = 0
+      const computedSplits = template.splits.map((s) => {
+        if (!s.isParticipant) {
+          return { ...s, shareAmount: 0, paidAmount: s.memberId === template.payerId ? amount : 0 }
+        }
+        const shareAmount = participantIndex === 0 ? remainder : perPerson
+        participantIndex++
+        return {
+          ...s,
+          shareAmount,
+          paidAmount: s.memberId === template.payerId ? amount : 0,
+        }
+      })
 
       batch.set(expenseRef, {
         id: expenseId,
         groupId,
         date: Timestamp.fromDate(date),
         description: template.description,
-        amount: template.amount ?? 0,
+        amount,
         category: template.category,
         isShared: template.isShared,
         splitMethod: template.splitMethod,
         payerId: template.payerId,
         payerName: template.payerName,
-        splits: template.splits,
+        splits: computedSplits,
         paymentMethod: template.paymentMethod,
         recurringId: template.id,
         pendingConfirm: true,
-        createdBy: template.createdBy,
+        createdBy: currentUid,
         createdAt: nowTs,
         updatedAt: nowTs,
       })

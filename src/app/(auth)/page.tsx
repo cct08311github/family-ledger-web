@@ -13,8 +13,7 @@ import { currency, toDate, fmtDate } from '@/lib/utils'
 import { QuickAddBar } from '@/components/quick-add-bar'
 import { WeeklyDigest } from '@/components/weekly-digest'
 import { BudgetProgress } from '@/components/budget-progress'
-import { generatePendingRecurring } from '@/lib/services/recurring-generator'
-import { confirmPendingExpense } from '@/lib/services/recurring-generator'
+import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
 import { logger } from '@/lib/logger'
 
 function NoGroupView() {
