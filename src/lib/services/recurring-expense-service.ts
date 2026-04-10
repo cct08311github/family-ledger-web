@@ -32,8 +32,10 @@ export async function addRecurringExpense(groupId: string, input: RecurringExpen
   const ref = doc(collection(db, 'groups', groupId, 'recurringExpenses'), id)
 
   const { startDate, endDate, ...rest } = input
+  // Filter out undefined values — Firestore rejects them
+  const cleaned = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined))
   await setDoc(ref, {
-    ...rest,
+    ...cleaned,
     id,
     groupId,
     startDate: Timestamp.fromDate(startDate),
@@ -55,7 +57,9 @@ export async function updateRecurringExpense(
 ): Promise<void> {
   const ref = doc(db, 'groups', groupId, 'recurringExpenses', id)
   const { startDate, endDate, ...rest } = input
-  const data: Record<string, unknown> = { ...rest, updatedAt: Timestamp.now() }
+  // Filter out undefined values — Firestore rejects them
+  const cleaned = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined))
+  const data: Record<string, unknown> = { ...cleaned, updatedAt: Timestamp.now() }
 
   if (startDate !== undefined) data.startDate = Timestamp.fromDate(startDate)
   if (endDate !== undefined) data.endDate = endDate ? Timestamp.fromDate(endDate) : null
