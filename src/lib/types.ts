@@ -1,6 +1,6 @@
 import { Timestamp } from 'firebase/firestore'
 
-export type SplitMethod = 'equal' | 'percentage' | 'custom'
+export type SplitMethod = 'equal' | 'percentage' | 'custom' | 'weight'
 export type PaymentMethod = 'cash' | 'creditCard' | 'transfer'
 export type MemberRole = 'admin' | 'member'
 
