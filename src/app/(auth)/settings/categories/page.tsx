@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth'
 import type { Category } from '@/lib/types'
 
 import { logger } from '@/lib/logger'
+import { useToast } from '@/components/toast'
 
 const ICONS = ['🍜', '🚗', '🛒', '🏠', '💡', '🏥', '🎬', '💰', '📚', '👶', '🧴', '📱', '✈️', '🎁', '其他']
 
@@ -21,6 +22,7 @@ export default function CategoriesPage() {
   const { group } = useGroup()
   const { categories } = useCategories()
   const { user } = useAuth()
+  const { addToast } = useToast()
 
   const [editing, setEditing] = useState<Category | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -81,7 +83,7 @@ export default function CategoriesPage() {
       setShowForm(false)
     } catch (e) {
       logger.error('[Categories] Failed to save category:', e)
-      alert('儲存失敗，請稍後再試')
+      addToast('儲存失敗，請稍後再試', 'error')
     } finally {
       setSaving(false)
     }
@@ -93,7 +95,7 @@ export default function CategoriesPage() {
       await deleteCategory(group.id, cat.id, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined, cat.name)
     } catch (e) {
       logger.error('[Categories] Failed to delete category:', e)
-      alert('刪除失敗，請稍後再試')
+      addToast('刪除失敗，請稍後再試', 'error')
     }
   }
 
@@ -108,7 +110,7 @@ export default function CategoriesPage() {
       await reorderCategories(group.id, reordered.map((c) => c.id).filter((id): id is string => !!id))
     } catch (e) {
       logger.error('[Categories] Failed to reorder categories:', e)
-      alert('排序失敗，請稍後再試')
+      addToast('排序失敗，請稍後再試', 'error')
     }
   }
 
