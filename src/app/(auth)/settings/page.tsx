@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation'
 import { BudgetSection } from '@/components/budget-section'
 import type { FamilyMember, Category } from '@/lib/types'
 
+import { useToast } from '@/components/toast'
 import { logger } from '@/lib/logger'
 
 // ── Section wrapper ────────────────────────────────────────────
@@ -37,6 +38,7 @@ function MembersSection({ groupId }: { groupId: string }) {
   const { members, loading: membersLoading } = useMembers()
   const { currentMemberId, setCurrentMember, loading: currentMemberLoading } = useCurrentMember(groupId)
   const { user } = useAuth()
+  const { addToast } = useToast()
   const [newName, setNewName] = useState('')
   const [adding, setAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -51,7 +53,7 @@ function MembersSection({ groupId }: { groupId: string }) {
       setNewName('')
     } catch (e) {
       logger.error('[Settings] Failed to add member:', e)
-      alert('新增失敗，請稍後再試')
+      addToast('新增失敗，請稍後再試', 'error')
     } finally {
       setAdding(false)
     }
@@ -63,7 +65,7 @@ function MembersSection({ groupId }: { groupId: string }) {
       await removeMember(groupId, memberId, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined, memberName)
     } catch (e) {
       logger.error('[Settings] Failed to delete member:', e)
-      alert('刪除失敗，請稍後再試')
+      addToast('刪除失敗，請稍後再試', 'error')
     }
   }
 
@@ -75,7 +77,7 @@ function MembersSection({ groupId }: { groupId: string }) {
       setEditingId(null)
     } catch (e) {
       logger.error('[Settings] Failed to rename member:', e)
-      alert('重新命名失敗，請稍後再試')
+      addToast('重新命名失敗，請稍後再試', 'error')
     }
   }
 
@@ -99,7 +101,7 @@ function MembersSection({ groupId }: { groupId: string }) {
       }
     } catch (e) {
       logger.error('[Settings] Failed to set current member:', e)
-      alert('更新失敗，請稍後再試')
+      addToast('更新失敗，請稍後再試', 'error')
     }
   }
 
@@ -178,6 +180,7 @@ const EMOJI_PRESETS = ['🍜', '🚌', '🛒', '🏠', '💡', '🏥', '🎮', '
 
 function CategoriesSection({ groupId }: { groupId: string }) {
   const { categories } = useCategories()
+  const { addToast } = useToast()
   const [newName, setNewName] = useState('')
   const [newIcon, setNewIcon] = useState('💰')
   const [adding, setAdding] = useState(false)
@@ -202,7 +205,7 @@ function CategoriesSection({ groupId }: { groupId: string }) {
       setShowEmojiPicker(false)
     } catch (e) {
       logger.error('[Settings] Failed to add category:', e)
-      alert('新增失敗，請稍後再試')
+      addToast('新增失敗，請稍後再試', 'error')
     } finally {
       setAdding(false)
     }
@@ -214,7 +217,7 @@ function CategoriesSection({ groupId }: { groupId: string }) {
       await updateCategory(groupId, cat.id, { isActive: !cat.isActive })
     } catch (e) {
       logger.error('[Settings] Failed to toggle category:', e)
-      alert('更新失敗，請稍後再試')
+      addToast('更新失敗，請稍後再試', 'error')
     }
   }
 
@@ -509,6 +512,7 @@ function JoinGroupBlock() {
 
 function GroupManagementSection() {
   const { group, groups, setActiveGroupId, removeGroup } = useGroup()
+  const { addToast } = useToast()
   const [newName, setNewName] = useState('')
   const [creating, setCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -539,13 +543,13 @@ function GroupManagementSection() {
       setEditingId(null)
     } catch (e) {
       logger.error('[Settings] Failed to rename group:', e)
-      alert('重新命名失敗')
+      addToast('重新命名失敗', 'error')
     }
   }
 
   async function handleDelete(groupId: string, groupName: string) {
     if (groups.length <= 1) {
-      alert('至少要保留一個群組')
+      addToast('至少要保留一個群組', 'warning')
       return
     }
     if (!confirm(`確定要刪除群組「${groupName}」嗎？所有支出、結算紀錄都會一併刪除，此操作無法復原。`)) return
@@ -559,7 +563,7 @@ function GroupManagementSection() {
       removeGroup(groupId)
     } catch (e) {
       logger.error('[Settings] Failed to delete group:', e)
-      alert('刪除失敗')
+      addToast('刪除失敗', 'error')
     }
   }
 

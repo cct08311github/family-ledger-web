@@ -5,6 +5,7 @@ import { useNotifications } from '@/lib/hooks/use-notifications'
 import { useAuth } from '@/lib/auth'
 import { markAllNotificationsRead, markNotificationRead } from '@/lib/services/notification-service'
 import { toDate, fmtDateFull } from '@/lib/utils'
+import { useToast } from '@/components/toast'
 
 import { logger } from '@/lib/logger'
 
@@ -19,6 +20,7 @@ export default function NotificationsPage() {
   const { group } = useGroup()
   const { user } = useAuth()
   const { notifications, unreadCount } = useNotifications()
+  const { addToast } = useToast()
 
   async function handleMarkAllRead() {
     if (!group || !user) return
@@ -26,7 +28,7 @@ export default function NotificationsPage() {
       await markAllNotificationsRead(group.id, user.uid)
     } catch (e) {
       logger.error('[Notifications] Failed to mark all read:', e)
-      alert('標記已讀失敗，請稍後再試')
+      addToast('標記已讀失敗，請稍後再試', 'error')
     }
   }
 

@@ -1,9 +1,9 @@
-import { collection, doc, setDoc, deleteDoc, Timestamp, getDoc } from 'firebase/firestore'
+import { collection, doc, setDoc, deleteDoc, Timestamp, getDoc, getDocs, query, orderBy, limit, startAfter, DocumentSnapshot } from 'firebase/firestore'
 import { db, auth } from '@/lib/firebase'
 import { addActivityLog } from './activity-log-service'
 import { addNotification } from './notification-service'
 import { currency } from '@/lib/utils'
-import type { SplitDetail, SplitMethod, PaymentMethod } from '@/lib/types'
+import type { Expense, SplitDetail, SplitMethod, PaymentMethod } from '@/lib/types'
 
 import { logger } from '@/lib/logger'
 
@@ -107,6 +107,37 @@ export async function updateExpense(groupId: string, expenseId: string, input: P
     } catch (e) {
       logger.error('[ExpenseService] Failed to log activity:', e)
     }
+  }
+}
+
+export const LOAD_MORE_PAGE_SIZE = 50
+
+export interface LoadMoreResult {
+  expenses: Expense[]
+  hasMore: boolean
+  lastDoc: DocumentSnapshot | null
+}
+
+/**
+ * Fetches the next batch of expenses after the given cursor document.
+ * Used for cursor-based pagination beyond the initial real-time subscription (limit 200).
+ */
+export async function loadMoreExpenses(groupId: string, afterDoc: DocumentSnapshot): Promise<LoadMoreResult> {
+  if (afterDoc.ref.parent.parent?.id !== groupId) {
+    throw new Error('Cursor document does not belong to the specified group')
+  }
+  const q = query(
+    collection(db, 'groups', groupId, 'expenses'),
+    orderBy('date', 'desc'),
+    startAfter(afterDoc),
+    limit(LOAD_MORE_PAGE_SIZE),
+  )
+  const snap = await getDocs(q)
+  const expenses = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Expense)
+  return {
+    expenses,
+    hasMore: snap.docs.length === LOAD_MORE_PAGE_SIZE,
+    lastDoc: snap.docs[snap.docs.length - 1] ?? null,
   }
 }
 

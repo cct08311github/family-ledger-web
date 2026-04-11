@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useMemo, ReactNode } from 'react'
-import { collection, onSnapshot, orderBy, query, where, limit } from 'firebase/firestore'
+import { collection, onSnapshot, orderBy, query, where, limit, DocumentSnapshot } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useGroupContext } from '@/lib/group-context'
 import { useAuth } from '@/lib/auth'
@@ -22,6 +22,10 @@ interface GroupDataContextType {
   categoriesLoading: boolean
   notificationsLoading: boolean
   syncError: string | null
+  /** True when the initial subscription returned exactly 200 records (may have more) */
+  hasMoreExpenses: boolean
+  /** The last Firestore DocumentSnapshot from the initial subscription — use as startAfter cursor */
+  lastExpenseDoc: DocumentSnapshot | null
 }
 
 const GroupDataContext = createContext<GroupDataContextType>({
@@ -37,6 +41,8 @@ const GroupDataContext = createContext<GroupDataContextType>({
   categoriesLoading: true,
   notificationsLoading: true,
   syncError: null,
+  hasMoreExpenses: false,
+  lastExpenseDoc: null,
 })
 
 function getSyncErrorMessage(context: string, err: unknown): string {
@@ -59,6 +65,8 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
   const groupId = activeGroup?.id
 
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [hasMoreExpenses, setHasMoreExpenses] = useState(false)
+  const [lastExpenseDoc, setLastExpenseDoc] = useState<DocumentSnapshot | null>(null)
   const [members, setMembers] = useState<FamilyMember[]>([])
   const [settlements, setSettlements] = useState<Settlement[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -73,6 +81,8 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
   // Reset all data when group changes
   useEffect(() => {
     setExpenses([])
+    setHasMoreExpenses(false)
+    setLastExpenseDoc(null)
     setMembers([])
     setSettlements([])
     setCategories([])
@@ -88,9 +98,16 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
   // Expenses subscription
   useEffect(() => {
     if (!groupId) { setExpensesLoading(false); return }
-    const q = query(collection(db, 'groups', groupId, 'expenses'), orderBy('date', 'desc'), limit(200))
+    const EXPENSES_LIMIT = 200
+    const q = query(collection(db, 'groups', groupId, 'expenses'), orderBy('date', 'desc'), limit(EXPENSES_LIMIT))
     const unsub = onSnapshot(q,
-      (snap) => { setExpenses(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Expense)); setExpensesLoading(false); setSyncError(null) },
+      (snap) => {
+        setExpenses(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Expense))
+        setHasMoreExpenses(snap.docs.length === EXPENSES_LIMIT)
+        setLastExpenseDoc(snap.docs[snap.docs.length - 1] ?? null)
+        setExpensesLoading(false)
+        setSyncError(null)
+      },
       (err) => { logger.error('[GroupData] expenses error:', err); addToast(getSyncErrorMessage('費用資料', err), getSyncToastLevel(err)); setSyncError(getSyncErrorMessage('費用資料', err)); setExpensesLoading(false) },
     )
     return unsub
@@ -150,10 +167,10 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => ({
     expenses, members, settlements, categories, notifications, unreadCount,
     expensesLoading, membersLoading, settlementsLoading, categoriesLoading, notificationsLoading,
-    syncError,
+    syncError, hasMoreExpenses, lastExpenseDoc,
   }), [expenses, members, settlements, categories, notifications, unreadCount,
        expensesLoading, membersLoading, settlementsLoading, categoriesLoading, notificationsLoading,
-       syncError])
+       syncError, hasMoreExpenses, lastExpenseDoc])
 
   return (
     <GroupDataContext.Provider value={value}>

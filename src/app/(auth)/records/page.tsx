@@ -7,21 +7,49 @@ import { useGroup } from '@/lib/hooks/use-group'
 import { useExpenses } from '@/lib/hooks/use-expenses'
 import { useMembers } from '@/lib/hooks/use-members'
 import { useCategories } from '@/lib/hooks/use-categories'
-import { deleteExpense } from '@/lib/services/expense-service'
+import { deleteExpense, loadMoreExpenses } from '@/lib/services/expense-service'
 import { currency, toDate, fmtDateFull, paymentLabel } from '@/lib/utils'
 import { useAuth } from '@/lib/auth'
+import { useGroupData } from '@/lib/group-data-context'
 import { FilterChips } from '@/components/filter-chips'
+import { useToast } from '@/components/toast'
 import type { Expense } from '@/lib/types'
+import type { DocumentSnapshot } from 'firebase/firestore'
 
 type FilterType = '全部' | '共同' | '個人'
 
 export default function RecordsPage() {
   const { group } = useGroup()
-  const { expenses, loading } = useExpenses()
+  const { expenses: baseExpenses, loading } = useExpenses()
+  const { hasMoreExpenses: contextHasMore, lastExpenseDoc: contextLastDoc } = useGroupData()
   const { members } = useMembers()
   const { categories } = useCategories()
   const { user } = useAuth()
+  const { addToast } = useToast()
   const searchParams = useSearchParams()
+
+  // Extra expenses loaded via pagination beyond the initial 200
+  const [extraExpenses, setExtraExpenses] = useState<Expense[]>([])
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
+  const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null)
+
+  // Effect 1: reset extra pages only when the group changes
+  useEffect(() => {
+    setExtraExpenses([])
+    setHasMore(false)
+    setLastDoc(null)
+  }, [group?.id])
+
+  // Effect 2: sync cursor state only when we haven't paginated yet
+  useEffect(() => {
+    if (!loading && extraExpenses.length === 0) {
+      setHasMore(contextHasMore)
+      setLastDoc(contextLastDoc)
+    }
+  }, [loading, contextHasMore, contextLastDoc])
+
+  const expenses = useMemo(() => [...baseExpenses, ...extraExpenses], [baseExpenses, extraExpenses])
 
   const [filter, setFilter] = useState<FilterType>('全部')
   const [searchInput, setSearchInput] = useState('')
@@ -90,6 +118,25 @@ export default function RecordsPage() {
     setDateEnd('')
     setPayerFilter('')
     setCategoryFilter('')
+  }
+
+  async function handleLoadMore() {
+    if (!group?.id || !lastDoc || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const result = await loadMoreExpenses(group.id, lastDoc)
+      // Filter by visibility (same logic as useExpenses hook)
+      const visible = user
+        ? result.expenses.filter((e) => e.isShared || e.createdBy === user.uid)
+        : result.expenses
+      setExtraExpenses((prev) => [...prev, ...visible])
+      setHasMore(result.hasMore)
+      setLastDoc(result.lastDoc)
+    } catch {
+      addToast('載入更多失敗，請稍後再試', 'error')
+    } finally {
+      setLoadingMore(false)
+    }
   }
 
   return (
@@ -315,7 +362,7 @@ export default function RecordsPage() {
                             try {
                               await deleteExpense(group.id, e.id, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
                             } catch {
-                              alert('刪除失敗，請稍後再試')
+                              addToast('刪除失敗，請稍後再試', 'error')
                             }
                           }}
                           className="p-1.5 rounded-md hover:bg-[var(--muted)]"
@@ -331,6 +378,26 @@ export default function RecordsPage() {
               </div>
             )
           })}
+
+          {/* Load more button */}
+          {hasMore && (
+            <div className="flex justify-center pt-4">
+              <button
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="px-6 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--card)] text-sm font-medium text-[var(--foreground)] hover:bg-[var(--muted)] disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
+              >
+                {loadingMore ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
+                    載入中…
+                  </>
+                ) : (
+                  '載入更多'
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

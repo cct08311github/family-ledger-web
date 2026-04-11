@@ -17,6 +17,7 @@ import {
 import { currency } from '@/lib/utils'
 import type { RecurringExpense, RecurringFrequency } from '@/lib/types'
 import { logger } from '@/lib/logger'
+import { useToast } from '@/components/toast'
 import Link from 'next/link'
 
 // ── Constants ──────────────────────────────────────────────────
@@ -79,6 +80,7 @@ export default function RecurringPage() {
   const { members } = useMembers()
   const { categories } = useCategories()
   const { user } = useAuth()
+  const { addToast } = useToast()
 
   const [items, setItems] = useState<RecurringExpense[]>([])
   const [showForm, setShowForm] = useState(false)
@@ -185,7 +187,7 @@ export default function RecurringPage() {
       setShowForm(false)
     } catch (e) {
       logger.error('[Recurring] Failed to save:', e)
-      alert('儲存失敗，請稍後再試')
+      addToast('儲存失敗，請稍後再試', 'error')
     } finally {
       setSaving(false)
     }
@@ -197,7 +199,7 @@ export default function RecurringPage() {
       await deleteRecurringExpense(group.id, item.id)
     } catch (e) {
       logger.error('[Recurring] Failed to delete:', e)
-      alert('刪除失敗，請稍後再試')
+      addToast('刪除失敗，請稍後再試', 'error')
     }
   }
 
@@ -207,7 +209,7 @@ export default function RecurringPage() {
       await togglePauseRecurringExpense(group.id, item.id, !item.isPaused)
     } catch (e) {
       logger.error('[Recurring] Failed to toggle pause:', e)
-      alert('操作失敗，請稍後再試')
+      addToast('操作失敗，請稍後再試', 'error')
     }
   }
 

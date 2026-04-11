@@ -15,6 +15,7 @@ import { logger } from '@/lib/logger'
 // Allows max 20 requests per 60-second window per authenticated UID.
 const RATE_LIMIT_MAX = 20
 const RATE_LIMIT_WINDOW_MS = 60_000
+const RATE_LIMIT_MAP_MAX = 1000
 
 const rateLimitMap = new Map<string, number[]>()
 
@@ -29,8 +30,17 @@ function checkRateLimit(uid: string): boolean {
     return false
   }
 
+  // Evict before inserting to prevent unbounded growth
+  if (rateLimitMap.size >= RATE_LIMIT_MAP_MAX) {
+    const oldestKey = rateLimitMap.keys().next().value
+    if (oldestKey !== undefined) rateLimitMap.delete(oldestKey)
+  }
+
+  // Re-insert to move to end of iteration order (LRU)
+  rateLimitMap.delete(uid)
   timestamps.push(now)
   rateLimitMap.set(uid, timestamps)
+
   return true
 }
 

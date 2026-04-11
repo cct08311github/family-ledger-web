@@ -36,6 +36,9 @@ yarn-error.log*
 # Claude Code
 .claude/
 
+# Serena
+.serena/
+
 # Deployment
 .vercel
 
