@@ -10,7 +10,7 @@ import { calculateNetBalances, simplifyDebts } from '@/lib/services/split-calcul
 import { addSettlement, addSettlements, deleteSettlement } from '@/lib/services/settlement-service'
 import { useToast } from '@/components/toast'
 import { currency, signedCurrency, toDate, fmtDateFull } from '@/lib/utils'
-import { useAuth } from '@/lib/auth'
+import { useAuth, getActor } from '@/lib/auth'
 import { useCurrentMember } from '@/lib/hooks/use-current-member'
 
 import { logger } from '@/lib/logger'
@@ -200,7 +200,7 @@ export default function SplitPage() {
       amount: data.amount,
       note: data.note || undefined,
       date: data.date,
-    }, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
+    }, getActor(user))
     setSettling(null)
   }
 

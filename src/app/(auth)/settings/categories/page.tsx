@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { addCategory, updateCategory, deleteCategory, reorderCategories } from '@/lib/services/category-service'
-import { useAuth } from '@/lib/auth'
+import { useAuth, getActor } from '@/lib/auth'
 import type { Category } from '@/lib/types'
 
 import { logger } from '@/lib/logger'
@@ -66,7 +66,7 @@ export default function CategoriesPage() {
           group.id,
           editing.id,
           { name: form.name.trim(), icon: form.icon, parentCategoryName: form.parentCategoryName },
-          user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined,
+          getActor(user),
         )
       } else {
         await addCategory(
@@ -77,7 +77,7 @@ export default function CategoriesPage() {
             sortOrder: categories.length,
             parentCategoryName: form.parentCategoryName,
           },
-          user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined,
+          getActor(user),
         )
       }
       setShowForm(false)
@@ -92,7 +92,7 @@ export default function CategoriesPage() {
   async function handleDelete(cat: Category) {
     if (!group || !cat.id || !confirm(`確定刪除「${cat.name}」？`)) return
     try {
-      await deleteCategory(group.id, cat.id, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined, cat.name)
+      await deleteCategory(group.id, cat.id, getActor(user), cat.name)
     } catch (e) {
       logger.error('[Categories] Failed to delete category:', e)
       addToast('刪除失敗，請稍後再試', 'error')

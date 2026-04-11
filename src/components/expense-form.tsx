@@ -6,9 +6,10 @@ import { useMembers } from '@/lib/hooks/use-members'
 import { useExpenses } from '@/lib/hooks/use-expenses'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { addExpense, updateExpense, type ExpenseInput } from '@/lib/services/expense-service'
+import { buildEqualSplits } from '@/lib/services/split-calculator'
 import { addRecurringExpense } from '@/lib/services/recurring-expense-service'
 import { learnFromExpense, suggestCategory } from '@/lib/services/transaction-rules-service'
-import { useAuth } from '@/lib/auth'
+import { useAuth, getActor } from '@/lib/auth'
 import { toDate } from '@/lib/utils'
 import type { Expense, SplitMethod, PaymentMethod, SplitDetail } from '@/lib/types'
 import type { ParsedExpense } from '@/lib/services/local-expense-parser'
@@ -252,13 +253,13 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
     if (participants.length === 0) return []
     const nameMap = Object.fromEntries(members.map((m) => [m.id, m.name]))
 
+    if (splitMethod === 'equal') {
+      return buildEqualSplits(amt, participants, payerId)
+    }
+
     return participants.map((m, i) => {
       let share: number
-      if (splitMethod === 'equal') {
-        const per = Math.round(amt / participants.length)
-        const remainder = amt - per * participants.length
-        share = i === participants.length - 1 ? per + remainder : per
-      } else if (splitMethod === 'percentage') {
+      if (splitMethod === 'percentage') {
         share = Math.round(amt * (percentages[m.id] ?? 0) / 100)
         // Distribute rounding remainder to last participant to ensure sum matches amount
         if (i === participants.length - 1) {
@@ -312,7 +313,7 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
     setError(null)
     try {
       const input: ExpenseInput = {
-        date: new Date(date),
+        date: new Date(`${date}T00:00:00`),
         description: description.trim(),
         amount: saveAmt,
         category,
@@ -327,9 +328,9 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         createdBy: user?.uid ?? payerId,
       }
       if (isEditing) {
-        await updateExpense(group.id, existingExpense!.id, input, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
+        await updateExpense(group.id, existingExpense!.id, input, getActor(user))
       } else {
-        await addExpense(group.id, input, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
+        await addExpense(group.id, input, getActor(user))
       }
       // Create recurring template if toggled
       if (setAsRecurring && !isEditing) {
