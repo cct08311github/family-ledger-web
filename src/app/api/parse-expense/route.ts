@@ -30,14 +30,16 @@ function checkRateLimit(uid: string): boolean {
     return false
   }
 
-  timestamps.push(now)
-  rateLimitMap.set(uid, timestamps)
-
-  // Evict oldest entries when map exceeds size limit to prevent unbounded growth
-  if (rateLimitMap.size > RATE_LIMIT_MAP_MAX) {
+  // Evict before inserting to prevent unbounded growth
+  if (rateLimitMap.size >= RATE_LIMIT_MAP_MAX) {
     const oldestKey = rateLimitMap.keys().next().value
     if (oldestKey !== undefined) rateLimitMap.delete(oldestKey)
   }
+
+  // Re-insert to move to end of iteration order (LRU)
+  rateLimitMap.delete(uid)
+  timestamps.push(now)
+  rateLimitMap.set(uid, timestamps)
 
   return true
 }

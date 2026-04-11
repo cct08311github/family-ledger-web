@@ -34,13 +34,18 @@ export default function RecordsPage() {
   const [hasMore, setHasMore] = useState(false)
   const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null)
 
-  // Sync pagination state from context when initial load completes
+  // Effect 1: reset extra pages only when the group changes
   useEffect(() => {
-    if (!loading) {
+    setExtraExpenses([])
+    setHasMore(false)
+    setLastDoc(null)
+  }, [group?.id])
+
+  // Effect 2: sync cursor state only when we haven't paginated yet
+  useEffect(() => {
+    if (!loading && extraExpenses.length === 0) {
       setHasMore(contextHasMore)
       setLastDoc(contextLastDoc)
-      // Reset extra pages when the group/context changes
-      setExtraExpenses([])
     }
   }, [loading, contextHasMore, contextLastDoc])
 
@@ -121,7 +126,9 @@ export default function RecordsPage() {
     try {
       const result = await loadMoreExpenses(group.id, lastDoc)
       // Filter by visibility (same logic as useExpenses hook)
-      const visible = result.expenses.filter((e) => e.isShared || e.createdBy === user?.uid)
+      const visible = user
+        ? result.expenses.filter((e) => e.isShared || e.createdBy === user.uid)
+        : result.expenses
       setExtraExpenses((prev) => [...prev, ...visible])
       setHasMore(result.hasMore)
       setLastDoc(result.lastDoc)

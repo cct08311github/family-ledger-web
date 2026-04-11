@@ -123,6 +123,9 @@ export interface LoadMoreResult {
  * Used for cursor-based pagination beyond the initial real-time subscription (limit 200).
  */
 export async function loadMoreExpenses(groupId: string, afterDoc: DocumentSnapshot): Promise<LoadMoreResult> {
+  if (afterDoc.ref.parent.parent?.id !== groupId) {
+    throw new Error('Cursor document does not belong to the specified group')
+  }
   const q = query(
     collection(db, 'groups', groupId, 'expenses'),
     orderBy('date', 'desc'),
