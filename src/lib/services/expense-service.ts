@@ -1,4 +1,4 @@
-import { collection, doc, setDoc, deleteDoc, Timestamp, getDoc, getDocs, query, orderBy, limit, startAfter, DocumentSnapshot } from 'firebase/firestore'
+import { collection, doc, setDoc, deleteDoc, Timestamp, getDoc, getDocs, query, orderBy, limit, startAfter, DocumentSnapshot, serverTimestamp } from 'firebase/firestore'
 import { db, auth } from '@/lib/firebase'
 import { addActivityLog } from './activity-log-service'
 import { addNotification } from './notification-service'
@@ -34,7 +34,6 @@ export interface ExpenseInput {
 
 export async function addExpense(groupId: string, input: ExpenseInput, actor?: Actor): Promise<string> {
   const id = genId()
-  const now = Timestamp.now()
   const ref = doc(collection(db, 'groups', groupId, 'expenses'), id)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { receiptPaths: _receiptPaths, note, ...rest } = input
@@ -43,8 +42,8 @@ export async function addExpense(groupId: string, input: ExpenseInput, actor?: A
     date: Timestamp.fromDate(input.date),
     receiptPath: input.receiptPaths[0] ?? null,
     ...(note !== undefined ? { note } : {}),
-    createdAt: now,
-    updatedAt: now,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   })
   if (actor) {
     try {
@@ -90,7 +89,7 @@ export async function updateExpense(groupId: string, expenseId: string, input: P
   const ref = doc(db, 'groups', groupId, 'expenses', expenseId)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { receiptPaths: _rp, note, ...rest } = input
-  const data: Record<string, unknown> = { ...rest, updatedAt: Timestamp.now() }
+  const data: Record<string, unknown> = { ...rest, updatedAt: serverTimestamp() }
   if (note !== undefined) data.note = note
   if (input.date) data.date = Timestamp.fromDate(input.date)
   if (input.receiptPaths) data.receiptPath = input.receiptPaths[0] ?? null

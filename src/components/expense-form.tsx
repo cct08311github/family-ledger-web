@@ -192,10 +192,12 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
       setAutoCategoryFilled(false)
       return
     }
+    let cancelled = false
     const trimmed = description.trim()
     const handle = setTimeout(() => {
       suggestCategory(group.id, trimmed)
         .then((suggested) => {
+          if (cancelled) return
           if (suggested && categoryList.includes(suggested)) {
             setCategory(suggested)
             setAutoCategoryFilled(true)
@@ -203,7 +205,7 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         })
         .catch(() => { /* silent */ })
     }, 300)
-    return () => clearTimeout(handle)
+    return () => { clearTimeout(handle); cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [description, group?.id, isEditing])
 
