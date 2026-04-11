@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, useMemo, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useMemo, useRef, ReactNode } from 'react'
 import { collection, onSnapshot, orderBy, query, where, limit, DocumentSnapshot } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useGroupContext } from '@/lib/group-context'
@@ -62,6 +62,8 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
   const { activeGroup } = useGroupContext()
   const { user } = useAuth()
   const { addToast } = useToast()
+  const addToastRef = useRef(addToast)
+  useEffect(() => { addToastRef.current = addToast }, [addToast])
   const groupId = activeGroup?.id
 
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -108,7 +110,7 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
         setExpensesLoading(false)
         setSyncError(null)
       },
-      (err) => { logger.error('[GroupData] expenses error:', err); addToast(getSyncErrorMessage('費用資料', err), getSyncToastLevel(err)); setSyncError(getSyncErrorMessage('費用資料', err)); setExpensesLoading(false) },
+      (err) => { logger.error('[GroupData] expenses error:', err); addToastRef.current(getSyncErrorMessage('費用資料', err), getSyncToastLevel(err)); setSyncError(getSyncErrorMessage('費用資料', err)); setExpensesLoading(false) },
     )
     return unsub
   }, [groupId])
@@ -119,7 +121,7 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
     const q = query(collection(db, 'groups', groupId, 'members'), orderBy('sortOrder'))
     const unsub = onSnapshot(q,
       (snap) => { setMembers(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as FamilyMember)); setMembersLoading(false); setSyncError(null) },
-      (err) => { logger.error('[GroupData] members error:', err); addToast(getSyncErrorMessage('成員資料', err), getSyncToastLevel(err)); setSyncError(getSyncErrorMessage('成員資料', err)); setMembersLoading(false) },
+      (err) => { logger.error('[GroupData] members error:', err); addToastRef.current(getSyncErrorMessage('成員資料', err), getSyncToastLevel(err)); setSyncError(getSyncErrorMessage('成員資料', err)); setMembersLoading(false) },
     )
     return unsub
   }, [groupId])
@@ -130,7 +132,7 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
     const q = query(collection(db, 'groups', groupId, 'settlements'), orderBy('date', 'desc'), limit(200))
     const unsub = onSnapshot(q,
       (snap) => { setSettlements(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Settlement)); setSettlementsLoading(false); setSyncError(null) },
-      (err) => { logger.error('[GroupData] settlements error:', err); addToast(getSyncErrorMessage('結算資料', err), getSyncToastLevel(err)); setSyncError(getSyncErrorMessage('結算資料', err)); setSettlementsLoading(false) },
+      (err) => { logger.error('[GroupData] settlements error:', err); addToastRef.current(getSyncErrorMessage('結算資料', err), getSyncToastLevel(err)); setSyncError(getSyncErrorMessage('結算資料', err)); setSettlementsLoading(false) },
     )
     return unsub
   }, [groupId])
@@ -141,7 +143,7 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
     const q = query(collection(db, 'groups', groupId, 'categories'), orderBy('sortOrder'))
     const unsub = onSnapshot(q,
       (snap) => { setCategories(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Category)); setCategoriesLoading(false); setSyncError(null) },
-      (err) => { logger.error('[GroupData] categories error:', err); addToast(getSyncErrorMessage('分類資料', err), getSyncToastLevel(err)); setSyncError(getSyncErrorMessage('分類資料', err)); setCategoriesLoading(false) },
+      (err) => { logger.error('[GroupData] categories error:', err); addToastRef.current(getSyncErrorMessage('分類資料', err), getSyncToastLevel(err)); setSyncError(getSyncErrorMessage('分類資料', err)); setCategoriesLoading(false) },
     )
     return unsub
   }, [groupId])
@@ -157,7 +159,7 @@ export function GroupDataProvider({ children }: { children: ReactNode }) {
     )
     const unsub = onSnapshot(q,
       (snap) => { setNotifications(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as AppNotification)); setNotificationsLoading(false); setSyncError(null) },
-      (err) => { logger.error('[GroupData] notifications error:', err.message); addToast(getSyncErrorMessage('通知', err), getSyncToastLevel(err)); setSyncError(getSyncErrorMessage('通知', err)); setNotificationsLoading(false) },
+      (err) => { logger.error('[GroupData] notifications error:', err.message); addToastRef.current(getSyncErrorMessage('通知', err), getSyncToastLevel(err)); setSyncError(getSyncErrorMessage('通知', err)); setNotificationsLoading(false) },
     )
     return unsub
   }, [groupId, user])

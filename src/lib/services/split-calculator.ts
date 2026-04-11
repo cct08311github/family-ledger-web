@@ -2,7 +2,7 @@
 // Business logic is extracted to @family-ledger/domain (packages/family-ledger-domain/).
 // This file re-exports once Turbopack workspace support is resolved.
 
-import type { Expense, Settlement } from '@/lib/types'
+import type { Expense, Settlement, SplitDetail, FamilyMember } from '@/lib/types'
 import { logger } from '@/lib/logger'
 
 interface Debt {
@@ -14,6 +14,30 @@ interface Debt {
 }
 
 export type { Debt }
+
+/**
+ * Build equal splits for a list of members.
+ * Remainder goes to the LAST participant (consistent with expense-form.tsx behaviour).
+ * If amount is 0 or falsy, all shareAmounts are 0.
+ * Sets paidAmount for the payer to the full amount.
+ */
+export function buildEqualSplits(
+  amount: number,
+  members: FamilyMember[],
+  payerId: string,
+): SplitDetail[] {
+  if (members.length === 0) return []
+  const amt = amount || 0
+  const per = members.length > 0 ? Math.round(amt / members.length) : 0
+  const remainder = amt - per * members.length
+  return members.map((m, i) => ({
+    memberId: m.id,
+    memberName: m.name,
+    shareAmount: i === members.length - 1 ? per + remainder : per,
+    paidAmount: m.id === payerId ? amt : 0,
+    isParticipant: true,
+  }))
+}
 
 /** 計算每人淨餘額 */
 export function calculateNetBalances(

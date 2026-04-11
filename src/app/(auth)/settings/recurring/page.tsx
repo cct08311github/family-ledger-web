@@ -1,11 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useMembers } from '@/lib/hooks/use-members'
 import { useCategories } from '@/lib/hooks/use-categories'
+import { useRecurringExpenses } from '@/lib/hooks/use-recurring-expenses'
 import { useAuth } from '@/lib/auth'
 import {
   addRecurringExpense,
@@ -14,6 +13,7 @@ import {
   togglePauseRecurringExpense,
   getCurrentUserId,
 } from '@/lib/services/recurring-expense-service'
+import { buildEqualSplits } from '@/lib/services/split-calculator'
 import { currency } from '@/lib/utils'
 import type { RecurringExpense, RecurringFrequency } from '@/lib/types'
 import { logger } from '@/lib/logger'
@@ -79,32 +79,19 @@ export default function RecurringPage() {
   const { group } = useGroup()
   const { members } = useMembers()
   const { categories } = useCategories()
+  const { recurringExpenses: items } = useRecurringExpenses()
   const { user } = useAuth()
   const { addToast } = useToast()
 
-  const [items, setItems] = useState<RecurringExpense[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<RecurringExpense | null>(null)
   const [form, setForm] = useState<FormState>(defaultForm())
   const [saving, setSaving] = useState(false)
 
-  // Subscribe to recurring expenses
-  useEffect(() => {
-    if (!group?.id) return
-    const q = query(
-      collection(db, 'groups', group.id, 'recurringExpenses'),
-      orderBy('createdAt', 'desc'),
-    )
-    const unsub = onSnapshot(q, (snap) => {
-      setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as RecurringExpense))
-    })
-    return unsub
-  }, [group?.id])
-
   // Set default payerId when members load
   useEffect(() => {
-    if (members.length > 0 && !form.payerId) {
-      setForm((f) => ({ ...f, payerId: members[0].id }))
+    if (members.length > 0) {
+      setForm((f) => f.payerId ? f : { ...f, payerId: members[0].id })
     }
   }, [members])
 
@@ -137,16 +124,7 @@ export default function RecurringPage() {
   function buildSplits(payerId: string) {
     if (!form.isShared || members.length === 0) return []
     const amount = form.amount ? Number(form.amount) : 0
-    const perPerson = members.length > 0 ? Math.round(amount / members.length) : 0
-    const remainder = members.length > 0 ? amount - perPerson * (members.length - 1) : 0
-    // Store actual currency amounts; the generator will recompute these from the template amount
-    return members.map((m, i) => ({
-      memberId: m.id,
-      memberName: m.name,
-      shareAmount: i === 0 ? remainder : perPerson,
-      paidAmount: m.id === payerId ? amount : 0,
-      isParticipant: true,
-    }))
+    return buildEqualSplits(amount, members, payerId)
   }
 
   function getPayerName(payerId: string): string {
@@ -173,8 +151,8 @@ export default function RecurringPage() {
       splitMethod: 'equal' as const,
       splits,
       paymentMethod: 'cash' as const,
-      startDate: new Date(form.startDate),
-      endDate: form.endDate ? new Date(form.endDate) : null,
+      startDate: new Date(`${form.startDate}T00:00:00`),
+      endDate: form.endDate ? new Date(`${form.endDate}T00:00:00`) : null,
       createdBy: uid,
     }
 

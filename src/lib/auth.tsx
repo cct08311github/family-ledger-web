@@ -2,9 +2,14 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from 'react'
 import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut as fbSignOut } from 'firebase/auth'
-import { auth } from './firebase'
 
+import { auth } from './firebase'
 import { logger } from '@/lib/logger'
+
+export function getActor(user: User | null): { id: string; name: string } | undefined {
+  if (!user) return undefined
+  return { id: user.uid, name: user.displayName ?? '未知' }
+}
 
 interface AuthContextType {
   user: User | null

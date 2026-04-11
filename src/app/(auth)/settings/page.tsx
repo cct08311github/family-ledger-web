@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useTheme } from 'next-themes'
-import { useAuth } from '@/lib/auth'
+import { useAuth, getActor } from '@/lib/auth'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useMembers } from '@/lib/hooks/use-members'
 import { useCurrentMember } from '@/lib/hooks/use-current-member'
@@ -49,7 +49,7 @@ function MembersSection({ groupId }: { groupId: string }) {
     if (!name) return
     setAdding(true)
     try {
-      await addMember(groupId, name, 'member', user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
+      await addMember(groupId, name, 'member', getActor(user))
       setNewName('')
     } catch (e) {
       logger.error('[Settings] Failed to add member:', e)
@@ -62,7 +62,7 @@ function MembersSection({ groupId }: { groupId: string }) {
   async function handleDelete(memberId: string, memberName: string) {
     if (!confirm(`確定要刪除成員「${memberName}」嗎？此操作無法復原。`)) return
     try {
-      await removeMember(groupId, memberId, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined, memberName)
+      await removeMember(groupId, memberId, getActor(user), memberName)
     } catch (e) {
       logger.error('[Settings] Failed to delete member:', e)
       addToast('刪除失敗，請稍後再試', 'error')

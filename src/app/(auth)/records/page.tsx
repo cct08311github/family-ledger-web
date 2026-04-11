@@ -9,7 +9,7 @@ import { useMembers } from '@/lib/hooks/use-members'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { deleteExpense, loadMoreExpenses } from '@/lib/services/expense-service'
 import { currency, toDate, fmtDateFull, paymentLabel } from '@/lib/utils'
-import { useAuth } from '@/lib/auth'
+import { useAuth, getActor } from '@/lib/auth'
 import { useGroupData } from '@/lib/group-data-context'
 import { FilterChips } from '@/components/filter-chips'
 import { useToast } from '@/components/toast'
@@ -360,7 +360,7 @@ export default function RecordsPage() {
                             if (!confirm(`確定要刪除「${e.description}」嗎？`)) return
                             if (!group?.id) return
                             try {
-                              await deleteExpense(group.id, e.id, user ? { id: user.uid, name: user.displayName ?? '未知' } : undefined)
+                              await deleteExpense(group.id, e.id, getActor(user))
                             } catch {
                               addToast('刪除失敗，請稍後再試', 'error')
                             }
