@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, writeBatch, Timestamp, getDoc, setDoc } from 'firebase/firestore'
+import { collection, doc, getDocs, writeBatch, Timestamp, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db, auth } from '@/lib/firebase'
 import { logger } from '@/lib/logger'
 import type { RecurringExpense } from '@/lib/types'
@@ -128,19 +128,21 @@ export async function generatePendingRecurring(groupId: string): Promise<number>
       const dateKey = date.toISOString().split('T')[0]
       const expenseId = `${template.id}_${dateKey}`
       const expenseRef = doc(db, 'groups', groupId, 'expenses', expenseId)
-      const nowTs = Timestamp.now()
 
-      // C2: recompute equal splits based on the actual template amount
+
+      // C2: recompute equal splits — match buildEqualSplits() remainder-to-LAST logic
       const amount = template.amount
       const participants = template.splits.filter((s) => s.isParticipant)
-      const perPerson = participants.length > 0 ? Math.round(amount / participants.length) : 0
-      const remainder = participants.length > 0 ? amount - perPerson * (participants.length - 1) : 0
+      const per = participants.length > 0 ? Math.round(amount / participants.length) : 0
+      const remainder = participants.length > 0 ? amount - per * participants.length : 0
       let participantIndex = 0
+      const participantCount = participants.length
       const computedSplits = template.splits.map((s) => {
         if (!s.isParticipant) {
           return { ...s, shareAmount: 0, paidAmount: s.memberId === template.payerId ? amount : 0 }
         }
-        const shareAmount = participantIndex === 0 ? remainder : perPerson
+        const isLast = participantIndex === participantCount - 1
+        const shareAmount = isLast ? per + remainder : per
         participantIndex++
         return {
           ...s,
@@ -165,8 +167,8 @@ export async function generatePendingRecurring(groupId: string): Promise<number>
         recurringId: template.id,
         pendingConfirm: true,
         createdBy: currentUid,
-        createdAt: nowTs,
-        updatedAt: nowTs,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       })
 
       batchCount++
@@ -210,5 +212,5 @@ export async function generatePendingRecurring(groupId: string): Promise<number>
 /** Confirm a pending auto-generated expense (set pendingConfirm = false). */
 export async function confirmPendingExpense(groupId: string, expenseId: string): Promise<void> {
   const ref = doc(db, 'groups', groupId, 'expenses', expenseId)
-  await setDoc(ref, { pendingConfirm: false, updatedAt: Timestamp.now() }, { merge: true })
+  await setDoc(ref, { pendingConfirm: false, updatedAt: serverTimestamp() }, { merge: true })
 }

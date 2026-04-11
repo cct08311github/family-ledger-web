@@ -12,11 +12,11 @@ export function signedCurrency(amount: number): string {
   return `${sign}NT$ ${Math.round(amount).toLocaleString()}`
 }
 
-/** Firestore Timestamp → Date */
+/** Firestore Timestamp → Date. Returns epoch (1970-01-01) for undefined to avoid silently polluting current-month data. */
 export function toDate(ts: Timestamp | Date | undefined): Date {
   if (!ts) {
-    logger.warn('[toDate] Received undefined timestamp, falling back to current date')
-    return new Date()
+    logger.error('[toDate] Received undefined timestamp — data integrity issue, returning epoch')
+    return new Date(0)
   }
   if (ts instanceof Date) return ts
   return ts.toDate()
