@@ -15,7 +15,9 @@ const nextConfig: NextConfig = {
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' https://apis.google.com https://*.firebaseapp.com",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https://*.googleusercontent.com https://*.google.com",
+      // blob: needed for <img> preview of locally-picked files (URL.createObjectURL).
+      // firebasestorage.googleapis.com needed for uploaded receipt images rendering.
+      "img-src 'self' data: blob: https://*.googleusercontent.com https://*.google.com https://firebasestorage.googleapis.com",
       "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com",
       "frame-src https://*.firebaseapp.com https://accounts.google.com",
       "font-src 'self'",
