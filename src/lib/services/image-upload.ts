@@ -112,6 +112,8 @@ export async function uploadReceiptImages(
     return { paths: uploaded }
   } catch (err) {
     await rollbackUploads(uploaded)
+    // Full error (including paths, stack, Firebase code) goes to the backend log
+    // so developers can diagnose without the user pasting details.
     logger.error('[image-upload] uploadReceiptImages failed', {
       groupId,
       expenseId,
@@ -120,21 +122,36 @@ export async function uploadReceiptImages(
       err,
     })
     if (err instanceof ReceiptUploadError) throw err
-    // Surface the underlying error message (e.g. Firebase "storage/unauthorized")
-    // instead of a generic wrapper, so the user sees something actionable.
-    const msg = extractErrorMessage(err)
-    throw new ReceiptUploadError(msg, err)
+    // User-facing message is intentionally generic — path/bucket names and
+    // internal error details are PII/security-sensitive and must not surface
+    // in the UI. Full details are in system_logs.
+    throw new ReceiptUploadError(friendlyErrorMessage(err), err)
   }
 }
 
-function extractErrorMessage(err: unknown): string {
-  if (err instanceof Error) {
-    // Firebase StorageError carries `code` like "storage/unauthorized"
-    const code = (err as { code?: string }).code
-    if (code) return `${code}｜${err.message}`
-    return err.message
+/**
+ * Map low-level errors to short, non-leaking user messages.
+ * The exact Firebase error code stays in backend logs — the UI only shows
+ * a generic category + remediation hint.
+ */
+function friendlyErrorMessage(err: unknown): string {
+  const code = (err as { code?: string } | null)?.code
+  switch (code) {
+    case 'storage/unauthorized':
+      return '沒有上傳權限，請聯絡管理員'
+    case 'storage/unauthenticated':
+      return '登入已過期，請重新登入後再試'
+    case 'storage/quota-exceeded':
+      return '儲存空間已滿'
+    case 'storage/retry-limit-exceeded':
+    case 'storage/canceled':
+      return '網路連線不穩，請稍後重試'
+    case 'storage/invalid-checksum':
+    case 'storage/invalid-format':
+      return '圖片檔案損毀或格式不支援'
+    default:
+      return '圖片上傳失敗，請稍後重試'
   }
-  return String(err)
 }
 
 async function rollbackUploads(paths: string[]): Promise<void> {
