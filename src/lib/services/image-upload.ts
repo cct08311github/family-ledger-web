@@ -6,6 +6,8 @@ export const MAX_RECEIPTS_PER_EXPENSE = 10
 export const MAX_IMAGE_DIMENSION = 1920
 export const JPEG_QUALITY = 0.85
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+/** Reject pixel-bomb images (small file, huge canvas) before calling drawImage. */
+export const MAX_PIXEL_COUNT = 50_000_000 // ~50 MP; 8K is ~33 MP
 
 export interface UploadResult {
   paths: string[]
@@ -31,6 +33,10 @@ export async function compressImage(file: File): Promise<Blob> {
 
   const dataUrl = await readFileAsDataURL(file)
   const img = await loadImage(dataUrl)
+  const pixelCount = img.naturalWidth * img.naturalHeight
+  if (pixelCount > MAX_PIXEL_COUNT) {
+    throw new ReceiptUploadError(`圖片尺寸過大（${img.naturalWidth}×${img.naturalHeight}）`)
+  }
   const { width, height } = fitWithin(img.naturalWidth, img.naturalHeight, MAX_IMAGE_DIMENSION)
 
   const canvas = document.createElement('canvas')

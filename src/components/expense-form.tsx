@@ -20,6 +20,7 @@ import { useAuth, getActor } from '@/lib/auth'
 import { toDate } from '@/lib/utils'
 import { ref as storageRef, getDownloadURL } from 'firebase/storage'
 import { storage } from '@/lib/firebase'
+import { logger } from '@/lib/logger'
 import type { Expense, SplitMethod, PaymentMethod, SplitDetail } from '@/lib/types'
 import type { ParsedExpense } from '@/lib/services/local-expense-parser'
 
@@ -99,13 +100,14 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   const [newFiles, setNewFiles] = useState<File[]>([])
   const [removedPaths, setRemovedPaths] = useState<string[]>([])
 
-  // Load download URLs for existing receipt paths
+  // Load download URLs for existing receipt paths. We intentionally omit
+  // `existingReceiptUrls` from deps — the functional setState below reads the
+  // current map, and including it would retrigger the effect after every URL
+  // load without adding value.
   useEffect(() => {
     let cancelled = false
-    const pending = existingReceiptPaths.filter((p) => !existingReceiptUrls[p])
-    if (pending.length === 0) return
     Promise.all(
-      pending.map(async (p) => {
+      existingReceiptPaths.map(async (p) => {
         try {
           const url = await getDownloadURL(storageRef(storage, p))
           return [p, url] as const
@@ -117,12 +119,14 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
       if (cancelled) return
       setExistingReceiptUrls((prev) => {
         const next = { ...prev }
-        for (const [p, url] of entries) if (url) next[p] = url
+        for (const [p, url] of entries) {
+          if (url && !next[p]) next[p] = url
+        }
         return next
       })
     })
     return () => { cancelled = true }
-  }, [existingReceiptPaths, existingReceiptUrls])
+  }, [existingReceiptPaths])
 
   // Local object URLs for new file previews (cleanup on change)
   const newFilePreviews = useMemo(() => newFiles.map((f) => URL.createObjectURL(f)), [newFiles])
@@ -430,15 +434,33 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         }
       } catch (writeErr) {
         // Firestore write failed — rollback freshly uploaded files so they don't orphan.
+        // If the rollback itself fails we must surface it: the remaining blobs
+        // incur storage cost and contain PII, and silently swallowing the error
+        // would leave no audit trail. See Issue #150 follow-up about a
+        // server-side orphan scanner.
         if (uploadedPaths.length > 0) {
-          deleteReceiptImages(uploadedPaths).catch(() => { /* best effort */ })
+          deleteReceiptImages(uploadedPaths).catch((rollbackErr) => {
+            logger.error('[ExpenseForm] Orphan receipts after failed Firestore write', {
+              groupId: group.id,
+              expenseId,
+              paths: uploadedPaths,
+              rollbackErr,
+            })
+          })
         }
         throw writeErr
       }
 
       // Firestore write succeeded — now safe to delete receipts the user removed.
       if (removedPaths.length > 0) {
-        deleteReceiptImages(removedPaths).catch(() => { /* best effort */ })
+        deleteReceiptImages(removedPaths).catch((removeErr) => {
+          logger.error('[ExpenseForm] Failed to delete removed receipts', {
+            groupId: group.id,
+            expenseId,
+            paths: removedPaths,
+            removeErr,
+          })
+        })
       }
       // Create recurring template if toggled
       if (setAsRecurring && !isEditing) {
@@ -804,7 +826,6 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
                 type="file"
                 accept="image/*"
                 multiple
-                capture="environment"
                 className="hidden"
                 onChange={handleFilesPicked}
               />
