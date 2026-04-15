@@ -13,6 +13,8 @@ import { useAuth, getActor } from '@/lib/auth'
 import { useGroupData } from '@/lib/group-data-context'
 import { FilterChips } from '@/components/filter-chips'
 import { useToast } from '@/components/toast'
+import { ReceiptGallery } from '@/components/receipt-gallery'
+import { normalizeReceiptPaths } from '@/lib/services/image-upload'
 import type { Expense } from '@/lib/types'
 import type { DocumentSnapshot } from 'firebase/firestore'
 
@@ -51,6 +53,7 @@ export default function RecordsPage() {
 
   const expenses = useMemo(() => [...baseExpenses, ...extraExpenses], [baseExpenses, extraExpenses])
 
+  const [galleryPaths, setGalleryPaths] = useState<string[] | null>(null)
   const [filter, setFilter] = useState<FilterType>('全部')
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -336,9 +339,27 @@ export default function RecordsPage() {
                       </div>
                       <div className="flex items-center justify-between pt-1">
                         <div className="text-xs text-[var(--muted-foreground)]">
-                          {paymentLabel(e.paymentMethod)}{e.isShared ? ' · 共同' : ''}{(() => {
-                            const count = (e.receiptPaths?.length ?? 0) || (e.receiptPath ? 1 : 0)
-                            return count > 0 ? ` · 📷${count > 1 ? ` ${count}` : ''}` : ''
+                          {paymentLabel(e.paymentMethod)}{e.isShared ? ' · 共同' : ''}
+                          {(() => {
+                            const paths = normalizeReceiptPaths(e)
+                            if (paths.length === 0) return null
+                            return (
+                              <>
+                                {' · '}
+                                <button
+                                  onClick={(ev) => {
+                                    ev.preventDefault()
+                                    ev.stopPropagation()
+                                    setGalleryPaths(paths)
+                                  }}
+                                  aria-label={`檢視收據${paths.length > 1 ? `（${paths.length} 張）` : ''}`}
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 -my-0.5 rounded hover:bg-[var(--muted)] transition relative z-10"
+                                >
+                                  <span>📷</span>
+                                  {paths.length > 1 && <span className="text-[10px] font-semibold">{paths.length}</span>}
+                                </button>
+                              </>
+                            )
                           })()}
                         </div>
                         <div className="font-bold text-lg">{currency(e.amount)}</div>
@@ -402,6 +423,10 @@ export default function RecordsPage() {
             </div>
           )}
         </div>
+      )}
+
+      {galleryPaths && (
+        <ReceiptGallery paths={galleryPaths} onClose={() => setGalleryPaths(null)} />
       )}
     </div>
   )
