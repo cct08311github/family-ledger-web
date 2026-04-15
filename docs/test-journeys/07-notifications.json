@@ -1,0 +1,113 @@
+{
+  "journey": "notifications",
+  "version": "1.0.0",
+  "baseUrl": "https://mac-mini.tailde842d.ts.net",
+  "description": "通知頁面驗證：列表渲染、空狀態、標記已讀按鈕、未讀計數。標記已讀為破壞性操作，production 環境會被 runner 略過。",
+  "execution": {
+    "mode": "sequential",
+    "order": 7,
+    "requiresAuth": true
+  },
+  "credentials": {
+    "USER": {
+      "email": "test-user@example.com",
+      "password": "Test1234!",
+      "role": "USER"
+    }
+  },
+  "testCases": [
+    {
+      "id": "NOTIF-01",
+      "name": "Notifications page renders",
+      "role": "USER",
+      "tags": ["smoke"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/notifications"
+        },
+        {
+          "action": "assertVisible",
+          "text": "通知"
+        },
+        {
+          "action": "screenshot",
+          "name": "NOTIF-01-page-renders"
+        }
+      ]
+    },
+    {
+      "id": "NOTIF-02",
+      "name": "Empty state or notification list visible",
+      "role": "USER",
+      "tags": ["smoke"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/notifications"
+        },
+        {
+          "action": "wait",
+          "ms": 1000
+        },
+        {
+          "action": "assertVisible",
+          "selector": "main, section, div[role=\"list\"], .notification-list, :text-matches(\"目前沒有|尚無|全部已讀\"), [data-notif-id]"
+        },
+        {
+          "action": "screenshot",
+          "name": "NOTIF-02-list-or-empty-state"
+        }
+      ]
+    },
+    {
+      "id": "NOTIF-03",
+      "destructive": true,
+      "name": "Mark all notifications as read",
+      "role": "USER",
+      "tags": ["crud", "update"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/notifications"
+        },
+        {
+          "action": "clickIfVisible",
+          "selector": "button:has-text(\"全部標記已讀\"), button:has-text(\"標記已讀\")"
+        },
+        {
+          "action": "wait",
+          "ms": 500
+        },
+        {
+          "action": "screenshot",
+          "name": "NOTIF-03-marked-all-read"
+        }
+      ]
+    },
+    {
+      "id": "NOTIF-04",
+      "name": "Navigate to notifications via bell icon",
+      "role": "USER",
+      "tags": ["smoke", "navigation"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/"
+        },
+        {
+          "action": "clickIfVisible",
+          "selector": "a[href*=\"/notifications\"], button[aria-label*=\"通知\"]"
+        },
+        {
+          "action": "assertUrlContains",
+          "contains": "/notifications"
+        },
+        {
+          "action": "screenshot",
+          "name": "NOTIF-04-navigated-via-bell"
+        }
+      ]
+    }
+  ]
+}

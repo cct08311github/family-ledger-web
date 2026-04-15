@@ -1,0 +1,112 @@
+{
+  "journey": "statistics",
+  "version": "1.0.0",
+  "baseUrl": "https://mac-mini.tailde842d.ts.net",
+  "description": "統計頁面驗證：圖表載入、月份切換、類別分佈、趨勢呈現。所有 case 為唯讀，非破壞性。",
+  "execution": {
+    "mode": "sequential",
+    "order": 6,
+    "requiresAuth": true
+  },
+  "credentials": {
+    "USER": {
+      "email": "test-user@example.com",
+      "password": "Test1234!",
+      "role": "USER"
+    }
+  },
+  "testCases": [
+    {
+      "id": "STAT-01",
+      "name": "Statistics page renders",
+      "role": "USER",
+      "tags": ["smoke"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/statistics"
+        },
+        {
+          "action": "assertVisible",
+          "text": "統計"
+        },
+        {
+          "action": "screenshot",
+          "name": "STAT-01-statistics-page-renders"
+        }
+      ]
+    },
+    {
+      "id": "STAT-02",
+      "name": "Monthly summary section visible",
+      "role": "USER",
+      "tags": ["smoke"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/statistics"
+        },
+        {
+          "action": "wait",
+          "ms": 1500
+        },
+        {
+          "action": "assertVisible",
+          "selector": "h1, h2, h3"
+        },
+        {
+          "action": "screenshot",
+          "name": "STAT-02-monthly-summary"
+        }
+      ]
+    },
+    {
+      "id": "STAT-03",
+      "name": "Category distribution chart visible",
+      "role": "USER",
+      "tags": ["smoke"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/statistics"
+        },
+        {
+          "action": "wait",
+          "ms": 1500
+        },
+        {
+          "action": "assertVisible",
+          "selector": "svg, canvas, .recharts-wrapper"
+        },
+        {
+          "action": "screenshot",
+          "name": "STAT-03-category-chart"
+        }
+      ]
+    },
+    {
+      "id": "STAT-04",
+      "name": "Navigate to statistics from bottom nav",
+      "role": "USER",
+      "tags": ["smoke", "navigation"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/"
+        },
+        {
+          "action": "clickIfVisible",
+          "selector": "a[href*=\"/statistics\"]"
+        },
+        {
+          "action": "assertUrlContains",
+          "contains": "/statistics"
+        },
+        {
+          "action": "screenshot",
+          "name": "STAT-04-navigated-via-nav"
+        }
+      ]
+    }
+  ]
+}

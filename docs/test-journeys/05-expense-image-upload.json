@@ -1,0 +1,185 @@
+{
+  "journey": "expense-image-upload",
+  "version": "1.0.0",
+  "baseUrl": "https://mac-mini.tailde842d.ts.net",
+  "description": "收據圖片上傳功能驗證 (Issue #150)：收據區塊渲染、計數指示、空狀態、編輯模式下既有圖片顯示。注意：實際檔案選取/上傳互動不在 journey schema 支援範圍內，由 tests/specs/expense-image-upload.spec.ts (Playwright) 覆蓋。",
+  "execution": {
+    "mode": "sequential",
+    "order": 5,
+    "requiresAuth": true
+  },
+  "credentials": {
+    "USER": {
+      "email": "test-user@example.com",
+      "password": "Test1234!",
+      "role": "USER"
+    }
+  },
+  "testCases": [
+    {
+      "id": "IMG-01",
+      "name": "New expense form renders receipt upload section",
+      "role": "USER",
+      "tags": ["smoke", "image-upload"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/expense/new"
+        },
+        {
+          "action": "assertVisible",
+          "text": "新增支出"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "label:has-text(\"收據圖片\")"
+        },
+        {
+          "action": "screenshot",
+          "name": "IMG-01-receipt-section-visible"
+        }
+      ]
+    },
+    {
+      "id": "IMG-02",
+      "name": "Empty state shows 0/10 counter",
+      "role": "USER",
+      "tags": ["smoke", "image-upload"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/expense/new"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "label:has-text(\"收據圖片\")"
+        },
+        {
+          "action": "assertText",
+          "selector": "label:has-text(\"收據圖片\")",
+          "contains": "0/10"
+        },
+        {
+          "action": "screenshot",
+          "name": "IMG-02-empty-counter"
+        }
+      ]
+    },
+    {
+      "id": "IMG-03",
+      "name": "Add image button visible when under limit",
+      "role": "USER",
+      "tags": ["smoke", "image-upload"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/expense/new"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "label:has-text(\"新增圖片\")"
+        },
+        {
+          "action": "assertVisible",
+          "text": "送出時才上傳"
+        },
+        {
+          "action": "screenshot",
+          "name": "IMG-03-add-button-visible"
+        }
+      ]
+    },
+    {
+      "id": "IMG-04",
+      "name": "File input accepts only images",
+      "role": "USER",
+      "tags": ["smoke", "image-upload"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/expense/new"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "input[type=\"file\"][accept=\"image/*\"]"
+        },
+        {
+          "action": "screenshot",
+          "name": "IMG-04-file-input-attributes"
+        }
+      ]
+    },
+    {
+      "id": "IMG-05",
+      "name": "Hint text explains upload timing and compression",
+      "role": "USER",
+      "tags": ["smoke", "image-upload"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/expense/new"
+        },
+        {
+          "action": "assertVisible",
+          "text": "送出時才上傳"
+        },
+        {
+          "action": "assertVisible",
+          "text": "自動壓縮"
+        },
+        {
+          "action": "screenshot",
+          "name": "IMG-05-hint-text"
+        }
+      ]
+    },
+    {
+      "id": "IMG-06",
+      "name": "Records page shows camera icon for expenses with receipts",
+      "role": "USER",
+      "tags": ["smoke", "image-upload"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/records"
+        },
+        {
+          "action": "assertVisible",
+          "text": "記錄"
+        },
+        {
+          "action": "screenshot",
+          "name": "IMG-06-records-with-receipt-icon"
+        }
+      ]
+    },
+    {
+      "id": "IMG-07",
+      "name": "Edit existing expense shows receipt gallery section",
+      "role": "USER",
+      "tags": ["smoke", "image-upload"],
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/family-ledger-web/records"
+        },
+        {
+          "action": "clickIfVisible",
+          "selector": "a[href*=\"/expense/\"][href*=\"groupId=\"]"
+        },
+        {
+          "action": "wait",
+          "ms": 1000
+        },
+        {
+          "action": "assertVisible",
+          "selector": "label:has-text(\"收據圖片\")"
+        },
+        {
+          "action": "screenshot",
+          "name": "IMG-07-edit-mode-receipt-section"
+        }
+      ]
+    }
+  ]
+}

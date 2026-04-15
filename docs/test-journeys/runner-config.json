@@ -7,7 +7,10 @@
       "01-auth-navigation.json",
       "02-expense-management.json",
       "03-settlement-debts.json",
-      "04-settings-management.json"
+      "04-settings-management.json",
+      "05-expense-image-upload.json",
+      "06-statistics.json",
+      "07-notifications.json"
     ],
     "betweenModules": {
       "navigateToHome": true,
