@@ -25,6 +25,9 @@ export interface Expense {
   payerName: string
   splits: SplitDetail[]
   paymentMethod: PaymentMethod
+  /** Storage paths for receipt images (up to 10). Replaces legacy `receiptPath`. */
+  receiptPaths?: string[]
+  /** @deprecated legacy single-receipt field; read-only fallback for pre-migration records */
   receiptPath?: string | null
   note?: string
   createdBy: string

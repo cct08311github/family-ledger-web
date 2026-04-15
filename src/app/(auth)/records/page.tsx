@@ -336,7 +336,10 @@ export default function RecordsPage() {
                       </div>
                       <div className="flex items-center justify-between pt-1">
                         <div className="text-xs text-[var(--muted-foreground)]">
-                          {paymentLabel(e.paymentMethod)}{e.isShared ? ' · 共同' : ''}{e.receiptPath ? ' · 📷' : ''}
+                          {paymentLabel(e.paymentMethod)}{e.isShared ? ' · 共同' : ''}{(() => {
+                            const count = (e.receiptPaths?.length ?? 0) || (e.receiptPath ? 1 : 0)
+                            return count > 0 ? ` · 📷${count > 1 ? ` ${count}` : ''}` : ''
+                          })()}
                         </div>
                         <div className="font-bold text-lg">{currency(e.amount)}</div>
                       </div>

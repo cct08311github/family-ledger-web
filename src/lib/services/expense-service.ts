@@ -1,7 +1,8 @@
-import { collection, doc, setDoc, deleteDoc, Timestamp, getDoc, getDocs, query, orderBy, limit, startAfter, DocumentSnapshot, serverTimestamp } from 'firebase/firestore'
+import { collection, doc, setDoc, deleteDoc, Timestamp, getDoc, getDocs, query, orderBy, limit, startAfter, DocumentSnapshot, serverTimestamp, deleteField } from 'firebase/firestore'
 import { db, auth } from '@/lib/firebase'
 import { addActivityLog } from './activity-log-service'
 import { addNotification } from './notification-service'
+import { deleteReceiptImages, normalizeReceiptPaths } from './image-upload'
 import { currency } from '@/lib/utils'
 import type { Expense, SplitDetail, SplitMethod, PaymentMethod } from '@/lib/types'
 
@@ -12,9 +13,12 @@ interface Actor {
   name: string
 }
 
-function genId(): string {
+export function genExpenseId(): string {
   return crypto.randomUUID()
 }
+
+// Backwards-compat alias for internal callers.
+const genId = genExpenseId
 
 export interface ExpenseInput {
   date: Date
@@ -32,15 +36,19 @@ export interface ExpenseInput {
   createdBy: string
 }
 
-export async function addExpense(groupId: string, input: ExpenseInput, actor?: Actor): Promise<string> {
-  const id = genId()
+export async function addExpense(
+  groupId: string,
+  input: ExpenseInput,
+  actor?: Actor,
+  preGeneratedId?: string,
+): Promise<string> {
+  const id = preGeneratedId ?? genId()
   const ref = doc(collection(db, 'groups', groupId, 'expenses'), id)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { receiptPaths: _receiptPaths, note, ...rest } = input
+  const { receiptPaths, note, ...rest } = input
   await setDoc(ref, {
     ...rest,
     date: Timestamp.fromDate(input.date),
-    receiptPath: input.receiptPaths[0] ?? null,
+    receiptPaths: receiptPaths ?? [],
     ...(note !== undefined ? { note } : {}),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -87,12 +95,15 @@ export async function addExpense(groupId: string, input: ExpenseInput, actor?: A
 
 export async function updateExpense(groupId: string, expenseId: string, input: Partial<ExpenseInput>, actor?: Actor): Promise<void> {
   const ref = doc(db, 'groups', groupId, 'expenses', expenseId)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { receiptPaths: _rp, note, ...rest } = input
+  const { receiptPaths, note, ...rest } = input
   const data: Record<string, unknown> = { ...rest, updatedAt: serverTimestamp() }
   if (note !== undefined) data.note = note
   if (input.date) data.date = Timestamp.fromDate(input.date)
-  if (input.receiptPaths) data.receiptPath = input.receiptPaths[0] ?? null
+  if (receiptPaths !== undefined) {
+    data.receiptPaths = receiptPaths
+    // Clear legacy single-receipt field once we start writing the array form.
+    data.receiptPath = deleteField()
+  }
   await setDoc(ref, data, { merge: true })
   if (actor) {
     try {
@@ -141,7 +152,17 @@ export async function loadMoreExpenses(groupId: string, afterDoc: DocumentSnapsh
 }
 
 export async function deleteExpense(groupId: string, expenseId: string, actor?: Actor): Promise<void> {
-  await deleteDoc(doc(db, 'groups', groupId, 'expenses', expenseId))
+  const ref = doc(db, 'groups', groupId, 'expenses', expenseId)
+  try {
+    const snap = await getDoc(ref)
+    if (snap.exists()) {
+      const paths = normalizeReceiptPaths(snap.data() as { receiptPaths?: string[]; receiptPath?: string | null })
+      if (paths.length > 0) await deleteReceiptImages(paths)
+    }
+  } catch (e) {
+    logger.error('[ExpenseService] Failed to delete receipt images:', e)
+  }
+  await deleteDoc(ref)
   if (actor) {
     try {
       await addActivityLog(groupId, {

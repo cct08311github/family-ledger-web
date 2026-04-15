@@ -1,16 +1,25 @@
 'use client'
 
-import { useState, useEffect, type RefObject } from 'react'
+import { useState, useEffect, useMemo, type RefObject } from 'react'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useMembers } from '@/lib/hooks/use-members'
 import { useExpenses } from '@/lib/hooks/use-expenses'
 import { useCategories } from '@/lib/hooks/use-categories'
-import { addExpense, updateExpense, type ExpenseInput } from '@/lib/services/expense-service'
+import { addExpense, updateExpense, genExpenseId, type ExpenseInput } from '@/lib/services/expense-service'
+import {
+  uploadReceiptImages,
+  deleteReceiptImages,
+  normalizeReceiptPaths,
+  MAX_RECEIPTS_PER_EXPENSE,
+  ReceiptUploadError,
+} from '@/lib/services/image-upload'
 import { buildEqualSplits } from '@/lib/services/split-calculator'
 import { addRecurringExpense } from '@/lib/services/recurring-expense-service'
 import { learnFromExpense, suggestCategory } from '@/lib/services/transaction-rules-service'
 import { useAuth, getActor } from '@/lib/auth'
 import { toDate } from '@/lib/utils'
+import { ref as storageRef, getDownloadURL } from 'firebase/storage'
+import { storage } from '@/lib/firebase'
 import type { Expense, SplitMethod, PaymentMethod, SplitDetail } from '@/lib/types'
 import type { ParsedExpense } from '@/lib/services/local-expense-parser'
 
@@ -81,6 +90,77 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   const [hasDraft, setHasDraft] = useState(false)
   const [setAsRecurring, setSetAsRecurring] = useState(false)
   const [recurringDayOfMonth, setRecurringDayOfMonth] = useState(() => new Date().getDate())
+
+  // 收據圖片：既有路徑 + 本機待上傳 File
+  const [existingReceiptPaths, setExistingReceiptPaths] = useState<string[]>(() =>
+    source ? normalizeReceiptPaths(source) : [],
+  )
+  const [existingReceiptUrls, setExistingReceiptUrls] = useState<Record<string, string>>({})
+  const [newFiles, setNewFiles] = useState<File[]>([])
+  const [removedPaths, setRemovedPaths] = useState<string[]>([])
+
+  // Load download URLs for existing receipt paths
+  useEffect(() => {
+    let cancelled = false
+    const pending = existingReceiptPaths.filter((p) => !existingReceiptUrls[p])
+    if (pending.length === 0) return
+    Promise.all(
+      pending.map(async (p) => {
+        try {
+          const url = await getDownloadURL(storageRef(storage, p))
+          return [p, url] as const
+        } catch {
+          return [p, ''] as const
+        }
+      }),
+    ).then((entries) => {
+      if (cancelled) return
+      setExistingReceiptUrls((prev) => {
+        const next = { ...prev }
+        for (const [p, url] of entries) if (url) next[p] = url
+        return next
+      })
+    })
+    return () => { cancelled = true }
+  }, [existingReceiptPaths, existingReceiptUrls])
+
+  // Local object URLs for new file previews (cleanup on change)
+  const newFilePreviews = useMemo(() => newFiles.map((f) => URL.createObjectURL(f)), [newFiles])
+  useEffect(() => {
+    return () => { newFilePreviews.forEach((u) => URL.revokeObjectURL(u)) }
+  }, [newFilePreviews])
+
+  const totalImageCount = existingReceiptPaths.length + newFiles.length
+  const canAddMore = totalImageCount < MAX_RECEIPTS_PER_EXPENSE
+
+  function handleFilesPicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    if (picked.length === 0) return
+    const images = picked.filter((f) => f.type.startsWith('image/'))
+    if (images.length < picked.length) {
+      setError('只能上傳圖片檔案')
+    }
+    const room = MAX_RECEIPTS_PER_EXPENSE - totalImageCount
+    if (room <= 0) {
+      setError(`最多只能上傳 ${MAX_RECEIPTS_PER_EXPENSE} 張圖片`)
+      return
+    }
+    const accepted = images.slice(0, room)
+    if (images.length > room) {
+      setError(`最多只能上傳 ${MAX_RECEIPTS_PER_EXPENSE} 張，已略過 ${images.length - room} 張`)
+    }
+    setNewFiles((prev) => [...prev, ...accepted])
+  }
+
+  function removeNewFile(idx: number) {
+    setNewFiles((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  function removeExistingPath(path: string) {
+    setExistingReceiptPaths((prev) => prev.filter((p) => p !== path))
+    setRemovedPaths((prev) => [...prev, path])
+  }
 
   // 語音解析回填：父元件透過 ref 呼叫此函數填入欄位
   useEffect(() => {
@@ -314,6 +394,19 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
     setSaving(true)
     setError(null)
     try {
+      const expenseId = isEditing ? existingExpense!.id : genExpenseId()
+      const uploaderUid = user?.uid ?? payerId
+
+      // Upload any newly picked images first. On partial failure, uploadReceiptImages
+      // rolls back everything it uploaded in this call so we never leave orphans.
+      let uploadedPaths: string[] = []
+      if (newFiles.length > 0) {
+        const result = await uploadReceiptImages(group.id, expenseId, newFiles, uploaderUid)
+        uploadedPaths = result.paths
+      }
+
+      const finalPaths = [...existingReceiptPaths, ...uploadedPaths]
+
       const input: ExpenseInput = {
         date: new Date(`${date}T00:00:00`),
         description: description.trim(),
@@ -325,14 +418,27 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         payerName: members.find((m) => m.id === payerId)?.name ?? '',
         splits,
         paymentMethod,
-        receiptPaths: [],
+        receiptPaths: finalPaths,
         note: note.trim() || undefined,
-        createdBy: user?.uid ?? payerId,
+        createdBy: uploaderUid,
       }
-      if (isEditing) {
-        await updateExpense(group.id, existingExpense!.id, input, getActor(user))
-      } else {
-        await addExpense(group.id, input, getActor(user))
+      try {
+        if (isEditing) {
+          await updateExpense(group.id, existingExpense!.id, input, getActor(user))
+        } else {
+          await addExpense(group.id, input, getActor(user), expenseId)
+        }
+      } catch (writeErr) {
+        // Firestore write failed — rollback freshly uploaded files so they don't orphan.
+        if (uploadedPaths.length > 0) {
+          deleteReceiptImages(uploadedPaths).catch(() => { /* best effort */ })
+        }
+        throw writeErr
+      }
+
+      // Firestore write succeeded — now safe to delete receipts the user removed.
+      if (removedPaths.length > 0) {
+        deleteReceiptImages(removedPaths).catch(() => { /* best effort */ })
       }
       // Create recurring template if toggled
       if (setAsRecurring && !isEditing) {
@@ -360,7 +466,8 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
       }
       onSaved()
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : '儲存失敗')
+      if (e instanceof ReceiptUploadError) setError(`圖片上傳失敗：${e.message}`)
+      else setError(e instanceof Error ? e.message : '儲存失敗')
     } finally {
       setSaving(false)
     }
@@ -649,6 +756,64 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         <label className="text-sm font-medium mb-1 block">備註（可選）</label>
         <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="備註..."
           className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm resize-none" />
+      </div>
+
+      {/* 收據圖片（最多 10 張） */}
+      <div>
+        <label className="text-sm font-medium mb-1 flex items-center gap-2">
+          📷 收據圖片（可選）
+          <span className="text-xs text-[var(--muted-foreground)]">
+            {totalImageCount}/{MAX_RECEIPTS_PER_EXPENSE}
+          </span>
+        </label>
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          {existingReceiptPaths.map((p) => (
+            <div key={p} className="relative aspect-square rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--muted)]">
+              {existingReceiptUrls[p] ? (
+                <img src={existingReceiptUrls[p]} alt="收據" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xs text-[var(--muted-foreground)]">
+                  載入中…
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => removeExistingPath(p)}
+                aria-label="移除圖片"
+                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white text-xs flex items-center justify-center hover:bg-black/80"
+              >✕</button>
+            </div>
+          ))}
+          {newFiles.map((f, i) => (
+            <div key={`${f.name}-${i}`} className="relative aspect-square rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--muted)]">
+<img src={newFilePreviews[i]} alt={f.name} className="w-full h-full object-cover" />
+              <button
+                type="button"
+                onClick={() => removeNewFile(i)}
+                aria-label="移除圖片"
+                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white text-xs flex items-center justify-center hover:bg-black/80"
+              >✕</button>
+              <span className="absolute bottom-1 left-1 text-[10px] px-1 rounded bg-[var(--primary)] text-[var(--primary-foreground)]">新</span>
+            </div>
+          ))}
+          {canAddMore && (
+            <label className="aspect-square rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-1 text-xs text-[var(--muted-foreground)] cursor-pointer hover:bg-[var(--muted)] transition">
+              <span className="text-2xl">＋</span>
+              <span>新增圖片</span>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                capture="environment"
+                className="hidden"
+                onChange={handleFilesPicked}
+              />
+            </label>
+          )}
+        </div>
+        <p className="text-xs text-[var(--muted-foreground)] mt-1">
+          送出時才上傳。可從相機或相簿選取，上傳前會自動壓縮。
+        </p>
       </div>
 
       {/* 設為定期 — 僅新增模式顯示 */}
