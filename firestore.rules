@@ -252,6 +252,24 @@ service cloud.firestore {
       }
     }
 
+    // ─── 系統日誌（production debugging） ───
+    //
+    // 所有 logger.error()/warn() 在 production 會寫入此 collection。
+    // Create：任何已登入使用者都可寫，但必須自己的 userId（防止冒名）。
+    // Read：只能讀自己的日誌（PII 保護）。
+    // Update/Delete：不允許（審計軌跡）。
+    match /system_logs/{logId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.level in ['warn', 'error']
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0
+        && request.resource.data.message.size() <= 500
+        && request.resource.data.userId == request.auth.uid
+        && hasReasonableSize();
+      allow update, delete: if false;
+    }
+
     // ─── 其他路徑：全部拒絕 ───
     match /{document=**} {
       allow read, write: if false;

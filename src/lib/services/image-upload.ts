@@ -112,9 +112,29 @@ export async function uploadReceiptImages(
     return { paths: uploaded }
   } catch (err) {
     await rollbackUploads(uploaded)
+    logger.error('[image-upload] uploadReceiptImages failed', {
+      groupId,
+      expenseId,
+      uploadedSoFar: uploaded.length,
+      totalFiles: files.length,
+      err,
+    })
     if (err instanceof ReceiptUploadError) throw err
-    throw new ReceiptUploadError('圖片上傳失敗', err)
+    // Surface the underlying error message (e.g. Firebase "storage/unauthorized")
+    // instead of a generic wrapper, so the user sees something actionable.
+    const msg = extractErrorMessage(err)
+    throw new ReceiptUploadError(msg, err)
   }
+}
+
+function extractErrorMessage(err: unknown): string {
+  if (err instanceof Error) {
+    // Firebase StorageError carries `code` like "storage/unauthorized"
+    const code = (err as { code?: string }).code
+    if (code) return `${code}｜${err.message}`
+    return err.message
+  }
+  return String(err)
 }
 
 async function rollbackUploads(paths: string[]): Promise<void> {

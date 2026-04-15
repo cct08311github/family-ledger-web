@@ -11,6 +11,8 @@ import { logger } from '@/lib/logger'
 
 const TYPE_ICONS: Record<string, string> = {
   expense_added: '💸',
+  expense_updated: '✏️',
+  expense_deleted: '🗑️',
   settlement_created: '✅',
   member_added: '👤',
   reminder: '🔔',
