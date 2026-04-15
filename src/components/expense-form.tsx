@@ -109,8 +109,14 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
     Promise.all(
       existingReceiptPaths.map(async (p) => {
         try {
-          const url = await getDownloadURL(storageRef(storage, p))
-          return [p, url] as const
+          const downloadUrl = await getDownloadURL(storageRef(storage, p))
+          // Route through same-origin proxy (/api/receipt) — direct
+          // firebasestorage.googleapis.com URLs don't render reliably in iOS PWA.
+          const u = new URL(downloadUrl)
+          const token = u.searchParams.get('token')
+          if (!token) return [p, downloadUrl] as const
+          const proxyUrl = `/family-ledger-web/api/receipt?path=${encodeURIComponent(p)}&token=${encodeURIComponent(token)}`
+          return [p, proxyUrl] as const
         } catch {
           return [p, ''] as const
         }

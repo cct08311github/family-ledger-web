@@ -5,6 +5,24 @@ import { ref as storageRef, getDownloadURL } from 'firebase/storage'
 import { storage } from '@/lib/firebase'
 import { logger } from '@/lib/logger'
 
+const BASE_PATH = '/family-ledger-web'
+
+/**
+ * Convert a Firebase Storage download URL into a same-origin proxy URL.
+ * Extracts the `token` query param and pairs it with the original path.
+ * Falls back to the original URL if parsing fails.
+ */
+function toProxyUrl(path: string, downloadUrl: string): string {
+  try {
+    const u = new URL(downloadUrl)
+    const token = u.searchParams.get('token')
+    if (!token) return downloadUrl
+    return `${BASE_PATH}/api/receipt?path=${encodeURIComponent(path)}&token=${encodeURIComponent(token)}`
+  } catch {
+    return downloadUrl
+  }
+}
+
 interface Props {
   paths: string[]
   onClose: () => void
@@ -28,7 +46,10 @@ export function ReceiptGallery({ paths, onClose }: Props) {
     Promise.all(
       paths.map(async (p) => {
         try {
-          return await getDownloadURL(storageRef(storage, p))
+          const downloadUrl = await getDownloadURL(storageRef(storage, p))
+          // Route through our same-origin proxy to sidestep CSP / iOS Safari quirks
+          // with direct firebasestorage.googleapis.com URLs.
+          return toProxyUrl(p, downloadUrl)
         } catch (err) {
           logger.error('[ReceiptGallery] Failed to get download URL', { path: p, err })
           return null
