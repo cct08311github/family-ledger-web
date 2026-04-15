@@ -17,6 +17,11 @@ export class ExpenseFormPage extends BasePage {
   readonly errorMessage: Locator
   readonly voiceInputButton: Locator
   readonly splitPreview: Locator
+  readonly receiptSectionLabel: Locator
+  readonly receiptFileInput: Locator
+  readonly receiptThumbs: Locator
+  readonly receiptAddButton: Locator
+  readonly receiptRemoveButtons: Locator
 
   constructor(page: Page, path: '/expense/new' | '/expense/[id]' = '/expense/new') {
     super(page, path)
@@ -35,6 +40,36 @@ export class ExpenseFormPage extends BasePage {
     this.errorMessage = this.locator('p:text-is("請填寫必要欄位")')
     this.voiceInputButton = this.locator('button[title*="語音"], button:has-text("🎤")')
     this.splitPreview = this.locator('text=拆帳預覽')
+    // Receipt upload section
+    this.receiptSectionLabel = this.locator('label:has-text("收據圖片")')
+    this.receiptFileInput = this.locator('input[type="file"][accept="image/*"]')
+    this.receiptThumbs = this.locator('div.grid img')
+    this.receiptAddButton = this.locator('label:has-text("新增圖片")')
+    this.receiptRemoveButtons = this.locator('button[aria-label="移除圖片"]')
+  }
+
+  /** Build a minimal valid PNG buffer (1×1 red pixel) for file upload tests. */
+  static buildTestPng(): Buffer {
+    // Pre-computed 1×1 red PNG (minimal valid file).
+    return Buffer.from(
+      '89504e470d0a1a0a0000000d4948445200000001000000010806000000' +
+        '1f15c4890000000d49444154789c63f8cfc0f01f0005000103b8c2c3' +
+        '4b0000000049454e44ae426082',
+      'hex',
+    )
+  }
+
+  async attachReceiptFiles(count: number): Promise<void> {
+    const files = Array.from({ length: count }, (_, i) => ({
+      name: `test-receipt-${i + 1}.png`,
+      mimeType: 'image/png',
+      buffer: ExpenseFormPage.buildTestPng(),
+    }))
+    await this.receiptFileInput.setInputFiles(files)
+  }
+
+  async removeReceiptAt(index: number): Promise<void> {
+    await this.receiptRemoveButtons.nth(index).click()
   }
 
   async expectLoaded(): Promise<void> {
