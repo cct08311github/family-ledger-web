@@ -35,7 +35,10 @@ export async function addRecurringExpense(groupId: string, input: RecurringExpen
   const now = Timestamp.now()
   const ref = doc(collection(db, 'groups', groupId, 'recurringExpenses'), id)
 
-  const { startDate, endDate, createdBy: _ignored, ...rest } = input
+  // Strip createdBy from input (server overwrites with authenticated uid below)
+  // and split out Date fields that need Timestamp conversion.
+  const { startDate, endDate, createdBy: _createdByIgnored, ...rest } = input
+  void _createdByIgnored
   // Filter out undefined values — Firestore rejects them
   const cleaned = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined))
   await setDoc(ref, {
