@@ -71,12 +71,11 @@ export function NavShell({ children }: { children: React.ReactNode }) {
             </Link>
           )
         })}
-        <div className="flex-1" />
-        <div className="relative">
+        <div className="relative mt-2">
           {sidebarMenuOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setSidebarMenuOpen(false)} />
-              <div className="absolute bottom-full left-0 right-0 mb-2 z-50 flex flex-col gap-1.5 animate-slide-up">
+              <div className="absolute top-full left-0 right-0 mt-2 z-50 flex flex-col gap-1.5 animate-slide-up">
                 <Link href="/expense/new" onClick={() => setSidebarMenuOpen(false)}
                   className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold bg-[var(--card)] border border-[var(--border)] hover:bg-[var(--muted)] btn-press"
                   style={{ boxShadow: 'var(--card-shadow-hover)' }}>
@@ -100,7 +99,7 @@ export function NavShell({ children }: { children: React.ReactNode }) {
       </nav>
 
       {/* Main content */}
-      <main className="flex-1 pb-20 md:pb-0 overflow-auto">
+      <main className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 overflow-auto">
         {/* Offline banner */}
         {!isOnline && (
           <div
@@ -124,19 +123,19 @@ export function NavShell({ children }: { children: React.ReactNode }) {
       </main>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 border-t border-[var(--border)] bg-[var(--card)]/80 backdrop-blur-lg flex items-center justify-around h-16 z-50">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 border-t border-[var(--border)] bg-[var(--card)]/80 backdrop-blur-lg flex items-center justify-around h-20 pb-[env(safe-area-inset-bottom)] z-50">
         {navItems.map((item) => {
           const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center gap-0.5 text-xs transition-all ${
+              className={`flex flex-col items-center justify-center gap-1 min-w-[48px] min-h-[48px] px-2 text-[13px] transition-all ${
                 active ? 'font-bold scale-110' : 'text-[var(--muted-foreground)]'
               }`}
               style={active ? { color: 'var(--primary)' } : undefined}
             >
-              <span className="text-lg">{item.icon}</span>
+              <span className="text-2xl leading-none">{item.icon}</span>
               {item.label}
             </Link>
           )
@@ -144,13 +143,13 @@ export function NavShell({ children }: { children: React.ReactNode }) {
         <Link
           href="/notifications"
           aria-label={unreadCount > 0 ? `通知，${unreadCount} 則未讀` : '通知'}
-          className="relative flex flex-col items-center gap-0.5 text-xs transition-all"
+          className="relative flex flex-col items-center justify-center gap-1 min-w-[48px] min-h-[48px] px-2 text-[13px] transition-all"
           style={{ color: pathname.startsWith('/notifications') ? 'var(--primary)' : undefined }}
         >
-          <span className="text-lg" aria-hidden="true">🔔</span>
+          <span className="text-2xl leading-none" aria-hidden="true">🔔</span>
           <span className={pathname.startsWith('/notifications') ? 'font-bold' : 'text-[var(--muted-foreground)]'}>通知</span>
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 right-0 min-w-[14px] h-3.5 px-1 rounded-full bg-[var(--destructive)] text-white text-[9px] font-bold flex items-center justify-center" aria-hidden="true">
+            <span className="absolute top-0 right-0 min-w-[16px] h-4 px-1 rounded-full bg-[var(--destructive)] text-white text-[10px] font-bold flex items-center justify-center" aria-hidden="true">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
@@ -183,7 +182,7 @@ export function NavShell({ children }: { children: React.ReactNode }) {
       )}
       <button
         onClick={() => setFabOpen(!fabOpen)}
-        className={`md:hidden fixed bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center text-2xl z-50 btn-primary transition-transform duration-200 ${fabOpen ? 'rotate-45' : ''}`}
+        className={`md:hidden fixed bottom-24 right-4 w-14 h-14 rounded-full flex items-center justify-center text-2xl z-50 btn-primary transition-transform duration-200 ${fabOpen ? 'rotate-45' : ''}`}
       >
         ＋
       </button>

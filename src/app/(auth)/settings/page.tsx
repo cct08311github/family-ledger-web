@@ -696,6 +696,16 @@ export default function SettingsPage() {
           <ApiKeySection />
         </Section>
 
+        <Section title="🐛 系統日誌">
+          <div className="space-y-2">
+            <p className="text-sm text-[var(--muted-foreground)]">查看 app 在您的裝置發生的錯誤與警告，用於診斷生產問題</p>
+            <button onClick={() => router.push('/settings/logs')}
+              className="w-full py-2.5 rounded-lg text-sm font-medium border border-[var(--border)] hover:bg-[var(--muted)] transition-colors">
+              查看系統日誌 →
+            </button>
+          </div>
+        </Section>
+
         <Section title="👤 帳號">
         <div className="flex items-center gap-4">
           {user?.photoURL && (

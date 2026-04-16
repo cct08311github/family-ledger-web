@@ -2,12 +2,26 @@
 
 /**
  * Shared logger for family-ledger-web
- * Uses console in development, can be silenced in production
+ *
+ * - Console output always (dev + prod) for errors/warnings so browser DevTools
+ *   still shows them.
+ * - In production, `error` and `warn` are ALSO forwarded to Firestore
+ *   `system_logs` so prod issues can be diagnosed after the fact.
+ * - Forwarding is dynamic-imported to avoid pulling Firebase into initial
+ *   bundles that don't need logging.
  */
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
 const isDev = process.env.NODE_ENV !== 'production'
+
+function forwardToBackend(level: 'warn' | 'error', message: string, data?: unknown): void {
+  if (typeof window === 'undefined') return
+  // Fire-and-forget lazy import. Must never throw back into caller.
+  import('./services/log-service')
+    .then(({ writeSystemLog }) => writeSystemLog(level, message, data))
+    .catch(() => { /* silent */ })
+}
 
 function format(level: LogLevel, message: string, data?: unknown): string {
   const timestamp = new Date().toISOString().slice(11, 19)
@@ -32,8 +46,10 @@ export const logger = {
   },
   warn(message: string, data?: unknown) {
     console.warn(format('warn', message, data))
+    forwardToBackend('warn', message, data)
   },
   error(message: string, data?: unknown) {
     console.error(format('error', message, data))
+    forwardToBackend('error', message, data)
   },
 }

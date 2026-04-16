@@ -2,32 +2,33 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // ─── 輔助函式 ───
-
-    // 是否為群組擁有者（用於收據刪除驗證）
-    function isGroupOwner(groupId) {
-      return request.auth != null &&
-        request.auth.uid == get(/databases/$(database)/documents/groups/$(groupId)).data.ownerUid;
-    }
-
     // ─── 收據 ───
+    //
+    // 存取控制模型：
+    //   - Firestore expense doc 是 source of truth（group membership 在 firestore.rules）
+    //   - Storage 只做粗粒度驗證：已登入、檔案大小、MIME、uploadedBy metadata
+    //   - 細粒度 group membership 驗證無法在 Storage rules 跨服務取得 — 此為 Firebase
+    //     Storage 限制，只能透過 Cloud Function 強化。追蹤於 Issue #152。
 
     match /receipts/{groupId}/{expenseId}/{fileName} {
-      // 讀取：已登入（群組存取由 Firestore expense document 規則保護）
+      // 讀取：已登入（受 Firestore expense doc 規則限制）
       allow read: if request.auth != null;
 
-      // 上傳：已登入 + 檔案 < 10MB + 圖片類型
-      // 建議上傳時在 metadata 中設定 uploadedBy: request.auth.uid
+      // 寫入（create/update）：
+      //   - 已登入
+      //   - 檔案 < 10MB
+      //   - MIME 為 image/*
+      //   - customMetadata.uploadedBy 必須存在且等於 auth.uid（防止假冒他人）
       allow write: if request.auth != null
         && request.resource.size < 10 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
+        && request.resource.contentType.matches('image/.*')
+        && request.resource.metadata.uploadedBy == request.auth.uid;
 
-      // 刪除：上傳者本人或群組 owner
-      // - resource.metadata.uploadedBy 需在上傳時設定（建議）
-      // - 若無此欄位（舊檔案），僅群組 owner 可刪除
+      // 刪除：只允許 uploadedBy 本人
+      // Cross-service check (group owner override) 無法在 Storage rules 表達，
+      // 因此此處放寬：只要當初是你上傳的就能刪。
       allow delete: if request.auth != null
-        && (resource.metadata.uploadedBy == request.auth.uid
-            || isGroupOwner(groupId));
+        && resource.metadata.uploadedBy == request.auth.uid;
     }
 
     // ─── 其他路徑：全部拒絕 ───
