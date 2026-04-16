@@ -17,6 +17,11 @@ export interface OrphanFile {
 export interface DeleteOrphansResult {
   succeeded: string[]
   failed: { path: string; error: unknown }[]
+  /**
+   * Paths skipped because they were adopted by an expense between scan-time and
+   * delete-time. Safety net against the scan→delete race window.
+   */
+  adopted: string[]
 }
 
 /**
@@ -53,7 +58,15 @@ async function listAllReceipts(groupId: string): Promise<string[]> {
   for (const prefix of rootList.prefixes) {
     const sub = await listAll(prefix)
     for (const item of sub.items) paths.push(item.fullPath)
-    // Receipts use exactly 2 levels (groupId/expenseId/file), so no deeper recursion needed.
+    // Expected structure: receipts/{groupId}/{expenseId}/{fileName} (exactly 2 levels deep).
+    // Warn if deeper nesting appears — those files would be silently excluded and
+    // never marked as orphan. This guards against future path format drift.
+    if (sub.prefixes.length > 0) {
+      logger.warn('[orphan-scanner] Unexpected deeper nesting under receipt prefix', {
+        prefix: prefix.fullPath,
+        deeperPrefixCount: sub.prefixes.length,
+      })
+    }
   }
   return paths
 }
@@ -106,20 +119,33 @@ export async function scanOrphans(groupId: string): Promise<OrphanFile[]> {
 }
 
 /**
- * Delete the given storage paths. Best-effort: each deletion is independent,
- * failures are collected rather than aborting the batch.
+ * Delete the given storage paths. Re-verifies against Firestore immediately
+ * before deletion to skip paths that were adopted by an expense since the scan
+ * (closes the scan→delete race window). Per-file failures are collected rather
+ * than aborting the batch.
  */
-export async function deleteOrphans(paths: string[]): Promise<DeleteOrphansResult> {
+export async function deleteOrphans(
+  groupId: string,
+  paths: string[],
+): Promise<DeleteOrphansResult> {
+  // Safety re-check: refuse to delete anything currently referenced by an expense.
+  const referenced = await collectReferencedPaths(groupId)
+  const stillOrphan: string[] = []
+  const adopted: string[] = []
+  for (const p of paths) {
+    if (referenced.has(p)) adopted.push(p)
+    else stillOrphan.push(p)
+  }
   const results = await Promise.allSettled(
-    paths.map((p) => deleteObject(storageRef(storage, p))),
+    stillOrphan.map((p) => deleteObject(storageRef(storage, p))),
   )
   const succeeded: string[] = []
   const failed: { path: string; error: unknown }[] = []
   for (const [i, r] of results.entries()) {
     if (r.status === 'fulfilled') {
-      succeeded.push(paths[i])
+      succeeded.push(stillOrphan[i])
     } else {
-      failed.push({ path: paths[i], error: r.reason })
+      failed.push({ path: stillOrphan[i], error: r.reason })
     }
   }
   if (failed.length > 0) {
@@ -128,7 +154,12 @@ export async function deleteOrphans(paths: string[]): Promise<DeleteOrphansResul
       failed: failed.length,
     })
   }
-  return { succeeded, failed }
+  if (adopted.length > 0) {
+    logger.warn('[orphan-scanner] Skipped paths adopted between scan and delete', {
+      adoptedCount: adopted.length,
+    })
+  }
+  return { succeeded, failed, adopted }
 }
 
 /** Pure diff helper exposed for unit testing (avoids Storage SDK dependency). */
