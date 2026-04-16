@@ -18,6 +18,30 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
 }
 
+/**
+ * Map Firebase error codes to user-facing Traditional Chinese messages.
+ * Falls back to a generic message when the code is unknown; the raw error
+ * still goes to logger for debugging.
+ */
+function mapFirebaseError(err: unknown, fallback: string): string {
+  const code = (err as { code?: string } | null)?.code
+  switch (code) {
+    case 'storage/unauthorized':
+    case 'permission-denied':
+      return '權限不足（僅群組擁有者可執行此操作）'
+    case 'storage/unauthenticated':
+    case 'unauthenticated':
+      return '登入已過期，請重新登入後再試'
+    case 'storage/retry-limit-exceeded':
+    case 'storage/canceled':
+      return '網路連線不穩，請稍後重試'
+    case 'unavailable':
+      return 'Firebase 服務暫時無法使用，請稍後重試'
+    default:
+      return fallback
+  }
+}
+
 function formatAge(timeCreated: string): string {
   if (!timeCreated) return '未知'
   const ageMs = Date.now() - new Date(timeCreated).getTime()
@@ -63,7 +87,7 @@ export function OrphanCleanupSection({ groupId }: OrphanCleanupSectionProps) {
       }
     } catch (e) {
       logger.error('[OrphanCleanup] scan failed', e)
-      addToast('掃描失敗，請稍後重試', 'error')
+      addToast(mapFirebaseError(e, '掃描失敗，請稍後重試'), 'error')
     } finally {
       setScanning(false)
     }
@@ -76,19 +100,21 @@ export function OrphanCleanupSection({ groupId }: OrphanCleanupSectionProps) {
     }
     setDeleting(true)
     try {
+      // Snapshot current orphan set — closures are stable across the await.
       const paths = orphans.map((o) => o.path)
-      const { succeeded, failed } = await deleteOrphans(paths)
-      if (failed.length === 0) {
-        addToast(`已刪除 ${succeeded.length} 個檔案`, 'success')
-        setOrphans([])
-      } else {
-        addToast(`刪除 ${succeeded.length} 成功、${failed.length} 失敗`, 'warning')
-        const failedSet = new Set(failed.map((f) => f.path))
-        setOrphans((prev) => prev.filter((o) => failedSet.has(o.path)))
-      }
+      const { succeeded, failed, adopted } = await deleteOrphans(groupId, paths)
+      // Keep only items that still need attention (failed to delete).
+      // Successfully deleted and adopted-since-scan are removed from the list.
+      const failedSet = new Set(failed.map((f) => f.path))
+      setOrphans((prev) => prev.filter((o) => failedSet.has(o.path)))
+      const parts: string[] = []
+      if (succeeded.length > 0) parts.push(`已刪除 ${succeeded.length}`)
+      if (adopted.length > 0) parts.push(`跳過 ${adopted.length}（已被支出引用）`)
+      if (failed.length > 0) parts.push(`${failed.length} 失敗`)
+      addToast(parts.join('、') || '沒有可刪除的檔案', failed.length > 0 ? 'warning' : 'success')
     } catch (e) {
       logger.error('[OrphanCleanup] delete failed', e)
-      addToast('刪除失敗', 'error')
+      addToast(mapFirebaseError(e, '刪除失敗'), 'error')
     } finally {
       setDeleting(false)
     }
@@ -112,7 +138,7 @@ export function OrphanCleanupSection({ groupId }: OrphanCleanupSectionProps) {
         {orphans.length > 0 && (
           <button
             onClick={handleDeleteAll}
-            disabled={deleting}
+            disabled={deleting || scanning}
             className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50 transition-colors"
             style={{ backgroundColor: 'var(--destructive)' }}
           >
@@ -121,32 +147,38 @@ export function OrphanCleanupSection({ groupId }: OrphanCleanupSectionProps) {
         )}
       </div>
 
-      {scanned && recentSkipped > 0 && (
-        <p className="text-xs text-[var(--muted-foreground)]">
-          已保護 {recentSkipped} 個近期檔案（1 小時內上傳），下次掃描會重新評估。
-        </p>
-      )}
+      {/*
+        role="status" + aria-live="polite" lets screen readers announce scan
+        and delete outcomes as they happen. Results appear inside this region.
+      */}
+      <div role="status" aria-live="polite" className="space-y-3">
+        {scanned && recentSkipped > 0 && (
+          <p className="text-xs text-[var(--muted-foreground)]">
+            已保護 {recentSkipped} 個近期檔案（1 小時內上傳），下次掃描會重新評估。
+          </p>
+        )}
 
-      {orphans.length > 0 && (
-        <div className="border border-[var(--border)] rounded-lg divide-y divide-[var(--border)] max-h-80 overflow-y-auto">
-          {orphans.map((o) => (
-            <div key={o.path} className="px-3 py-2 text-xs">
-              <div className="font-mono text-[var(--muted-foreground)] truncate" title={o.path}>
-                {o.path}
+        {orphans.length > 0 && (
+          <div className="border border-[var(--border)] rounded-lg divide-y divide-[var(--border)] max-h-80 overflow-y-auto">
+            {orphans.map((o) => (
+              <div key={o.path} className="px-3 py-2 text-xs">
+                <div className="font-mono text-[var(--muted-foreground)] truncate" title={o.path}>
+                  {o.path}
+                </div>
+                <div className="flex gap-3 mt-1 text-[var(--muted-foreground)]">
+                  <span>{formatSize(o.size)}</span>
+                  <span>{formatAge(o.timeCreated)}</span>
+                  {o.expenseId && <span className="font-mono">費用 ID：{o.expenseId}</span>}
+                </div>
               </div>
-              <div className="flex gap-3 mt-1 text-[var(--muted-foreground)]">
-                <span>{formatSize(o.size)}</span>
-                <span>{formatAge(o.timeCreated)}</span>
-                {o.expenseId && <span className="font-mono">expense: {o.expenseId}</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
 
-      {scanned && orphans.length === 0 && recentSkipped === 0 && (
-        <p className="text-sm text-[var(--muted-foreground)]">✅ 乾淨，沒有孤兒檔</p>
-      )}
+        {scanned && orphans.length === 0 && recentSkipped === 0 && (
+          <p className="text-sm text-[var(--muted-foreground)]">✅ 乾淨，沒有孤兒檔</p>
+        )}
+      </div>
     </div>
   )
 }
