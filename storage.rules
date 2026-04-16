@@ -6,34 +6,38 @@ service firebase.storage {
     //
     // 存取控制模型：
     //   - Firestore 為 source of truth：group membership、expense.createdBy、ownerUid。
-    //   - Storage rules 透過 firestore.get() 跨服務驗證，避免信任 client metadata。
+    //   - Storage rules 透過 firestore.get()/exists() 跨服務驗證，避免信任 client metadata。
     //   - receiptPaths 數量上限（10）由 firestore.rules 強制（見 expense schema）。
     //   - MIME 型別與檔案大小在此強制；magic bytes 檢查需 Cloud Function（Issue #152 MEDIUM，延後）。
 
+    // 列出群組下所有收據（for Settings 孤兒檔掃描，Issue #153）— 僅 group owner
+    match /receipts/{groupId}/{allPaths=**} {
+      allow list: if request.auth != null
+        && firestore.get(/databases/(default)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid;
+    }
+
     match /receipts/{groupId}/{expenseId}/{fileName} {
       // 讀取：必須是 group 成員（透過 Firestore 驗證）。
-      // 取代原本「任何登入者可讀」的寬鬆條件。
       allow read: if request.auth != null
         && request.auth.uid in
           firestore.get(/databases/(default)/documents/groups/$(groupId)).data.memberUids;
 
       // 寫入（create/update）：
-      //   - 已登入
-      //   - 必須是 group 成員（透過 Firestore 驗證，取代可偽造的 customMetadata.uploadedBy）
-      //   - 檔案 < 10MB
-      //   - MIME 為 image/*
+      //   - 已登入 + 必須是 group 成員（取代可偽造的 customMetadata.uploadedBy）
+      //   - 檔案 < 10MB + MIME 為 image/*
       allow write: if request.auth != null
         && request.auth.uid in
           firestore.get(/databases/(default)/documents/groups/$(groupId)).data.memberUids
         && request.resource.size < 10 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
 
-      // 刪除：expense 建立者或 group owner（貼合 firestore.rules 的 expense delete 權限）。
-      // 取代原本信任 customMetadata.uploadedBy 的條件。
+      // 刪除：group owner（優先，可刪孤兒檔）或 expense 建立者（僅當 expense doc 仍存在）。
+      // owner 分支放前面短路避免對不存在的 expense doc 取 .data 拋錯（Issue #153）。
       allow delete: if request.auth != null
         && (
-          firestore.get(/databases/(default)/documents/groups/$(groupId)/expenses/$(expenseId)).data.createdBy == request.auth.uid
-          || firestore.get(/databases/(default)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid
+          firestore.get(/databases/(default)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid
+          || (firestore.exists(/databases/(default)/documents/groups/$(groupId)/expenses/$(expenseId))
+              && firestore.get(/databases/(default)/documents/groups/$(groupId)/expenses/$(expenseId)).data.createdBy == request.auth.uid)
         );
     }
 

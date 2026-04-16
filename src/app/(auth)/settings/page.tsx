@@ -14,6 +14,7 @@ import { addCategory, updateCategory } from '@/lib/services/category-service'
 import { addActivityLog } from '@/lib/services/activity-log-service'
 import { useRouter } from 'next/navigation'
 import { BudgetSection } from '@/components/budget-section'
+import { OrphanCleanupSection } from '@/components/orphan-cleanup-section'
 import type { FamilyMember, Category } from '@/lib/types'
 
 import { useToast } from '@/components/toast'
@@ -705,6 +706,12 @@ export default function SettingsPage() {
             </button>
           </div>
         </Section>
+
+        {group && user?.uid === group.ownerUid && (
+          <Section title="🧹 收據檔案維護">
+            <OrphanCleanupSection groupId={group.id} />
+          </Section>
+        )}
 
         <Section title="👤 帳號">
         <div className="flex items-center gap-4">
