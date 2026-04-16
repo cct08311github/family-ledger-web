@@ -5,30 +5,36 @@ service firebase.storage {
     // ─── 收據 ───
     //
     // 存取控制模型：
-    //   - Firestore expense doc 是 source of truth（group membership 在 firestore.rules）
-    //   - Storage 只做粗粒度驗證：已登入、檔案大小、MIME、uploadedBy metadata
-    //   - 細粒度 group membership 驗證無法在 Storage rules 跨服務取得 — 此為 Firebase
-    //     Storage 限制，只能透過 Cloud Function 強化。追蹤於 Issue #152。
+    //   - Firestore 為 source of truth：group membership、expense.createdBy、ownerUid。
+    //   - Storage rules 透過 firestore.get() 跨服務驗證，避免信任 client metadata。
+    //   - receiptPaths 數量上限（10）由 firestore.rules 強制（見 expense schema）。
+    //   - MIME 型別與檔案大小在此強制；magic bytes 檢查需 Cloud Function（Issue #152 MEDIUM，延後）。
 
     match /receipts/{groupId}/{expenseId}/{fileName} {
-      // 讀取：已登入（受 Firestore expense doc 規則限制）
-      allow read: if request.auth != null;
+      // 讀取：必須是 group 成員（透過 Firestore 驗證）。
+      // 取代原本「任何登入者可讀」的寬鬆條件。
+      allow read: if request.auth != null
+        && request.auth.uid in
+          firestore.get(/databases/(default)/documents/groups/$(groupId)).data.memberUids;
 
       // 寫入（create/update）：
       //   - 已登入
+      //   - 必須是 group 成員（透過 Firestore 驗證，取代可偽造的 customMetadata.uploadedBy）
       //   - 檔案 < 10MB
       //   - MIME 為 image/*
-      //   - customMetadata.uploadedBy 必須存在且等於 auth.uid（防止假冒他人）
       allow write: if request.auth != null
+        && request.auth.uid in
+          firestore.get(/databases/(default)/documents/groups/$(groupId)).data.memberUids
         && request.resource.size < 10 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*')
-        && request.resource.metadata.uploadedBy == request.auth.uid;
+        && request.resource.contentType.matches('image/.*');
 
-      // 刪除：只允許 uploadedBy 本人
-      // Cross-service check (group owner override) 無法在 Storage rules 表達，
-      // 因此此處放寬：只要當初是你上傳的就能刪。
+      // 刪除：expense 建立者或 group owner（貼合 firestore.rules 的 expense delete 權限）。
+      // 取代原本信任 customMetadata.uploadedBy 的條件。
       allow delete: if request.auth != null
-        && resource.metadata.uploadedBy == request.auth.uid;
+        && (
+          firestore.get(/databases/(default)/documents/groups/$(groupId)/expenses/$(expenseId)).data.createdBy == request.auth.uid
+          || firestore.get(/databases/(default)/documents/groups/$(groupId)).data.ownerUid == request.auth.uid
+        );
     }
 
     // ─── 其他路徑：全部拒絕 ───
