@@ -21,6 +21,7 @@ import { toDate } from '@/lib/utils'
 import { ref as storageRef, getDownloadURL } from 'firebase/storage'
 import { storage } from '@/lib/firebase'
 import { logger } from '@/lib/logger'
+import { ReceiptGallery } from '@/components/receipt-gallery'
 import type { Expense, SplitMethod, PaymentMethod, SplitDetail } from '@/lib/types'
 import type { ParsedExpense } from '@/lib/services/local-expense-parser'
 
@@ -99,6 +100,7 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   const [existingReceiptUrls, setExistingReceiptUrls] = useState<Record<string, string>>({})
   const [newFiles, setNewFiles] = useState<File[]>([])
   const [removedPaths, setRemovedPaths] = useState<string[]>([])
+  const [galleryOpen, setGalleryOpen] = useState(false)
 
   // Load download URLs for existing receipt paths. We intentionally omit
   // `existingReceiptUrls` from deps — the functional setState below reads the
@@ -794,11 +796,30 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
             {totalImageCount}/{MAX_RECEIPTS_PER_EXPENSE}
           </span>
         </label>
+        {isEditing && existingReceiptPaths.length > 0 && (
+          <p className="text-xs text-[var(--muted-foreground)] mb-2">
+            💡 點縮圖可檢視原圖，確認後再決定要保留或刪除。
+          </p>
+        )}
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-          {existingReceiptPaths.map((p) => (
-            <div key={p} className="relative aspect-square rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--muted)]">
+          {existingReceiptPaths.map((p, i) => (
+            <div
+              key={p}
+              className="relative aspect-square rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--muted)]"
+            >
               {existingReceiptUrls[p] ? (
-                <img src={existingReceiptUrls[p]} alt="收據" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setGalleryOpen(true)}
+                  className="block w-full h-full"
+                  aria-label={`檢視第 ${i + 1} 張收據`}
+                >
+                  <img
+                    src={existingReceiptUrls[p]}
+                    alt={`收據 ${i + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-xs text-[var(--muted-foreground)]">
                   載入中…
@@ -807,23 +828,38 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
               <button
                 type="button"
                 onClick={() => removeExistingPath(p)}
-                aria-label="移除圖片"
-                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white text-xs flex items-center justify-center hover:bg-black/80"
+                aria-label={`刪除第 ${i + 1} 張收據`}
+                className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/70 text-white text-sm flex items-center justify-center hover:bg-black/90 active:scale-95"
               >✕</button>
+              <span className="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-black/60 text-white font-medium">
+                {i + 1}
+              </span>
             </div>
           ))}
-          {newFiles.map((f, i) => (
-            <div key={`${f.name}-${i}`} className="relative aspect-square rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--muted)]">
-<img src={newFilePreviews[i]} alt={f.name} className="w-full h-full object-cover" />
-              <button
-                type="button"
-                onClick={() => removeNewFile(i)}
-                aria-label="移除圖片"
-                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white text-xs flex items-center justify-center hover:bg-black/80"
-              >✕</button>
-              <span className="absolute bottom-1 left-1 text-[10px] px-1 rounded bg-[var(--primary)] text-[var(--primary-foreground)]">新</span>
-            </div>
-          ))}
+          {newFiles.map((f, i) => {
+            const displayIdx = existingReceiptPaths.length + i + 1
+            return (
+              <div
+                key={`${f.name}-${i}`}
+                className="relative aspect-square rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--muted)]"
+              >
+                <img
+                  src={newFilePreviews[i]}
+                  alt={`待上傳 ${displayIdx}`}
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeNewFile(i)}
+                  aria-label="移除待上傳圖片"
+                  className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/70 text-white text-sm flex items-center justify-center hover:bg-black/90 active:scale-95"
+                >✕</button>
+                <span className="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-[var(--primary)] text-[var(--primary-foreground)] font-medium">
+                  新 {displayIdx}
+                </span>
+              </div>
+            )
+          })}
           {canAddMore && (
             <label className="aspect-square rounded-lg border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-1 text-xs text-[var(--muted-foreground)] cursor-pointer hover:bg-[var(--muted)] transition">
               <span className="text-2xl">＋</span>
@@ -842,6 +878,10 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
           送出時才上傳。可從相機或相簿選取，上傳前會自動壓縮。
         </p>
       </div>
+
+      {galleryOpen && existingReceiptPaths.length > 0 && (
+        <ReceiptGallery paths={existingReceiptPaths} onClose={() => setGalleryOpen(false)} />
+      )}
 
       {/* 設為定期 — 僅新增模式顯示 */}
       {!isEditing && (
