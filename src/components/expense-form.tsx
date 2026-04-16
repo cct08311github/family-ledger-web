@@ -35,6 +35,28 @@ interface Props {
   onVoiceParsedRef?: RefObject<((_result: ParsedExpense) => void) | null>
 }
 
+interface UploadProgress {
+  current: number
+  total: number
+}
+
+/**
+ * Compute the submit button label based on current save + upload state.
+ * Exported for unit testing the state→label mapping.
+ */
+export function saveButtonLabel(args: {
+  saving: boolean
+  isEditing: boolean
+  uploadProgress: UploadProgress
+}): string {
+  const { saving, isEditing, uploadProgress } = args
+  if (!saving) return isEditing ? '儲存變更' : '新增支出'
+  if (uploadProgress.total > 0 && uploadProgress.current < uploadProgress.total) {
+    return `上傳中 ${uploadProgress.current}/${uploadProgress.total} 張...`
+  }
+  return '儲存中...'
+}
+
 export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoiceParsedRef }: Props) {
   const { group } = useGroup()
   const { members } = useMembers()
@@ -86,6 +108,8 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   const [customAmounts, setCustomAmounts] = useState<Record<string, number>>({})
   const [weights, setWeights] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState(false)
+  /** Upload progress for receipt images: both 0 when idle. */
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress>({ current: 0, total: 0 })
   const [error, setError] = useState<string | null>(null)
   const [autoCategoryFilled, setAutoCategoryFilled] = useState(false)
   const [draftRestored, setDraftRestored] = useState(false)
@@ -411,9 +435,17 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
 
       // Upload any newly picked images first. On partial failure, uploadReceiptImages
       // rolls back everything it uploaded in this call so we never leave orphans.
+      // Progress callback drives the "上傳中 N/M 張" indicator on the submit button.
       let uploadedPaths: string[] = []
       if (newFiles.length > 0) {
-        const result = await uploadReceiptImages(group.id, expenseId, newFiles, uploaderUid)
+        setUploadProgress({ current: 0, total: newFiles.length })
+        const result = await uploadReceiptImages(
+          group.id,
+          expenseId,
+          newFiles,
+          uploaderUid,
+          (current, total) => setUploadProgress({ current, total }),
+        )
         uploadedPaths = result.paths
       }
 
@@ -500,6 +532,7 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
       else setError(e instanceof Error ? e.message : '儲存失敗')
     } finally {
       setSaving(false)
+      setUploadProgress({ current: 0, total: 0 })
     }
   }
 
@@ -911,8 +944,9 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
 
       {/* 儲存 */}
       <button onClick={handleSave} disabled={saving}
+        aria-live="polite"
         className="w-full h-12 rounded-xl font-semibold btn-primary btn-press">
-        {saving ? '儲存中...' : isEditing ? '儲存變更' : '新增支出'}
+        {saveButtonLabel({ saving, isEditing, uploadProgress })}
       </button>
     </div>
   )
