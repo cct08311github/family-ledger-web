@@ -110,6 +110,9 @@ service cloud.firestore {
           && request.resource.data.payerId is string
           && request.resource.data.payerName is string
           && request.resource.data.createdBy == request.auth.uid
+          && (!('receiptPaths' in request.resource.data)
+              || (request.resource.data.receiptPaths is list
+                  && request.resource.data.receiptPaths.size() <= 10))
           && hasReasonableSize();
 
         // 更新：僅建立者或群組 owner（防止成員任意修改他人支出）
@@ -121,6 +124,9 @@ service cloud.firestore {
           && request.resource.data.amount is number
           && request.resource.data.amount > 0
           && request.resource.data.amount < 100000000
+          && (!('receiptPaths' in request.resource.data)
+              || (request.resource.data.receiptPaths is list
+                  && request.resource.data.receiptPaths.size() <= 10))
           && hasReasonableSize();
 
         // 刪除：僅建立者或群組 owner
