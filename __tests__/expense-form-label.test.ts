@@ -1,32 +1,5 @@
-// The full expense-form component pulls in Firebase and React DOM which are
-// heavy and unnecessary for testing this pure helper. Mock the module's
-// Firebase-adjacent imports just enough for the helper to be importable.
-jest.mock('@/lib/firebase', () => ({ db: {}, auth: {}, storage: {} }))
-jest.mock('firebase/firestore', () => ({
-  collection: jest.fn(),
-  doc: jest.fn(),
-  getDocs: jest.fn(),
-  getDoc: jest.fn(),
-  setDoc: jest.fn(),
-  updateDoc: jest.fn(),
-  deleteDoc: jest.fn(),
-  query: jest.fn(),
-  where: jest.fn(),
-  orderBy: jest.fn(),
-  limit: jest.fn(),
-  startAfter: jest.fn(),
-  Timestamp: { now: jest.fn(), fromDate: jest.fn() },
-  serverTimestamp: jest.fn(),
-  deleteField: jest.fn(),
-  onSnapshot: jest.fn(),
-}))
-jest.mock('firebase/storage', () => ({
-  ref: jest.fn(),
-  uploadBytes: jest.fn(),
-  deleteObject: jest.fn(),
-}))
-
-import { saveButtonLabel } from '@/components/expense-form'
+// Helper lives in its own module, so no Firebase mocks are needed.
+import { saveButtonLabel } from '@/lib/save-button-label'
 
 describe('saveButtonLabel', () => {
   const idle = { current: 0, total: 0 }
@@ -39,7 +12,13 @@ describe('saveButtonLabel', () => {
     expect(saveButtonLabel({ saving: false, isEditing: true, uploadProgress: idle })).toBe('儲存變更')
   })
 
-  it('shows upload progress when saving and uploads in-flight', () => {
+  it('shows "準備上傳 N 張..." when uploads queued but no tick yet', () => {
+    expect(
+      saveButtonLabel({ saving: true, isEditing: false, uploadProgress: { current: 0, total: 3 } }),
+    ).toBe('準備上傳 3 張...')
+  })
+
+  it('shows "上傳中 N/M 張..." when uploads partially done', () => {
     expect(
       saveButtonLabel({ saving: true, isEditing: false, uploadProgress: { current: 3, total: 10 } }),
     ).toBe('上傳中 3/10 張...')

@@ -18,6 +18,7 @@ import { addRecurringExpense } from '@/lib/services/recurring-expense-service'
 import { learnFromExpense, suggestCategory } from '@/lib/services/transaction-rules-service'
 import { useAuth, getActor } from '@/lib/auth'
 import { toDate } from '@/lib/utils'
+import { saveButtonLabel, type UploadProgress } from '@/lib/save-button-label'
 import { ref as storageRef, getDownloadURL } from 'firebase/storage'
 import { storage } from '@/lib/firebase'
 import { logger } from '@/lib/logger'
@@ -35,27 +36,6 @@ interface Props {
   onVoiceParsedRef?: RefObject<((_result: ParsedExpense) => void) | null>
 }
 
-interface UploadProgress {
-  current: number
-  total: number
-}
-
-/**
- * Compute the submit button label based on current save + upload state.
- * Exported for unit testing the state→label mapping.
- */
-export function saveButtonLabel(args: {
-  saving: boolean
-  isEditing: boolean
-  uploadProgress: UploadProgress
-}): string {
-  const { saving, isEditing, uploadProgress } = args
-  if (!saving) return isEditing ? '儲存變更' : '新增支出'
-  if (uploadProgress.total > 0 && uploadProgress.current < uploadProgress.total) {
-    return `上傳中 ${uploadProgress.current}/${uploadProgress.total} 張...`
-  }
-  return '儲存中...'
-}
 
 export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoiceParsedRef }: Props) {
   const { group } = useGroup()
@@ -942,12 +922,16 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
 
       {error && <p className="text-sm" style={{ color: 'var(--destructive)' }}>{error}</p>}
 
-      {/* 儲存 */}
+      {/* 儲存 — 可見按鈕只顯示 label；螢幕閱讀器透過下方 live region 接收進度更新。
+          aria-live 不放在 <button> 上：NVDA/VoiceOver 對 interactive widget 上的
+          live 屬性支援不一致，分開 sibling role="status" 是最可靠的做法。 */}
       <button onClick={handleSave} disabled={saving}
-        aria-live="polite"
         className="w-full h-12 rounded-xl font-semibold btn-primary btn-press">
         {saveButtonLabel({ saving, isEditing, uploadProgress })}
       </button>
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {saving ? saveButtonLabel({ saving, isEditing, uploadProgress }) : ''}
+      </div>
     </div>
   )
 }
