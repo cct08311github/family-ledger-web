@@ -202,12 +202,16 @@ service cloud.firestore {
 
       match /transactionRules/{ruleId} {
         allow read: if isGroupMember(groupId);
+        // category 長度上限與 categories collection 對齊 + 與
+        // transaction-rules-service.ts MAX_CATEGORY_LENGTH 必須同步（Issue #165）
         allow create: if isGroupMember(groupId)
           && hasReasonableSize()
           && request.resource.data.pattern is string
           && request.resource.data.pattern.size() > 0
           && request.resource.data.pattern.size() <= 200
           && request.resource.data.category is string
+          && request.resource.data.category.size() > 0
+          && request.resource.data.category.size() <= 30
           && request.resource.data.hitCount is number
           && request.resource.data.hitCount >= 1;
         allow update: if isGroupMember(groupId)
