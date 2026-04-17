@@ -66,6 +66,14 @@ export default function CategoriesPage() {
 
   async function handleSave() {
     if (!form.name.trim() || !group) return
+    // Guard for legacy data that may exceed the current cap — maxLength only
+    // prevents further typing, it does not truncate pre-existing values loaded
+    // into the edit form. Without this the write would be silently rejected by
+    // firestore.rules (name.size() <= 30).
+    if (form.name.length > MAX_NAME_LENGTH) {
+      addToast(`名稱不能超過 ${MAX_NAME_LENGTH} 字，目前有 ${form.name.length} 字`, 'warning')
+      return
+    }
     setSaving(true)
     try {
       if (editing?.id) {
@@ -232,7 +240,10 @@ export default function CategoriesPage() {
             <div>
               <div className="flex items-baseline justify-between mb-1">
                 <label htmlFor="category-name-input" className="text-xs text-[var(--muted-foreground)]">名稱</label>
+                {/* 視覺計數器保持靜音，避免每次擊鍵都朗讀；下方獨立 live region 只在
+                    達到上限時公告一次，降低螢幕閱讀器噪音。 */}
                 <span
+                  aria-hidden="true"
                   className="text-xs tabular-nums"
                   style={{
                     color: form.name.length >= MAX_NAME_LENGTH
@@ -241,7 +252,6 @@ export default function CategoriesPage() {
                         ? 'var(--primary)'
                         : 'var(--muted-foreground)',
                   }}
-                  aria-live="polite"
                 >
                   {form.name.length}/{MAX_NAME_LENGTH}
                 </span>
@@ -256,6 +266,9 @@ export default function CategoriesPage() {
                 placeholder="例如：餐飲"
                 autoFocus
               />
+              <span role="status" aria-live="polite" className="sr-only">
+                {form.name.length >= MAX_NAME_LENGTH ? `已達字數上限 ${MAX_NAME_LENGTH} 字` : ''}
+              </span>
             </div>
 
             <div>
