@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { logger } from '@/lib/logger'
+import { buildBoundaryLogContext } from '@/lib/error-boundary-context'
 
 export default function AuthError({
   error,
@@ -11,15 +12,11 @@ export default function AuthError({
   reset: () => void
 }) {
   // Forward the uncaught error to system_logs so the owner can diagnose from
-  // /settings/logs. UI below intentionally shows only `digest` to avoid leaking
-  // stack details to the end user. Issue #177.
+  // /settings/logs. UI below shows only `digest` to avoid leaking stack details
+  // to the end user. Log-service's rate limiter (MAX_WRITES_PER_MINUTE) caps
+  // Firestore writes if a crash loop re-fires this effect. Issue #177.
   useEffect(() => {
-    logger.error('[ErrorBoundary:auth] Uncaught error', {
-      digest: error.digest,
-      message: error.message,
-      stack: error.stack,
-      pathname: typeof window !== 'undefined' ? window.location.pathname : '',
-    })
+    logger.error('[ErrorBoundary:auth] Uncaught error', buildBoundaryLogContext(error))
   }, [error])
 
   return (
