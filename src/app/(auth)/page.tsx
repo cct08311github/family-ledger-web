@@ -15,6 +15,12 @@ import { WeeklyDigest } from '@/components/weekly-digest'
 import { BudgetProgress } from '@/components/budget-progress'
 import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
 import { logger } from '@/lib/logger'
+import { useToast } from '@/components/toast'
+import {
+  filterConfirmable,
+  summarizeConfirmResults,
+  confirmToastFromSummary,
+} from '@/lib/pending-confirmation'
 
 function NoGroupView() {
   const [code, setCode] = useState('')
@@ -70,6 +76,8 @@ export default function HomePage() {
   const { expenses, loading: expLoading } = useExpenses()
   const { settlements } = useSettlements()
   const { members, loading: membersLoading } = useMembers()
+  const { addToast } = useToast()
+  const [confirmingPending, setConfirmingPending] = useState(false)
 
   const monthly = useMonthlyExpenses(expenses)
   const recent = useRecentExpenses(expenses, 5)
@@ -79,13 +87,45 @@ export default function HomePage() {
   // Pending confirmation: auto-generated recurring expenses
   const pendingExpenses = useMemo(() => expenses.filter((e) => e.pendingConfirm), [expenses])
 
+  /**
+   * Confirm all pending auto-generated expenses in parallel. Issue #179.
+   * Replaces a serial for-loop that had no loading state, no error feedback,
+   * and silently swallowed mid-loop failures.
+   */
+  async function handleConfirmAllPending() {
+    if (!group?.id || confirmingPending) return
+    const confirmable = filterConfirmable(pendingExpenses)
+    if (confirmable.length === 0) return
+    setConfirmingPending(true)
+    try {
+      const results = await Promise.allSettled(
+        confirmable.map((e) => confirmPendingExpense(group.id, e.id)),
+      )
+      const summary = summarizeConfirmResults(results)
+      const toast = confirmToastFromSummary(summary)
+      if (toast) addToast(toast.message, toast.level)
+      // Aggregate rejections into a single logger.error so the log-service
+      // rate limiter (MAX_WRITES_PER_MINUTE) doesn't silently drop entries
+      // 31..N if a catastrophic outage causes many simultaneous failures.
+      if (summary.fail > 0) {
+        logger.error('[Home] confirmPendingExpense batch failures', {
+          failed: summary.fail,
+          total: summary.total,
+          reasons: results.flatMap((r) => (r.status === 'rejected' ? [String(r.reason)] : [])),
+        })
+      }
+    } finally {
+      setConfirmingPending(false)
+    }
+  }
+
   // Trigger recurring expense generation on page load
   useEffect(() => {
     if (!group?.id) return
     generatePendingRecurring(group.id).catch((err) =>
       logger.error('[Home] recurring generation failed:', err),
     )
-  }, [group?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [group?.id])
 
   const now = new Date()
   const monthLabel = `${now.getFullYear()}年 ${now.getMonth() + 1}月`
@@ -122,16 +162,12 @@ export default function HomePage() {
             <p className="text-xs text-[var(--muted-foreground)]">點擊確認或前往記錄頁檢視</p>
           </div>
           <button
-            onClick={async () => {
-              for (const e of pendingExpenses) {
-                if (e.amount > 0) {
-                  await confirmPendingExpense(group!.id, e.id)
-                }
-              }
-            }}
-            className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium text-white"
+            onClick={handleConfirmAllPending}
+            disabled={confirmingPending}
+            aria-busy={confirmingPending}
+            className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50"
             style={{ backgroundColor: 'var(--primary)' }}>
-            全部確認
+            {confirmingPending ? '確認中…' : '全部確認'}
           </button>
           <button
             onClick={() => router.push('/records')}
