@@ -1,6 +1,8 @@
 'use client'
 
 import './globals.css'
+import { useEffect } from 'react'
+import { logger } from '@/lib/logger'
 
 export default function GlobalError({
   error,
@@ -9,6 +11,18 @@ export default function GlobalError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  // Forward the uncaught root-level error to system_logs. See (auth)/error.tsx
+  // for the per-route boundary; this one catches crashes that bubble past the
+  // root layout (e.g., Providers throwing). Issue #177.
+  useEffect(() => {
+    logger.error('[ErrorBoundary:root] Uncaught error', {
+      digest: error.digest,
+      message: error.message,
+      stack: error.stack,
+      pathname: typeof window !== 'undefined' ? window.location.pathname : '',
+    })
+  }, [error])
+
   return (
     <html lang="zh-TW">
       <body>
