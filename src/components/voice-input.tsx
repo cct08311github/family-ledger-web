@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { parseExpense, type ParsedExpense } from '@/lib/services/local-expense-parser'
 import { auth } from '@/lib/firebase'
+import { isSpeechRecognitionSupported } from '@/lib/speech-recognition-support'
 
 const GEMINI_KEY = 'gemini-api-key'
 
@@ -32,6 +33,14 @@ export function VoiceInput({ availableCategories, onParsed }: Props) {
   const [transcript, setTranscript] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
   const recognitionRef = useRef<ISpeechRecognition | null>(null)
+  // null = detection pending (SSR/first render); false = known unsupported;
+  // true = ready. Detected via useEffect to avoid hydration mismatches.
+  // Issue #181.
+  const [supported, setSupported] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    setSupported(isSpeechRecognitionSupported(typeof window !== 'undefined' ? window : null))
+  }, [])
 
   const updateStatus = useCallback((s: Status) => {
     statusRef.current = s
@@ -86,12 +95,11 @@ export function VoiceInput({ availableCategories, onParsed }: Props) {
   }, [availableCategories, onParsed, updateStatus])
 
   const startListening = useCallback(() => {
+    // Detection already ran in useEffect; the button is hidden/disabled when
+    // unsupported, so reaching here with null Ctor would be a bug — treat as
+    // unreachable but guard defensively.
     const SpeechRec = getSpeechRecognition()
-    if (!SpeechRec) {
-      setErrorMsg('此瀏覽器不支援語音輸入')
-      setStatus('error')
-      return
-    }
+    if (!SpeechRec) return
 
     setErrorMsg('')
     setTranscript('')
@@ -135,17 +143,30 @@ export function VoiceInput({ availableCategories, onParsed }: Props) {
   const isListening = status === 'listening'
   const isProcessing = status === 'processing'
 
+  // Detection still pending — reserve the slot with a same-sized placeholder
+  // so parent's flex layout doesn't reflow after useEffect resolves. Prevents
+  // a brief title-left-align flash on iOS Safari where first paint beats
+  // effect resolution.
+  if (supported === null) return <div className="w-14 h-14" aria-hidden="true" />
+
+  const isUnsupported = supported === false
+  const unsupportedMsgId = 'voice-input-unsupported-msg'
+
   return (
     <div className="flex flex-col items-center gap-2">
       <button
         type="button"
         onClick={isListening ? stopListening : startListening}
-        disabled={isProcessing}
+        disabled={isProcessing || isUnsupported}
         aria-label={isListening ? '停止錄音' : '語音輸入'}
-        className={`relative w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-md transition-all disabled:opacity-50 ${
-          isListening
-            ? 'bg-red-500 text-white scale-110'
-            : 'bg-[var(--primary)] text-[var(--primary-foreground)] hover:scale-105'
+        aria-describedby={isUnsupported ? unsupportedMsgId : undefined}
+        title={isUnsupported ? '此瀏覽器不支援語音輸入' : undefined}
+        className={`relative w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+          isUnsupported
+            ? 'bg-[var(--muted)] text-[var(--muted-foreground)]'
+            : isListening
+              ? 'bg-red-500 text-white scale-110'
+              : 'bg-[var(--primary)] text-[var(--primary-foreground)] hover:scale-105'
         }`}>
         {isProcessing ? (
           <span className="animate-spin text-base">⟳</span>
@@ -159,6 +180,9 @@ export function VoiceInput({ availableCategories, onParsed }: Props) {
         )}
       </button>
 
+      {isUnsupported && (
+        <p id={unsupportedMsgId} className="text-xs text-[var(--muted-foreground)]">此瀏覽器不支援語音</p>
+      )}
       {isListening && (
         <p className="text-xs text-[var(--muted-foreground)] animate-pulse">聆聽中…</p>
       )}
@@ -166,7 +190,7 @@ export function VoiceInput({ availableCategories, onParsed }: Props) {
         <p className="text-xs text-[var(--muted-foreground)]">解析中…</p>
       )}
       {transcript && status === 'idle' && (
-        <p className="text-xs text-[var(--muted-foreground)] max-w-xs text-center">"{transcript}"</p>
+        <p className="text-xs text-[var(--muted-foreground)] max-w-xs text-center">&quot;{transcript}&quot;</p>
       )}
       {status === 'error' && (
         <p className="text-xs text-[var(--destructive)]">{errorMsg}</p>
