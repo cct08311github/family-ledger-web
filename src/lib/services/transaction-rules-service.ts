@@ -83,7 +83,11 @@ export async function learnFromExpense(
       })
     }
   } catch (e) {
-    // Non-fatal: rule learning is best-effort, don't block the expense save path
+    // Auth errors (PERMISSION_DENIED / UNAUTHENTICATED) must not be silently
+    // swallowed — the caller may need to trigger a re-auth or membership flow.
+    // Everything else (network blips, rate limits) stays best-effort.
+    // Issue #164.
+    if (isAuthError(e)) throw e
     logger.warn('[TransactionRules] Failed to learn rule:', e)
   }
 }
@@ -127,6 +131,7 @@ export async function suggestCategory(
     }
     return best?.category ?? null
   } catch (e) {
+    if (isAuthError(e)) throw e
     logger.warn('[TransactionRules] Failed to fetch suggestion:', e)
     return null
   }
@@ -145,3 +150,27 @@ export const TRANSACTION_RULE_MIN_HITS = MIN_HIT_COUNT_FOR_SUGGESTION
 
 // Re-export Timestamp for test utilities if needed
 export { Timestamp }
+
+/**
+ * Firebase Firestore error codes that indicate the current session cannot
+ * perform the operation regardless of retries — either the user lost
+ * membership, was signed out, or the security rules reject the request.
+ * These must not be swallowed by the best-effort contract; the caller
+ * needs to know so it can surface a re-auth / membership prompt.
+ *
+ * Reference: https://firebase.google.com/docs/reference/js/firestore_.firestoreerror
+ * Issue #164.
+ */
+const AUTH_ERROR_CODES = new Set(['permission-denied', 'unauthenticated'])
+
+/**
+ * Returns true if `err` is a Firebase auth/permission error that should NOT
+ * be silently swallowed (e.g. PERMISSION_DENIED / UNAUTHENTICATED). Non-auth
+ * errors (network blips, rate limits) remain best-effort and are swallowed
+ * by the caller.
+ */
+export function isAuthError(err: unknown): boolean {
+  if (err === null || typeof err !== 'object') return false
+  const code = (err as { code?: unknown }).code
+  return typeof code === 'string' && AUTH_ERROR_CODES.has(code)
+}

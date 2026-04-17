@@ -15,7 +15,7 @@ import {
 } from '@/lib/services/image-upload'
 import { buildEqualSplits } from '@/lib/services/split-calculator'
 import { addRecurringExpense } from '@/lib/services/recurring-expense-service'
-import { learnFromExpense, suggestCategory } from '@/lib/services/transaction-rules-service'
+import { learnFromExpense, suggestCategory, isAuthError } from '@/lib/services/transaction-rules-service'
 import { useAuth, getActor } from '@/lib/auth'
 import { toDate } from '@/lib/utils'
 import { saveButtonLabel, type UploadProgress } from '@/lib/save-button-label'
@@ -299,7 +299,15 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
             setAutoCategoryFilled(true)
           }
         })
-        .catch(() => { /* silent */ })
+        .catch((e) => {
+          // Auth errors surface to system_logs so ops can see session/membership
+          // issues; the main expense save path will also fail visibly in that
+          // state, so no inline toast needed here. Non-auth errors stay silent
+          // (best-effort suggestion). Issue #164.
+          if (isAuthError(e)) {
+            logger.error('[ExpenseForm] suggestCategory auth error', e)
+          }
+        })
     }, 300)
     return () => { clearTimeout(handle); cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -501,7 +509,11 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         }).catch(() => { /* silent — template creation is non-critical */ })
       }
       // Learn from this save to improve future auto-categorization
-      learnFromExpense(group.id, input.description, input.category).catch(() => { /* silent */ })
+      learnFromExpense(group.id, input.description, input.category).catch((e) => {
+        // Auth errors go to system_logs (Issue #164); other errors stay silent
+        // since rule learning is best-effort and must never block save UX.
+        if (isAuthError(e)) logger.error('[ExpenseForm] learnFromExpense auth error', e)
+      })
       // Clear draft after successful save
       if (draftKey && typeof window !== 'undefined') {
         sessionStorage.removeItem(draftKey)
