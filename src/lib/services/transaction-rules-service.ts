@@ -1,6 +1,8 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
+  doc,
   getDocs,
   query,
   serverTimestamp,
@@ -138,12 +140,75 @@ export async function suggestCategory(
 }
 
 /**
- * List all rules for a group (for debug / future settings UI).
- * Not used in current flow but exported for completeness.
+ * List all rules for a group (for debug / settings UI).
  */
 export async function listRules(groupId: string): Promise<TransactionRule[]> {
   const snap = await getDocs(collection(db, 'groups', groupId, 'transactionRules'))
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as TransactionRule)
+}
+
+/** Default staleness cutoff for pruneStaleRules, in days. */
+export const STALE_RULE_DAYS = 90
+
+export interface PruneResult {
+  scanned: number
+  pruned: number
+  kept: number
+  /** Rules skipped because deletion failed (e.g. transient network). */
+  failed: number
+}
+
+/**
+ * Prune rules that have never reached the suggestion threshold AND have been
+ * idle for `staleDays` days. Active learned rules (hitCount >= threshold) are
+ * preserved regardless of age — those are actual user learning.
+ *
+ * This is the after-the-fact mitigation for Issue #167 (per-group doc count
+ * flood): Firestore rules cannot cap collection size, so we give the owner a
+ * cleanup tool analogous to the orphan receipt cleanup (#157).
+ *
+ * Caller must be group owner — enforced by firestore.rules
+ * `transactionRules` delete rule (already requires isGroupMember).
+ */
+export async function pruneStaleRules(
+  groupId: string,
+  staleDays = STALE_RULE_DAYS,
+): Promise<PruneResult> {
+  if (!groupId) return { scanned: 0, pruned: 0, kept: 0, failed: 0 }
+  const cutoffMs = Date.now() - staleDays * 24 * 60 * 60 * 1000
+  const rules = await listRules(groupId)
+  let pruned = 0
+  let failed = 0
+  await Promise.all(
+    rules.map(async (r) => {
+      const hitCount = typeof r.hitCount === 'number' ? r.hitCount : 0
+      const lastUsedMs = r.lastUsed?.toMillis?.() ?? 0
+      // Conservative: only delete rules that never activated AND are old.
+      // Active rules with hitCount >= threshold are the user's real learning
+      // and must never be auto-pruned.
+      if (hitCount >= MIN_HIT_COUNT_FOR_SUGGESTION) return
+      if (lastUsedMs > cutoffMs) return
+      try {
+        await deleteDoc(doc(db, 'groups', groupId, 'transactionRules', r.id))
+        pruned++
+      } catch (e) {
+        // Permission errors should surface so the UI can prompt for re-auth
+        // (consistent with #164). Other errors are counted as failures and the
+        // prune continues — mirrors orphan-scanner's delete-best-effort pattern.
+        if (isAuthError(e)) throw e
+        failed++
+        logger.warn('[TransactionRules] pruneStaleRules: failed to delete rule', {
+          ruleId: r.id, err: e,
+        })
+      }
+    }),
+  )
+  return {
+    scanned: rules.length,
+    pruned,
+    kept: rules.length - pruned - failed,
+    failed,
+  }
 }
 
 export const TRANSACTION_RULE_MIN_HITS = MIN_HIT_COUNT_FOR_SUGGESTION

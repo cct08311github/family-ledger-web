@@ -15,6 +15,7 @@ import { addActivityLog } from '@/lib/services/activity-log-service'
 import { useRouter } from 'next/navigation'
 import { BudgetSection } from '@/components/budget-section'
 import { OrphanCleanupSection } from '@/components/orphan-cleanup-section'
+import { RuleCleanupSection } from '@/components/rule-cleanup-section'
 import type { FamilyMember, Category } from '@/lib/types'
 
 import { useToast } from '@/components/toast'
@@ -710,6 +711,12 @@ export default function SettingsPage() {
         {group && user?.uid === group.ownerUid && (
           <Section title="🧹 收據檔案維護">
             <OrphanCleanupSection groupId={group.id} />
+          </Section>
+        )}
+
+        {group && user?.uid === group.ownerUid && (
+          <Section title="🧼 分類規則清理">
+            <RuleCleanupSection groupId={group.id} />
           </Section>
         )}
 
