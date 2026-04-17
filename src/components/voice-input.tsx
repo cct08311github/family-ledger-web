@@ -143,11 +143,14 @@ export function VoiceInput({ availableCategories, onParsed }: Props) {
   const isListening = status === 'listening'
   const isProcessing = status === 'processing'
 
-  // Detection still pending — avoid flashing either variant. Parent's
-  // justify-between layout collapses gracefully when this returns null.
-  if (supported === null) return null
+  // Detection still pending — reserve the slot with a same-sized placeholder
+  // so parent's flex layout doesn't reflow after useEffect resolves. Prevents
+  // a brief title-left-align flash on iOS Safari where first paint beats
+  // effect resolution.
+  if (supported === null) return <div className="w-14 h-14" aria-hidden="true" />
 
   const isUnsupported = supported === false
+  const unsupportedMsgId = 'voice-input-unsupported-msg'
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -155,7 +158,8 @@ export function VoiceInput({ availableCategories, onParsed }: Props) {
         type="button"
         onClick={isListening ? stopListening : startListening}
         disabled={isProcessing || isUnsupported}
-        aria-label={isUnsupported ? '語音輸入（此瀏覽器不支援）' : isListening ? '停止錄音' : '語音輸入'}
+        aria-label={isListening ? '停止錄音' : '語音輸入'}
+        aria-describedby={isUnsupported ? unsupportedMsgId : undefined}
         title={isUnsupported ? '此瀏覽器不支援語音輸入' : undefined}
         className={`relative w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
           isUnsupported
@@ -177,7 +181,7 @@ export function VoiceInput({ availableCategories, onParsed }: Props) {
       </button>
 
       {isUnsupported && (
-        <p className="text-xs text-[var(--muted-foreground)]">此瀏覽器不支援語音</p>
+        <p id={unsupportedMsgId} className="text-xs text-[var(--muted-foreground)]">此瀏覽器不支援語音</p>
       )}
       {isListening && (
         <p className="text-xs text-[var(--muted-foreground)] animate-pulse">聆聽中…</p>
