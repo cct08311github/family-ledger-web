@@ -79,7 +79,7 @@ describe('learnFromExpense', () => {
     expect(mockUpdateDoc).not.toHaveBeenCalled()
   })
 
-  it('creates a new rule with hitCount=1 when no existing rule matches', async () => {
+  it('creates a new rule with hitCount=1 and timestamps when no existing rule matches', async () => {
     stubGetDocs([])
     mockAddDoc.mockResolvedValueOnce({ id: 'new-rule' })
 
@@ -92,10 +92,14 @@ describe('learnFromExpense', () => {
       category: '餐飲',
       hitCount: 1,
     })
+    // Timestamps must be set for both fields — a regression removing either
+    // would break freshness-based rule pruning downstream.
+    expect(addedData).toHaveProperty('createdAt')
+    expect(addedData).toHaveProperty('lastUsed')
     expect(mockUpdateDoc).not.toHaveBeenCalled()
   })
 
-  it('increments hitCount on the existing rule when a match is found', async () => {
+  it('increments hitCount AND refreshes lastUsed on the existing rule when matched', async () => {
     stubGetDocs([{ id: 'r1', data: { pattern: 'coffee', category: '餐飲', hitCount: 2 } }])
     mockUpdateDoc.mockResolvedValueOnce(undefined)
 
@@ -104,6 +108,8 @@ describe('learnFromExpense', () => {
     expect(mockUpdateDoc).toHaveBeenCalledTimes(1)
     const updatedData = mockUpdateDoc.mock.calls[0][1]
     expect(updatedData.hitCount).toBe(3)
+    // lastUsed must be refreshed so "recently used" rules can be prioritized later.
+    expect(updatedData).toHaveProperty('lastUsed')
     expect(mockAddDoc).not.toHaveBeenCalled()
   })
 
@@ -117,10 +123,25 @@ describe('learnFromExpense', () => {
     expect(addedData.pattern).toBe('starbucks')
   })
 
-  it('swallows Firestore errors (best-effort, must not break the expense save path)', async () => {
+  it('swallows Firestore getDocs errors (best-effort, must not break the expense save path)', async () => {
     mockGetDocs.mockRejectedValueOnce(new Error('firestore unavailable'))
     await expect(learnFromExpense('g1', 'coffee', '餐飲')).resolves.toBeUndefined()
     expect(mockAddDoc).not.toHaveBeenCalled()
+  })
+
+  it('swallows addDoc errors in the create branch', async () => {
+    // Specifically covers the new-rule creation path's catch block — a future
+    // refactor that re-throws from addDoc would silently break the
+    // non-fatal contract without this test.
+    stubGetDocs([])
+    mockAddDoc.mockRejectedValueOnce(new Error('quota exceeded'))
+    await expect(learnFromExpense('g1', 'coffee', '餐飲')).resolves.toBeUndefined()
+  })
+
+  it('swallows updateDoc errors in the increment branch', async () => {
+    stubGetDocs([{ id: 'r1', data: { pattern: 'coffee', category: '餐飲', hitCount: 2 } }])
+    mockUpdateDoc.mockRejectedValueOnce(new Error('permission denied'))
+    await expect(learnFromExpense('g1', 'coffee', '餐飲')).resolves.toBeUndefined()
   })
 })
 
@@ -185,6 +206,28 @@ describe('suggestCategory', () => {
     // Sub-threshold rule has more hits than the valid one — must still be skipped.
     stubRules([
       { category: '娛樂', hitCount: TRANSACTION_RULE_MIN_HITS - 1 }, // higher but ineligible (假設 threshold > 2)
+      { category: '餐飲', hitCount: TRANSACTION_RULE_MIN_HITS },
+    ])
+    await expect(suggestCategory('g1', 'coffee')).resolves.toBe('餐飲')
+  })
+
+  it('first-encountered wins when two rules tie on max hitCount', async () => {
+    // SUT uses strict `>`, so the first rule in Firestore iteration order keeps
+    // the winning slot. This test documents the current behavior — if tie-breaking
+    // is intentionally changed (e.g., tie-break by lastUsed), this test will
+    // fail and force an explicit decision.
+    stubRules([
+      { category: '餐飲', hitCount: TRANSACTION_RULE_MIN_HITS + 3 },
+      { category: '娛樂', hitCount: TRANSACTION_RULE_MIN_HITS + 3 },
+    ])
+    await expect(suggestCategory('g1', 'coffee')).resolves.toBe('餐飲')
+  })
+
+  it('skips docs with missing hitCount rather than crashing (defensive)', async () => {
+    // Firestore data coming back without hitCount shouldn't blow up max-picking.
+    // (SUT checks `data.hitCount < MIN` — undefined < N is false, so it's skipped.)
+    stubRules([
+      { category: '娛樂' } as unknown as { category: string; hitCount: number },
       { category: '餐飲', hitCount: TRANSACTION_RULE_MIN_HITS },
     ])
     await expect(suggestCategory('g1', 'coffee')).resolves.toBe('餐飲')

@@ -92,10 +92,15 @@ export async function suggestCategory(
     const snap = await getDocs(q)
     if (snap.empty) return null
 
-    // Pick the category with the highest hitCount
+    // Pick the category with the highest hitCount.
+    // Defensive: skip docs missing `hitCount` — `undefined < N` is false (NaN),
+    // so without this guard such rows would silently "win" the first-match slot
+    // and prevent any valid rule from being selected. Exposed by
+    // __tests__/transaction-rules-service.test.ts "skips docs with missing hitCount".
     let best: { category: string; hitCount: number } | null = null
     for (const d of snap.docs) {
       const data = d.data() as TransactionRule
+      if (typeof data.hitCount !== 'number') continue
       if (data.hitCount < MIN_HIT_COUNT_FOR_SUGGESTION) continue
       if (!best || data.hitCount > best.hitCount) {
         best = { category: data.category, hitCount: data.hitCount }
