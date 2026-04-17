@@ -22,7 +22,10 @@ jest.mock('firebase/firestore', () => ({
   writeBatch: jest.fn(() => ({
     delete: mockBatchDelete,
     commit: mockBatchCommit,
-    set: jest.fn(),
+    // Self-defending: if SUT unexpectedly calls set() in the delete path, fail loudly.
+    set: jest.fn(() => {
+      throw new Error('deleteGroup should not call batch.set()')
+    }),
   })),
 }))
 
@@ -69,10 +72,14 @@ describe('deleteGroup subcollection read failure observability (Issue #172)', ()
     const summaryCall = mockLoggerWarn.mock.calls.find(
       (c) => typeof c[0] === 'string' && c[0].includes('completed with skipped'),
     )
-    expect(summaryCall).toBeDefined()
-    const summaryContext = summaryCall![1] as { groupId: string; skipped: string[] }
+    if (!summaryCall) {
+      throw new Error('Expected a "completed with skipped" summary warning but none was emitted')
+    }
+    const summaryContext = summaryCall[1] as { groupId: string; skipped: string[] }
     expect(summaryContext.groupId).toBe('g1')
-    expect(summaryContext.skipped.sort()).toEqual(['categories', 'expenses'])
+    // Copy before sort — don't mutate the array held by the mock call record,
+    // which would corrupt any later assertion against the same call.
+    expect([...summaryContext.skipped].sort()).toEqual(['categories', 'expenses'])
   })
 
   it('does not log when all subcollection reads succeed', async () => {
