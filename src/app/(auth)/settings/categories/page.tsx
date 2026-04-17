@@ -12,6 +12,13 @@ import { useToast } from '@/components/toast'
 
 const ICONS = ['🍜', '🚗', '🛒', '🏠', '💡', '🏥', '🎬', '💰', '📚', '👶', '🧴', '📱', '✈️', '🎁', '其他']
 
+/**
+ * Max UTF-16 units for a category name. Must stay in sync with the
+ * `categories` and `transactionRules` collection rules in firestore.rules
+ * (both enforce `name.size() <= 30` / `category.size() <= 30`).
+ */
+const MAX_NAME_LENGTH = 30
+
 interface CategoryFormData {
   name: string
   icon: string
@@ -223,11 +230,28 @@ export default function CategoriesPage() {
             </h2>
 
             <div>
-              <label className="text-xs text-[var(--muted-foreground)] mb-1 block">名稱</label>
+              <div className="flex items-baseline justify-between mb-1">
+                <label htmlFor="category-name-input" className="text-xs text-[var(--muted-foreground)]">名稱</label>
+                <span
+                  className="text-xs tabular-nums"
+                  style={{
+                    color: form.name.length >= MAX_NAME_LENGTH
+                      ? 'var(--destructive)'
+                      : form.name.length >= MAX_NAME_LENGTH - 3
+                        ? 'var(--primary)'
+                        : 'var(--muted-foreground)',
+                  }}
+                  aria-live="polite"
+                >
+                  {form.name.length}/{MAX_NAME_LENGTH}
+                </span>
+              </div>
               <input
+                id="category-name-input"
                 type="text"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
+                maxLength={MAX_NAME_LENGTH}
                 className="w-full h-11 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                 placeholder="例如：餐飲"
                 autoFocus
