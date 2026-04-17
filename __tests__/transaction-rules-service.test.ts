@@ -23,6 +23,7 @@ import {
   normalizePattern,
   learnFromExpense,
   suggestCategory,
+  isAuthError,
   TRANSACTION_RULE_MIN_HITS,
 } from '@/lib/services/transaction-rules-service'
 
@@ -236,5 +237,81 @@ describe('suggestCategory', () => {
   it('swallows Firestore errors and returns null', async () => {
     mockGetDocs.mockRejectedValueOnce(new Error('firestore unavailable'))
     await expect(suggestCategory('g1', 'coffee')).resolves.toBeNull()
+  })
+
+  // --- Issue #164: re-throw auth errors -----------------------------------
+
+  it('re-throws Firebase PERMISSION_DENIED (Issue #164)', async () => {
+    const err = Object.assign(new Error('permission denied'), { code: 'permission-denied' })
+    mockGetDocs.mockRejectedValueOnce(err)
+    await expect(suggestCategory('g1', 'coffee')).rejects.toBe(err)
+  })
+
+  it('re-throws Firebase UNAUTHENTICATED (Issue #164)', async () => {
+    const err = Object.assign(new Error('unauthenticated'), { code: 'unauthenticated' })
+    mockGetDocs.mockRejectedValueOnce(err)
+    await expect(suggestCategory('g1', 'coffee')).rejects.toBe(err)
+  })
+})
+
+// --- isAuthError -----------------------------------------------------------
+
+describe('isAuthError', () => {
+  it('returns true for permission-denied code', () => {
+    expect(isAuthError({ code: 'permission-denied' })).toBe(true)
+  })
+
+  it('returns true for unauthenticated code', () => {
+    expect(isAuthError({ code: 'unauthenticated' })).toBe(true)
+  })
+
+  it('returns false for unrelated Firestore codes', () => {
+    expect(isAuthError({ code: 'unavailable' })).toBe(false)
+    expect(isAuthError({ code: 'not-found' })).toBe(false)
+  })
+
+  it('returns false for non-objects', () => {
+    expect(isAuthError(null)).toBe(false)
+    expect(isAuthError(undefined)).toBe(false)
+    expect(isAuthError('permission-denied')).toBe(false)
+    expect(isAuthError(42)).toBe(false)
+  })
+
+  it('returns false for Error without code', () => {
+    expect(isAuthError(new Error('boom'))).toBe(false)
+  })
+
+  it('returns false for object with non-string code', () => {
+    expect(isAuthError({ code: 403 })).toBe(false)
+  })
+})
+
+// --- learnFromExpense auth re-throw ---------------------------------------
+
+describe('learnFromExpense auth re-throw (Issue #164)', () => {
+  beforeEach(() => {
+    mockAddDoc.mockReset()
+    mockGetDocs.mockReset()
+    mockUpdateDoc.mockReset()
+  })
+
+  it('re-throws PERMISSION_DENIED on getDocs path', async () => {
+    const err = Object.assign(new Error('permission denied'), { code: 'permission-denied' })
+    mockGetDocs.mockRejectedValueOnce(err)
+    await expect(learnFromExpense('g1', 'coffee', '餐飲')).rejects.toBe(err)
+  })
+
+  it('re-throws UNAUTHENTICATED on addDoc path', async () => {
+    mockGetDocs.mockResolvedValueOnce({ empty: true, docs: [] })
+    const err = Object.assign(new Error('session gone'), { code: 'unauthenticated' })
+    mockAddDoc.mockRejectedValueOnce(err)
+    await expect(learnFromExpense('g1', 'coffee', '餐飲')).rejects.toBe(err)
+  })
+
+  it('still swallows non-auth errors (best-effort contract preserved)', async () => {
+    mockGetDocs.mockRejectedValueOnce(
+      Object.assign(new Error('network blip'), { code: 'unavailable' }),
+    )
+    await expect(learnFromExpense('g1', 'coffee', '餐飲')).resolves.toBeUndefined()
   })
 })

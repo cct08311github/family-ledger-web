@@ -9,7 +9,7 @@ import { useCurrentMember } from '@/lib/hooks/use-current-member'
 import { useAuth } from '@/lib/auth'
 import { addExpense, type ExpenseInput } from '@/lib/services/expense-service'
 import { parseExpense } from '@/lib/services/local-expense-parser'
-import { learnFromExpense, suggestCategory } from '@/lib/services/transaction-rules-service'
+import { learnFromExpense, suggestCategory, isAuthError } from '@/lib/services/transaction-rules-service'
 import { useToast } from '@/components/toast'
 import { logger } from '@/lib/logger'
 
@@ -53,7 +53,15 @@ export function QuickAddBar() {
               setAutoFilled(true)
             }
           })
-          .catch(() => { /* silent */ })
+          .catch((e) => {
+            // Auth errors (PERMISSION_DENIED / UNAUTHENTICATED) surface as toast —
+            // the user likely needs to re-auth or has lost group membership. Other
+            // errors remain silent (best-effort suggestion). Issue #164.
+            if (isAuthError(e)) {
+              logger.error('[QuickAdd] suggestCategory auth error', e)
+              addToast('登入狀態失效，請重新整理或重新登入', 'error')
+            }
+          })
       }
     }
   }
@@ -114,8 +122,15 @@ export function QuickAddBar() {
     setSaving(true)
     try {
       await addExpense(group.id, input, { id: payerId, name: payerName })
-      // Learn the (description, category) pair for future auto-fill suggestions
-      learnFromExpense(group.id, description.trim(), input.category).catch(() => { /* silent */ })
+      // Learn the (description, category) pair for future auto-fill suggestions.
+      // Non-fatal by design — except for auth errors, which surface to the user
+      // so they can re-authenticate (Issue #164).
+      learnFromExpense(group.id, description.trim(), input.category).catch((e) => {
+        if (isAuthError(e)) {
+          logger.error('[QuickAdd] learnFromExpense auth error', e)
+          addToast('登入狀態失效，規則學習已停止', 'warning')
+        }
+      })
       addToast(`已記錄 ${description.trim()} $${amt}`, 'success')
       setDescription('')
       setAmount('')
