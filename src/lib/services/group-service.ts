@@ -1,5 +1,6 @@
 import { addDoc, collection, doc, updateDoc, getDocs, getDoc, query, where, Timestamp, arrayRemove, arrayUnion, writeBatch } from 'firebase/firestore'
 import { db, auth } from '@/lib/firebase'
+import { logger } from '@/lib/logger'
 
 function generateInviteCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no 0/O/1/I to avoid confusion
@@ -78,16 +79,32 @@ export async function updateGroup(
 
 export async function deleteGroup(groupId: string): Promise<void> {
   const BATCH_LIMIT = 500
-  // Note: activityLogs intentionally excluded — Firestore rules forbid client-side deletion
+  // Note: `activityLogs` and `transactionRules` are intentionally excluded —
+  // the former has `allow delete: if false`, the latter is auto-cleaned by
+  // their own firestore.rules semantics (docs become unreferenced after group deletion).
   const subcollections = ['members', 'categories', 'expenses', 'settlements', 'notifications', 'userPreferences']
 
   // Collect all refs to delete
   const allRefs: import('firebase/firestore').DocumentReference[] = []
+  const skippedSubcollections: string[] = []
   for (const sub of subcollections) {
     try {
       const snap = await getDocs(collection(db, 'groups', groupId, sub))
       snap.docs.forEach((d) => allRefs.push(d.ref))
-    } catch { /* skip subcollections we can't read (e.g. activityLogs with delete:false) */ }
+    } catch (e) {
+      // Intentional skip: a partial read failure (network blip, rate limit,
+      // temporary rules eval hiccup) should not block deleting the rest of
+      // the group. But surface the failure via logger so orphan docs left
+      // behind in this subcollection are discoverable later in system_logs.
+      // Issue #172 — previously this was a silent catch with a misleading
+      // comment about activityLogs (which isn't even in the list above).
+      skippedSubcollections.push(sub)
+      logger.warn('[group-service] deleteGroup: failed to read subcollection, skipping', {
+        groupId,
+        subcollection: sub,
+        err: e,
+      })
+    }
   }
   allRefs.push(doc(db, 'groups', groupId))
 
@@ -96,6 +113,16 @@ export async function deleteGroup(groupId: string): Promise<void> {
     const batch = writeBatch(db)
     allRefs.slice(i, i + BATCH_LIMIT).forEach((ref) => batch.delete(ref))
     await batch.commit()
+  }
+
+  // If any subcollection couldn't be enumerated, emit one summary log so an
+  // operator scanning logs sees the full picture of potentially orphaned data
+  // from this deletion.
+  if (skippedSubcollections.length > 0) {
+    logger.warn('[group-service] deleteGroup completed with skipped subcollections', {
+      groupId,
+      skipped: skippedSubcollections,
+    })
   }
 }
 
