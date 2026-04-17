@@ -1,6 +1,9 @@
 'use client'
 
 import './globals.css'
+import { useEffect } from 'react'
+import { logger } from '@/lib/logger'
+import { buildBoundaryLogContext } from '@/lib/error-boundary-context'
 
 export default function GlobalError({
   error,
@@ -9,6 +12,15 @@ export default function GlobalError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  // Forward the uncaught root-level error to system_logs. Caveat: if the crash
+  // happens before Firebase auth hydrates, firestore.rules require `isSignedIn()`
+  // for system_logs writes — the write is silently rejected (log-service catch
+  // swallows it). Accepted trade-off per Issue #177; a bespoke auth-free log
+  // endpoint would need infrastructure beyond this fix's scope.
+  useEffect(() => {
+    logger.error('[ErrorBoundary:root] Uncaught error', buildBoundaryLogContext(error))
+  }, [error])
+
   return (
     <html lang="zh-TW">
       <body>
