@@ -104,11 +104,15 @@ export default function HomePage() {
       const summary = summarizeConfirmResults(results)
       const toast = confirmToastFromSummary(summary)
       if (toast) addToast(toast.message, toast.level)
-      // logger.error captures rejection details for /settings/logs
-      for (const r of results) {
-        if (r.status === 'rejected') {
-          logger.error('[Home] confirmPendingExpense failed', r.reason)
-        }
+      // Aggregate rejections into a single logger.error so the log-service
+      // rate limiter (MAX_WRITES_PER_MINUTE) doesn't silently drop entries
+      // 31..N if a catastrophic outage causes many simultaneous failures.
+      if (summary.fail > 0) {
+        logger.error('[Home] confirmPendingExpense batch failures', {
+          failed: summary.fail,
+          total: summary.total,
+          reasons: results.flatMap((r) => (r.status === 'rejected' ? [String(r.reason)] : [])),
+        })
       }
     } finally {
       setConfirmingPending(false)
