@@ -96,6 +96,16 @@ Tailwind CSS v4 with CSS custom properties defined in `globals.css`. Key variabl
 - Database: Firestore (localized in Taiwan)
 - Storage: Receipt image uploads
 
+### Rules Deploy
+
+- CI workflow: `.github/workflows/deploy-rules.yml` — auto-deploys `firestore.rules` / `storage.rules` when they change on `main`. Requires `FIREBASE_DEPLOY_TOKEN` secret.
+- **Manual fallback** (if the workflow fails — see Issue #169):
+  ```bash
+  firebase deploy --only firestore:rules,storage --project family-ledger-784ed
+  ```
+- **Regenerate CI token** when expired: `firebase login:ci` locally, paste output into repo Settings → Secrets and variables → Actions → `FIREBASE_DEPLOY_TOKEN`.
+- Workflow now has a pre-flight check that fails with a clear instruction if the secret is missing, and a post-deploy smoke that verifies the live rules are non-empty.
+
 ## Testing
 
 ### Unit Tests
