@@ -21,6 +21,8 @@ import type { TransactionRule } from '@/lib/types'
  */
 
 const MIN_HIT_COUNT_FOR_SUGGESTION = 3
+/** Category length upper bound — matches categories collection rule (Issue #165). */
+const MAX_CATEGORY_LENGTH = 30
 
 /** Normalize a description for pattern matching: lowercase, trim, collapse whitespace. */
 export function normalizePattern(description: string): string {
@@ -38,6 +40,12 @@ export async function learnFromExpense(
 ): Promise<void> {
   const pattern = normalizePattern(description)
   if (!pattern || !category || !groupId) return
+  // Defense in depth: reject oversize category client-side to match the
+  // server-side firestore.rules cap (Issue #165). Real user-selected categories
+  // always come from a bounded <select>, so this mainly guards against bugs or
+  // future programmatic callers — and keeps the client from eating a rejected
+  // Firestore write round-trip.
+  if (category.length > MAX_CATEGORY_LENGTH) return
 
   try {
     const q = query(
