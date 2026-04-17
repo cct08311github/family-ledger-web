@@ -202,8 +202,8 @@ service cloud.firestore {
 
       match /transactionRules/{ruleId} {
         allow read: if isGroupMember(groupId);
-        // category 長度與 categories collection 的上限對齊（30）— 防止惡意成員
-        // 塞大字串 payload 把 suggestCategory 的 iteration 拖慢（Issue #165）
+        // category 長度上限與 categories collection 對齊 + 與
+        // transaction-rules-service.ts MAX_CATEGORY_LENGTH 必須同步（Issue #165）
         allow create: if isGroupMember(groupId)
           && hasReasonableSize()
           && request.resource.data.pattern is string

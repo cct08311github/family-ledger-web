@@ -19,8 +19,14 @@ jest.mock('firebase/firestore', () => ({
   Timestamp: { fromDate: jest.fn() },
 }))
 
+const mockLoggerWarn = jest.fn()
 jest.mock('@/lib/logger', () => ({
-  logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn(), debug: jest.fn() },
+  logger: {
+    warn: (...args: unknown[]) => mockLoggerWarn(...args),
+    error: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+  },
 }))
 
 import { learnFromExpense } from '@/lib/services/transaction-rules-service'
@@ -30,6 +36,7 @@ describe('learnFromExpense category length cap (Issue #165)', () => {
     mockAddDoc.mockReset()
     mockGetDocs.mockReset()
     mockUpdateDoc.mockReset()
+    mockLoggerWarn.mockReset()
   })
 
   it('accepts categories exactly at the 30-char limit', async () => {
@@ -38,14 +45,18 @@ describe('learnFromExpense category length cap (Issue #165)', () => {
     const thirtyCharCategory = 'a'.repeat(30)
     await learnFromExpense('g1', 'coffee', thirtyCharCategory)
     expect(mockAddDoc).toHaveBeenCalledTimes(1)
+    // No warning for the happy path.
+    expect(mockLoggerWarn).not.toHaveBeenCalled()
   })
 
-  it('rejects categories exceeding 30 chars early (no Firestore calls)', async () => {
+  it('rejects categories exceeding 30 chars early and warns for observability', async () => {
     const tooLong = 'a'.repeat(31)
     await learnFromExpense('g1', 'coffee', tooLong)
     expect(mockGetDocs).not.toHaveBeenCalled()
     expect(mockAddDoc).not.toHaveBeenCalled()
     expect(mockUpdateDoc).not.toHaveBeenCalled()
+    // Must surface as a warning so system_logs catches likely programming errors.
+    expect(mockLoggerWarn).toHaveBeenCalledTimes(1)
   })
 
   it('rejects obviously malicious 1MB category without any Firestore call', async () => {
@@ -56,5 +67,6 @@ describe('learnFromExpense category length cap (Issue #165)', () => {
     await learnFromExpense('g1', 'coffee', oneMB)
     expect(mockGetDocs).not.toHaveBeenCalled()
     expect(mockAddDoc).not.toHaveBeenCalled()
+    expect(mockLoggerWarn).toHaveBeenCalledTimes(1)
   })
 })
