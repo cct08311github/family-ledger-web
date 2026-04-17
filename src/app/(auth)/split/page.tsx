@@ -174,8 +174,12 @@ export default function SplitPage() {
     setDeletingId(id)
     try {
       await deleteSettlement(group.id, id, currentMember ? { id: currentMember.id, name: currentMember.name } : undefined)
+      // Success feedback — destructive, money-adjacent operation, user needs
+      // explicit confirmation. Issue #183.
+      addToast('已刪除結算紀錄', 'success')
     } catch (e) {
       logger.error('[SplitPage] Failed to delete settlement:', e)
+      addToast('刪除失敗，請稍後再試', 'error')
     } finally {
       setDeletingId(null)
     }
@@ -192,6 +196,10 @@ export default function SplitPage() {
 
   async function handleSettle(data: { fromId: string; toId: string; amount: number; note: string; date: Date }) {
     if (!group) return
+    // Success path only — the SettleDialog's own try/catch surfaces errors
+    // inline; we close the dialog + toast on success so the user sees
+    // confirmation without having to watch the Firestore subscription update.
+    // Issue #183.
     await addSettlement(group.id, {
       fromMemberId: data.fromId,
       fromMemberName: nameMap[data.fromId] ?? data.fromId,
@@ -202,6 +210,7 @@ export default function SplitPage() {
       date: data.date,
     }, getActor(user))
     setSettling(null)
+    addToast('已記錄轉帳', 'success')
   }
 
   function buildShareText() {
