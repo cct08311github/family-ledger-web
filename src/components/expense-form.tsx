@@ -18,6 +18,7 @@ import { addRecurringExpense } from '@/lib/services/recurring-expense-service'
 import { learnFromExpense, suggestCategory } from '@/lib/services/transaction-rules-service'
 import { useAuth, getActor } from '@/lib/auth'
 import { toDate } from '@/lib/utils'
+import { saveButtonLabel, type UploadProgress } from '@/lib/save-button-label'
 import { ref as storageRef, getDownloadURL } from 'firebase/storage'
 import { storage } from '@/lib/firebase'
 import { logger } from '@/lib/logger'
@@ -34,6 +35,7 @@ interface Props {
   /** Ref to register a setter for voice-parsed results. Parent passes ref, form fills it on mount. */
   onVoiceParsedRef?: RefObject<((_result: ParsedExpense) => void) | null>
 }
+
 
 export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoiceParsedRef }: Props) {
   const { group } = useGroup()
@@ -86,6 +88,8 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   const [customAmounts, setCustomAmounts] = useState<Record<string, number>>({})
   const [weights, setWeights] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState(false)
+  /** Upload progress for receipt images: both 0 when idle. */
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress>({ current: 0, total: 0 })
   const [error, setError] = useState<string | null>(null)
   const [autoCategoryFilled, setAutoCategoryFilled] = useState(false)
   const [draftRestored, setDraftRestored] = useState(false)
@@ -411,9 +415,17 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
 
       // Upload any newly picked images first. On partial failure, uploadReceiptImages
       // rolls back everything it uploaded in this call so we never leave orphans.
+      // Progress callback drives the "上傳中 N/M 張" indicator on the submit button.
       let uploadedPaths: string[] = []
       if (newFiles.length > 0) {
-        const result = await uploadReceiptImages(group.id, expenseId, newFiles, uploaderUid)
+        setUploadProgress({ current: 0, total: newFiles.length })
+        const result = await uploadReceiptImages(
+          group.id,
+          expenseId,
+          newFiles,
+          uploaderUid,
+          (current, total) => setUploadProgress({ current, total }),
+        )
         uploadedPaths = result.paths
       }
 
@@ -500,6 +512,7 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
       else setError(e instanceof Error ? e.message : '儲存失敗')
     } finally {
       setSaving(false)
+      setUploadProgress({ current: 0, total: 0 })
     }
   }
 
@@ -909,11 +922,16 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
 
       {error && <p className="text-sm" style={{ color: 'var(--destructive)' }}>{error}</p>}
 
-      {/* 儲存 */}
+      {/* 儲存 — 可見按鈕只顯示 label；螢幕閱讀器透過下方 live region 接收進度更新。
+          aria-live 不放在 <button> 上：NVDA/VoiceOver 對 interactive widget 上的
+          live 屬性支援不一致，分開 sibling role="status" 是最可靠的做法。 */}
       <button onClick={handleSave} disabled={saving}
         className="w-full h-12 rounded-xl font-semibold btn-primary btn-press">
-        {saving ? '儲存中...' : isEditing ? '儲存變更' : '新增支出'}
+        {saveButtonLabel({ saving, isEditing, uploadProgress })}
       </button>
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {saving ? saveButtonLabel({ saving, isEditing, uploadProgress }) : ''}
+      </div>
     </div>
   )
 }

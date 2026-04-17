@@ -81,12 +81,17 @@ function fitWithin(w: number, h: number, max: number): { width: number; height: 
  * Upload up to MAX_RECEIPTS_PER_EXPENSE images for an expense. Compresses images
  * client-side before upload. If ANY upload fails, all successfully uploaded files
  * are deleted (best-effort rollback) and a ReceiptUploadError is thrown.
+ *
+ * `onProgress` fires once per file after it finishes uploading — useful for
+ * showing "N/M 張" feedback during slow uploads. File-granularity is intentional;
+ * byte-level would require uploadBytesResumable (out of scope for #160).
  */
 export async function uploadReceiptImages(
   groupId: string,
   expenseId: string,
   files: File[],
   uploadedBy: string,
+  onProgress?: (_current: number, _total: number) => void,
 ): Promise<UploadResult> {
   if (files.length === 0) return { paths: [] }
   if (files.length > MAX_RECEIPTS_PER_EXPENSE) {
@@ -108,6 +113,7 @@ export async function uploadReceiptImages(
         customMetadata: { uploadedBy },
       })
       uploaded.push(path)
+      onProgress?.(index + 1, files.length)
     }
     return { paths: uploaded }
   } catch (err) {
