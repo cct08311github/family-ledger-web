@@ -2,6 +2,7 @@ import { addDoc, collection, deleteDoc, doc, getDoc, serverTimestamp, Timestamp,
 import { db, auth } from '@/lib/firebase'
 import { addActivityLog } from './activity-log-service'
 import { addNotification } from './notification-service'
+import { notifyByEmailFanOut } from './email-notification'
 import { currency } from '@/lib/utils'
 
 import { logger } from '@/lib/logger'
@@ -50,24 +51,22 @@ export async function addSettlement(groupId: string, data: NewSettlement, actor?
       logger.error('[SettlementService] Failed to log activity:', e)
     }
   }
-  // Notify other group members about the settlement
+  // Notify other group members about the settlement (in-app + email).
   try {
     const groupSnap = await getDoc(doc(db, 'groups', groupId))
-    const memberUids: string[] = groupSnap.data()?.memberUids ?? []
+    const groupData = groupSnap.data()
+    const memberUids: string[] = groupData?.memberUids ?? []
+    const groupName = groupData?.name as string | undefined
     const currentUid = auth.currentUser?.uid
+    const recipients = memberUids.filter((uid) => uid !== currentUid)
+    const title = '新增結算'
+    const body = `${data.fromMemberName} → ${data.toMemberName}（${currency(data.amount)}）`
     await Promise.all(
-      memberUids
-        .filter((uid) => uid !== currentUid)
-        .map((uid) =>
-          addNotification(groupId, {
-            type: 'settlement_created',
-            title: '新增結算',
-            body: `${data.fromMemberName} → ${data.toMemberName}（${currency(data.amount)}）`,
-            recipientId: uid,
-            entityId: ref.id,
-          }),
-        ),
+      recipients.map((uid) =>
+        addNotification(groupId, { type: 'settlement_created', title, body, recipientId: uid, entityId: ref.id }),
+      ),
     )
+    await notifyByEmailFanOut({ groupId, recipientUids: recipients, title, body, groupName })
   } catch (e) {
     logger.error('[SettlementService] Failed to send notifications:', e)
   }
@@ -121,22 +120,21 @@ export async function addSettlements(
     }
   }
 
-  // Notify other group members about the batch settlement
+  // Notify other group members about the batch settlement (in-app + email).
   try {
     const groupSnap = await getDoc(doc(db, 'groups', groupId))
-    const memberUids: string[] = groupSnap.data()?.memberUids ?? []
+    const groupData = groupSnap.data()
+    const memberUids: string[] = groupData?.memberUids ?? []
+    const groupName = groupData?.name as string | undefined
+    const recipients = memberUids.filter((u) => u !== uid)
+    const title = '批次結清'
+    const body = `已結清 ${settlements.length} 筆債務`
     await Promise.all(
-      memberUids
-        .filter((u) => u !== uid)
-        .map((u) =>
-          addNotification(groupId, {
-            type: 'settlement_created',
-            title: '批次結清',
-            body: `已結清 ${settlements.length} 筆債務`,
-            recipientId: u,
-          }),
-        ),
+      recipients.map((u) =>
+        addNotification(groupId, { type: 'settlement_created', title, body, recipientId: u }),
+      ),
     )
+    await notifyByEmailFanOut({ groupId, recipientUids: recipients, title, body, groupName })
   } catch (e) {
     logger.error('[SettlementService] Failed to send batch notifications:', e)
   }
@@ -144,6 +142,26 @@ export async function addSettlements(
 
 export async function deleteSettlement(groupId: string, settlementId: string, actor?: Actor): Promise<void> {
   if (!auth.currentUser?.uid) throw new Error('Not authenticated')
+
+  // Read pre-delete snapshot for notification context (who settled whom for how much).
+  // Best-effort: if the read fails we still delete but the notification body degrades.
+  // Issue #187.
+  let settlementDesc = '此筆結算紀錄'
+  try {
+    const snap = await getDoc(doc(db, 'groups', groupId, 'settlements', settlementId))
+    if (snap.exists()) {
+      const d = snap.data() as {
+        fromMemberName?: string
+        toMemberName?: string
+        amount?: number
+      }
+      if (d.fromMemberName && d.toMemberName && typeof d.amount === 'number') {
+        settlementDesc = `${d.fromMemberName} → ${d.toMemberName}（${currency(d.amount)}）`
+      }
+    }
+  } catch (e) {
+    logger.error('[SettlementService] Failed to read pre-delete snapshot:', e)
+  }
 
   await deleteDoc(doc(db, 'groups', groupId, 'settlements', settlementId))
   if (actor) {
@@ -158,5 +176,26 @@ export async function deleteSettlement(groupId: string, settlementId: string, ac
     } catch (e) {
       logger.error('[SettlementService] Failed to log activity:', e)
     }
+  }
+
+  // Notify other group members about the deletion (in-app + email).
+  // Issue #187.
+  try {
+    const groupSnap = await getDoc(doc(db, 'groups', groupId))
+    const groupData = groupSnap.data()
+    const memberUids: string[] = groupData?.memberUids ?? []
+    const groupName = groupData?.name as string | undefined
+    const currentUid = auth.currentUser?.uid
+    const recipients = memberUids.filter((uid) => uid !== currentUid)
+    const title = '刪除結算'
+    const body = `${actor?.name ?? '成員'}刪除了結算：${settlementDesc}`
+    await Promise.all(
+      recipients.map((uid) =>
+        addNotification(groupId, { type: 'settlement_deleted', title, body, recipientId: uid, entityId: settlementId }),
+      ),
+    )
+    await notifyByEmailFanOut({ groupId, recipientUids: recipients, title, body, groupName })
+  } catch (e) {
+    logger.error('[SettlementService] Failed to send delete notifications:', e)
   }
 }

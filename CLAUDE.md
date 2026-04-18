@@ -122,6 +122,35 @@ Tailwind CSS v4 with CSS custom properties defined in `globals.css`. Key variabl
 - Database: Firestore (localized in Taiwan)
 - Storage: Receipt image uploads
 
+### Email Notifications Setup（Issue #187）
+
+程式碼已 wire 好 email pipeline，但實際寄送需要以下**一次性手動設定**：
+
+1. **升級 Firebase 到 Blaze 計費方案**
+   - https://console.firebase.google.com/project/family-ledger-784ed/usage/details
+   - 綁信用卡（家庭用量實際費用 $0）
+
+2. **安裝 Trigger Email from Firestore extension**
+   - https://console.firebase.google.com/project/family-ledger-784ed/extensions
+   - 搜尋「Trigger Email from Firestore」（ext-firestore-send-email）
+   - 安裝時填入：
+     - Mail collection: `mail`
+     - Default FROM: `<your-gmail>@gmail.com`
+     - SMTP connection URI：見第 3 步
+
+3. **產生 Gmail App Password**
+   - Google Account → Security → 2-Step Verification → App Passwords
+   - 產生 "Mail" 專用密碼（16 字元）
+   - SMTP URI 格式：`smtps://<gmail>%40gmail.com:<app-password-no-spaces>@smtp.gmail.com:465`
+   - 注意 `@` 要 URL-encode 成 `%40`
+
+4. **驗證**
+   - 使用者到 設定 → 🔔 Email 通知 → 開啟
+   - 另一個 group member 建立支出 → 第一位使用者的 gmail 收到信
+
+設定完成前，pipeline 仍會寫 `mail/{id}` 文件，但不會有 extension 讀取；
+等第 2 步完成後新的 mail 文件才會被寄出（backfill 不處理舊的）。
+
 ### Rules Deploy
 
 - CI workflow: `.github/workflows/deploy-rules.yml` — auto-deploys `firestore.rules` / `storage.rules` when they change on `main`. Requires `FIREBASE_DEPLOY_TOKEN` secret.

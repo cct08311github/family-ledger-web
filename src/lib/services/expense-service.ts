@@ -2,6 +2,7 @@ import { collection, doc, setDoc, deleteDoc, Timestamp, getDoc, getDocs, query, 
 import { db, auth } from '@/lib/firebase'
 import { addActivityLog } from './activity-log-service'
 import { addNotification } from './notification-service'
+import { notifyByEmailFanOut } from './email-notification'
 import { deleteReceiptImages, normalizeReceiptPaths } from './image-upload'
 import { currency } from '@/lib/utils'
 import type { Expense, SplitDetail, SplitMethod, PaymentMethod } from '@/lib/types'
@@ -30,13 +31,24 @@ async function notifyMembersAboutExpense(
 ): Promise<void> {
   try {
     const groupSnap = await getDoc(doc(db, 'groups', groupId))
-    const memberUids: string[] = groupSnap.data()?.memberUids ?? []
+    const groupData = groupSnap.data()
+    const memberUids: string[] = groupData?.memberUids ?? []
+    const groupName = groupData?.name as string | undefined
     const currentUid = auth.currentUser?.uid
+    const recipients = memberUids.filter((uid) => uid !== currentUid)
+    // In-app notifications (primary, sync).
     await Promise.all(
-      memberUids
-        .filter((uid) => uid !== currentUid)
-        .map((uid) => addNotification(groupId, { ...payload, recipientId: uid })),
+      recipients.map((uid) => addNotification(groupId, { ...payload, recipientId: uid })),
     )
+    // Email notifications (best-effort, Issue #187) — gated by each recipient's
+    // per-group opt-in preference.
+    await notifyByEmailFanOut({
+      groupId,
+      recipientUids: recipients,
+      title: payload.title,
+      body: payload.body,
+      groupName,
+    })
   } catch (e) {
     logger.error('[ExpenseService] Failed to send notifications:', e)
   }

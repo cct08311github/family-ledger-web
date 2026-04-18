@@ -262,6 +262,32 @@ service cloud.firestore {
       }
     }
 
+    // ─── Email 寄送佇列（Firebase Trigger Email Extension）───
+    //
+    // 由 notifyByEmail helper 在 in-app 通知建立時同步寫入，待 extension 讀取
+    // 並透過 Gmail SMTP 寄送。schema 符合 ext-firestore-send-email 預期：
+    //   { to: string, message: { subject, text, html? }, createdAt, ...meta }
+    //
+    // Create: 任何已登入使用者可寫（通知流程需要），但 body size 有限制防濫用
+    // Read: 禁止（含收件信箱、內文，敏感）
+    // Update: 僅 extension 本身（via service account）— client 不可改
+    // Delete: 禁止（審計軌跡）
+    // Issue #187.
+    match /mail/{mailId} {
+      allow read: if false;
+      allow create: if isSignedIn()
+        && request.resource.data.to is string
+        && request.resource.data.to.size() > 0
+        && request.resource.data.to.size() <= 200
+        && request.resource.data.message is map
+        && request.resource.data.message.subject is string
+        && request.resource.data.message.subject.size() > 0
+        && request.resource.data.message.subject.size() <= 200
+        && request.resource.data.message.text is string
+        && request.resource.data.message.text.size() <= 5000;
+      allow update, delete: if false;
+    }
+
     // ─── 系統日誌（production debugging） ───
     //
     // 所有 logger.error()/warn() 在 production 會寫入此 collection。
