@@ -19,6 +19,7 @@ import { learnFromExpense, suggestCategory, isAuthError } from '@/lib/services/t
 import { useAuth, getActor } from '@/lib/auth'
 import { toDate } from '@/lib/utils'
 import { saveButtonLabel, type UploadProgress } from '@/lib/save-button-label'
+import { useSubmitGuard } from '@/lib/hooks/use-submit-guard'
 import { ref as storageRef, getDownloadURL } from 'firebase/storage'
 import { storage } from '@/lib/firebase'
 import { logger } from '@/lib/logger'
@@ -87,7 +88,7 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   const [percentages, setPercentages] = useState<Record<string, number>>({})
   const [customAmounts, setCustomAmounts] = useState<Record<string, number>>({})
   const [weights, setWeights] = useState<Record<string, number>>({})
-  const [saving, setSaving] = useState(false)
+  const { inFlight: saving, run: runSubmit } = useSubmitGuard()
   /** Upload progress for receipt images: both 0 when idle. */
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({ current: 0, total: 0 })
   const [error, setError] = useState<string | null>(null)
@@ -415,117 +416,122 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         return
       }
     }
-    setSaving(true)
     setError(null)
-    try {
-      const expenseId = isEditing ? existingExpense!.id : genExpenseId()
-      const uploaderUid = user?.uid ?? payerId
-
-      // Upload any newly picked images first. On partial failure, uploadReceiptImages
-      // rolls back everything it uploaded in this call so we never leave orphans.
-      // Progress callback drives the "上傳中 N/M 張" indicator on the submit button.
-      let uploadedPaths: string[] = []
-      if (newFiles.length > 0) {
-        setUploadProgress({ current: 0, total: newFiles.length })
-        const result = await uploadReceiptImages(
-          group.id,
-          expenseId,
-          newFiles,
-          uploaderUid,
-          (current, total) => setUploadProgress({ current, total }),
-        )
-        uploadedPaths = result.paths
-      }
-
-      const finalPaths = [...existingReceiptPaths, ...uploadedPaths]
-
-      const input: ExpenseInput = {
-        date: new Date(`${date}T00:00:00`),
-        description: description.trim(),
-        amount: saveAmt,
-        category,
-        isShared,
-        splitMethod,
-        payerId,
-        payerName: members.find((m) => m.id === payerId)?.name ?? '',
-        splits,
-        paymentMethod,
-        receiptPaths: finalPaths,
-        note: note.trim() || undefined,
-        createdBy: uploaderUid,
-      }
+    // Guard acquired here, inside runSubmit. All earlier validation (buildSplits,
+    // parseFloat, sum check) is synchronous, so tryAcquire() runs before this
+    // async handler yields to the event loop — second clicks are blocked.
+    // If future changes insert any await between the click entry and this
+    // runSubmit call, move the guard earlier.
+    await runSubmit(async () => {
       try {
-        if (isEditing) {
-          await updateExpense(group.id, existingExpense!.id, input, getActor(user))
-        } else {
-          await addExpense(group.id, input, getActor(user), expenseId)
+        const expenseId = isEditing ? existingExpense!.id : genExpenseId()
+        const uploaderUid = user?.uid ?? payerId
+
+        // Upload any newly picked images first. On partial failure, uploadReceiptImages
+        // rolls back everything it uploaded in this call so we never leave orphans.
+        // Progress callback drives the "上傳中 N/M 張" indicator on the submit button.
+        let uploadedPaths: string[] = []
+        if (newFiles.length > 0) {
+          setUploadProgress({ current: 0, total: newFiles.length })
+          const result = await uploadReceiptImages(
+            group.id,
+            expenseId,
+            newFiles,
+            uploaderUid,
+            (current, total) => setUploadProgress({ current, total }),
+          )
+          uploadedPaths = result.paths
         }
-      } catch (writeErr) {
-        // Firestore write failed — rollback freshly uploaded files so they don't orphan.
-        // If the rollback itself fails we must surface it: the remaining blobs
-        // incur storage cost and contain PII, and silently swallowing the error
-        // would leave no audit trail. See Issue #150 follow-up about a
-        // server-side orphan scanner.
-        if (uploadedPaths.length > 0) {
-          deleteReceiptImages(uploadedPaths).catch((rollbackErr) => {
-            logger.error('[ExpenseForm] Orphan receipts after failed Firestore write', {
+
+        const finalPaths = [...existingReceiptPaths, ...uploadedPaths]
+
+        const input: ExpenseInput = {
+          date: new Date(`${date}T00:00:00`),
+          description: description.trim(),
+          amount: saveAmt,
+          category,
+          isShared,
+          splitMethod,
+          payerId,
+          payerName: members.find((m) => m.id === payerId)?.name ?? '',
+          splits,
+          paymentMethod,
+          receiptPaths: finalPaths,
+          note: note.trim() || undefined,
+          createdBy: uploaderUid,
+        }
+        try {
+          if (isEditing) {
+            await updateExpense(group.id, existingExpense!.id, input, getActor(user))
+          } else {
+            await addExpense(group.id, input, getActor(user), expenseId)
+          }
+        } catch (writeErr) {
+          // Firestore write failed — rollback freshly uploaded files so they don't orphan.
+          // If the rollback itself fails we must surface it: the remaining blobs
+          // incur storage cost and contain PII, and silently swallowing the error
+          // would leave no audit trail. See Issue #150 follow-up about a
+          // server-side orphan scanner.
+          if (uploadedPaths.length > 0) {
+            deleteReceiptImages(uploadedPaths).catch((rollbackErr) => {
+              logger.error('[ExpenseForm] Orphan receipts after failed Firestore write', {
+                groupId: group.id,
+                expenseId,
+                paths: uploadedPaths,
+                rollbackErr,
+              })
+            })
+          }
+          throw writeErr
+        }
+
+        // Firestore write succeeded — now safe to delete receipts the user removed.
+        if (removedPaths.length > 0) {
+          deleteReceiptImages(removedPaths).catch((removeErr) => {
+            logger.error('[ExpenseForm] Failed to delete removed receipts', {
               groupId: group.id,
               expenseId,
-              paths: uploadedPaths,
-              rollbackErr,
+              paths: removedPaths,
+              removeErr,
             })
           })
         }
-        throw writeErr
-      }
-
-      // Firestore write succeeded — now safe to delete receipts the user removed.
-      if (removedPaths.length > 0) {
-        deleteReceiptImages(removedPaths).catch((removeErr) => {
-          logger.error('[ExpenseForm] Failed to delete removed receipts', {
-            groupId: group.id,
-            expenseId,
-            paths: removedPaths,
-            removeErr,
-          })
+        // Create recurring template if toggled
+        if (setAsRecurring && !isEditing) {
+          addRecurringExpense(group.id, {
+            description: input.description,
+            amount: input.amount,
+            category: input.category,
+            payerId: input.payerId,
+            payerName: input.payerName,
+            isShared: input.isShared,
+            splitMethod: input.splitMethod,
+            splits: input.splits,
+            paymentMethod: input.paymentMethod,
+            frequency: 'monthly',
+            dayOfMonth: recurringDayOfMonth,
+            startDate: input.date,
+            createdBy: input.createdBy,
+          }).catch(() => { /* silent — template creation is non-critical */ })
+        }
+        // Learn from this save to improve future auto-categorization
+        learnFromExpense(group.id, input.description, input.category).catch((e) => {
+          // Auth errors go to system_logs (Issue #164); other errors stay silent
+          // since rule learning is best-effort and must never block save UX.
+          if (isAuthError(e)) logger.error('[ExpenseForm] learnFromExpense auth error', e)
         })
+        // Clear draft after successful save
+        if (draftKey && typeof window !== 'undefined') {
+          sessionStorage.removeItem(draftKey)
+        }
+        onSaved()
+      } catch (e: unknown) {
+        if (e instanceof ReceiptUploadError) setError(`圖片上傳失敗：${e.message}`)
+        else setError(e instanceof Error ? e.message : '儲存失敗')
+      } finally {
+        setUploadProgress({ current: 0, total: 0 })
       }
-      // Create recurring template if toggled
-      if (setAsRecurring && !isEditing) {
-        addRecurringExpense(group.id, {
-          description: input.description,
-          amount: input.amount,
-          category: input.category,
-          payerId: input.payerId,
-          payerName: input.payerName,
-          isShared: input.isShared,
-          splitMethod: input.splitMethod,
-          splits: input.splits,
-          paymentMethod: input.paymentMethod,
-          frequency: 'monthly',
-          dayOfMonth: recurringDayOfMonth,
-          startDate: input.date,
-          createdBy: input.createdBy,
-        }).catch(() => { /* silent — template creation is non-critical */ })
-      }
-      // Learn from this save to improve future auto-categorization
-      learnFromExpense(group.id, input.description, input.category).catch((e) => {
-        // Auth errors go to system_logs (Issue #164); other errors stay silent
-        // since rule learning is best-effort and must never block save UX.
-        if (isAuthError(e)) logger.error('[ExpenseForm] learnFromExpense auth error', e)
-      })
-      // Clear draft after successful save
-      if (draftKey && typeof window !== 'undefined') {
-        sessionStorage.removeItem(draftKey)
-      }
-      onSaved()
-    } catch (e: unknown) {
-      if (e instanceof ReceiptUploadError) setError(`圖片上傳失敗：${e.message}`)
-      else setError(e instanceof Error ? e.message : '儲存失敗')
-    } finally {
-      setSaving(false)
-      setUploadProgress({ current: 0, total: 0 })
-    }
+    })
   }
 
   const amt = parseFloat(amount) || 0
