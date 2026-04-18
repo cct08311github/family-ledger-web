@@ -1,11 +1,13 @@
 'use client'
 
+import Link from 'next/link'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useNotifications } from '@/lib/hooks/use-notifications'
 import { useAuth } from '@/lib/auth'
 import { markAllNotificationsRead, markNotificationRead } from '@/lib/services/notification-service'
 import { toDate, fmtDateFull } from '@/lib/utils'
 import { useToast } from '@/components/toast'
+import { getNotificationHref } from '@/lib/notification-navigation'
 
 import { logger } from '@/lib/logger'
 
@@ -14,8 +16,21 @@ const TYPE_ICONS: Record<string, string> = {
   expense_updated: '✏️',
   expense_deleted: '🗑️',
   settlement_created: '✅',
+  settlement_deleted: '↩️',
   member_added: '👤',
+  member_updated: '👤',
+  member_removed: '👤',
   reminder: '🔔',
+}
+
+// Class resolver for the notification row. Three-way: unread / read-clickable /
+// read-static. Extracted for readability + testability.
+function rowClass(isRead: boolean, hasHref: boolean): string {
+  const base =
+    'w-full flex items-start gap-3 px-4 py-3 border-b border-[var(--border)] last:border-b-0 text-left transition-colors'
+  if (!isRead) return `${base} bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 cursor-pointer`
+  if (hasHref) return `${base} hover:bg-[var(--muted)]/40 cursor-pointer`
+  return `${base} cursor-default`
 }
 
 export default function NotificationsPage() {
@@ -64,32 +79,69 @@ export default function NotificationsPage() {
         </div>
       ) : (
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
-          {notifications.map((notif) => (
-            <button
-              key={notif.id ?? notif.title}
-              onClick={() => notif.id && !notif.isRead && handleMarkOneRead(notif.id)}
-              className={`w-full flex items-start gap-3 px-4 py-3 border-b border-[var(--border)] last:border-b-0 text-left transition-colors ${
-                !notif.isRead
-                  ? 'bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 cursor-pointer'
-                  : 'cursor-default'
-              }`}
-            >
-              <div className="w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0"
-                style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 85%)' }}>
-                {TYPE_ICONS[notif.type] ?? '🔔'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium">{notif.title}</div>
-                <div className="text-xs text-[var(--muted-foreground)] mt-0.5">{notif.body}</div>
-                <div className="text-xs text-[var(--muted-foreground)] mt-1">
-                  {fmtDateFull(toDate(notif.createdAt))}
+          {notifications.map((notif) => {
+            const href = getNotificationHref(notif)
+            // Fire-and-forget mark-read. Firestore SDK immediately commits to
+            // the local write buffer (optimistic update), so navigation
+            // interrupting this call is safe in practice. `void` explicitly
+            // documents the floating promise.
+            const onClickMark = () => {
+              if (notif.id && !notif.isRead) void handleMarkOneRead(notif.id)
+            }
+            const className = rowClass(notif.isRead, href !== null)
+            const ariaLabel = notif.isRead
+              ? notif.title
+              : `${notif.title} – 點擊查看並標為已讀`
+            const inner = (
+              <>
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0"
+                  style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 85%)' }}
+                >
+                  {TYPE_ICONS[notif.type] ?? '🔔'}
                 </div>
-              </div>
-              {!notif.isRead && (
-                <div className="w-2 h-2 rounded-full bg-[var(--primary)] flex-shrink-0 mt-1.5" aria-hidden="true" />
-              )}
-            </button>
-          ))}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium">{notif.title}</div>
+                  <div className="text-xs text-[var(--muted-foreground)] mt-0.5">{notif.body}</div>
+                  <div className="text-xs text-[var(--muted-foreground)] mt-1">
+                    {fmtDateFull(toDate(notif.createdAt))}
+                  </div>
+                </div>
+                {!notif.isRead && (
+                  <div
+                    className="w-2 h-2 rounded-full bg-[var(--primary)] flex-shrink-0 mt-1.5"
+                    aria-hidden="true"
+                  />
+                )}
+              </>
+            )
+            // With an href: Link so the browser can pre-fetch and cmd-click
+            // opens in a new tab. onClick fires before navigation so mark-read
+            // runs in-flight. Without an href (e.g. generic "reminder" type):
+            // fall back to a button that only marks-read; disabled when
+            // already read so the click does nothing visible (a11y). #205
+            return href ? (
+              <Link
+                key={notif.id ?? notif.title}
+                href={href}
+                onClick={onClickMark}
+                className={className}
+                aria-label={ariaLabel}
+              >
+                {inner}
+              </Link>
+            ) : (
+              <button
+                key={notif.id ?? notif.title}
+                onClick={onClickMark}
+                disabled={notif.isRead}
+                aria-label={ariaLabel}
+                className={className}
+              >
+                {inner}
+              </button>
+            )
+          })}
         </div>
       )}
     </div>
