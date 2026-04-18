@@ -1,6 +1,8 @@
 import {
   findLastSettlementBetween,
   formatSettlementAge,
+  DAY_MS,
+  STALE_DAYS,
   type SettlementRecord,
 } from '@/lib/settlement-history'
 
@@ -86,6 +88,16 @@ describe('findLastSettlementBetween', () => {
   it('self-pair (A==B) returns null (not meaningful)', () => {
     expect(findLastSettlementBetween([s('A', 'A', new Date())], 'A', 'A')).toBeNull()
   })
+
+  it('picks newest by DATE even when older record has larger amount', () => {
+    // Regression guard: defends against a future refactor that accidentally
+    // sorts by amount. The contract is "most recent settlement".
+    const older = s('A', 'B', new Date(2026, 3, 1), 9999)
+    const newer = s('A', 'B', new Date(2026, 3, 15), 50)
+    const out = findLastSettlementBetween([older, newer], 'A', 'B')
+    expect(out?.date).toEqual(new Date(2026, 3, 15))
+    expect(out?.amount).toBe(50)
+  })
 })
 
 describe('formatSettlementAge', () => {
@@ -112,12 +124,17 @@ describe('formatSettlementAge', () => {
     expect(formatSettlementAge(new Date(2026, 3, 8), now).text).toBe('10 天前結算')
   })
 
-  it('30 days → isStale=true', () => {
-    expect(formatSettlementAge(new Date(2026, 2, 19), now).isStale).toBe(true)
+  it('exact STALE_DAYS threshold → isStale=true (derived from const, not literal)', () => {
+    // Test uses the exported STALE_DAYS so a future tuning (e.g. to 45 days)
+    // doesn't make this test silently skew.
+    const atThreshold = new Date(now - STALE_DAYS * DAY_MS)
+    expect(formatSettlementAge(atThreshold, now).isStale).toBe(true)
+    expect(formatSettlementAge(atThreshold, now).daysAgo).toBe(STALE_DAYS)
   })
 
-  it('< 30 days → isStale=false', () => {
-    expect(formatSettlementAge(new Date(2026, 3, 1), now).isStale).toBe(false)
+  it('STALE_DAYS - 1 → isStale=false', () => {
+    const justBefore = new Date(now - (STALE_DAYS - 1) * DAY_MS)
+    expect(formatSettlementAge(justBefore, now).isStale).toBe(false)
   })
 
   it('future settlement defensively clamps to 今天', () => {

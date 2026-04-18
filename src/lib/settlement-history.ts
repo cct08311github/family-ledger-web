@@ -4,16 +4,16 @@
  * Issue #209.
  */
 
-type DateLike = Date | { toDate: () => Date }
-
 export interface SettlementRecord {
   fromMemberId: string
   toMemberId: string
-  date: DateLike
+  // Accept unknown so callers can pass raw Firestore documents (whose `date`
+  // is a Timestamp) without casting. coerceDate handles the duck type.
+  date: unknown
   amount: number
 }
 
-function coerceDate(d: DateLike | unknown): Date | null {
+function coerceDate(d: unknown): Date | null {
   if (!d) return null
   if (d instanceof Date) {
     return Number.isFinite(d.getTime()) ? d : null
@@ -61,8 +61,10 @@ export function findLastSettlementBetween(
   return best
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000
-const STALE_DAYS = 30
+// Exported so tests can reuse them when asserting boundary behaviour, and
+// future tuning changes one number in one place.
+export const DAY_MS = 24 * 60 * 60 * 1000
+export const STALE_DAYS = 30
 
 export interface SettlementAge {
   /** Localized phrase, e.g. "3 天前結算" / "尚未結算". */

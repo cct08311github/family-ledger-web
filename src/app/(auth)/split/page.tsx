@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useExpenses } from '@/lib/hooks/use-expenses'
@@ -188,6 +188,19 @@ export default function SplitPage() {
 
   const netBalances = calculateNetBalances(expenses, settlements)
   const debts = simplifyDebts(expenses, settlements, nameMap)
+
+  // Batch-compute "last settled N days ago" for every debt pair. Snapshots
+  // `now` once per render so all rows share the same reference point (and
+  // unrelated state changes don't tick individual rows). Issue #209.
+  const debtAges = useMemo(() => {
+    const now = Date.now()
+    const map = new Map<string, ReturnType<typeof formatSettlementAge>>()
+    for (const d of debts) {
+      const last = findLastSettlementBetween(settlements, d.from, d.to)
+      map.set(`${d.from}-${d.to}`, formatSettlementAge(last?.date ?? null, now))
+    }
+    return map
+  }, [debts, settlements])
 
   // 所有出現過的成員 ID（union of members and expense splits）
   const expenseMemberIds = Array.from(new Set(expenses.flatMap((e) => e.splits.map((s) => s.memberId))))
@@ -383,15 +396,11 @@ export default function SplitPage() {
           ) : (
             <div className="space-y-2">
               {debts.map((d) => {
-                // Time-since-last-settlement for this pair. Computed per row
-                // (N is tiny — usually ≤ 5 debts in a family). Settlements
-                // are Firestore Timestamps; helper accepts the duck type.
-                const last = findLastSettlementBetween(
-                  settlements as unknown as Parameters<typeof findLastSettlementBetween>[0],
-                  d.from,
-                  d.to,
-                )
-                const age = formatSettlementAge(last?.date ?? null, Date.now())
+                const age = debtAges.get(`${d.from}-${d.to}`) ?? {
+                  text: '尚未結算',
+                  daysAgo: null,
+                  isStale: false,
+                }
                 return (
                 <div
                   key={`${d.from}-${d.to}`}
