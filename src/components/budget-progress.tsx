@@ -1,6 +1,5 @@
 'use client'
 
-import { useMemo } from 'react'
 import Link from 'next/link'
 import { currency } from '@/lib/utils'
 import {
@@ -19,19 +18,17 @@ interface BudgetProgressProps {
 export function BudgetProgress({ group, expenses }: BudgetProgressProps) {
   const budget = group?.monthlyBudget ?? null
 
-  // Single memo keeps `now`-derived values and `monthTotal` consistent across
-  // renders. Previously these were split, causing a (rare) mismatch at the
-  // midnight month boundary where `dayOfMonth` refreshed but `monthTotal`
-  // stayed cached from the prior month. Issue #189.
-  const derived = useMemo(() => {
-    const now = new Date()
-    const dayOfMonth = now.getDate()
-    const daysInMonth = getDaysInMonth(now)
-    const monthStart = getMonthStart(now)
-    const monthTotal = calculateMonthTotal(expenses, monthStart)
-    return { dayOfMonth, daysInMonth, monthTotal }
-  }, [expenses])
-  const { dayOfMonth, daysInMonth, monthTotal } = derived
+  // Compute on every render (no useMemo). Rationale:
+  // - filter+reduce over ~200 expenses is < 1ms, memoization overhead is not worth it
+  // - crucially, `new Date()` must re-read every render so idle-past-midnight
+  //   updates dayOfMonth / month boundary (the original memoized design left
+  //   `now` frozen until expenses changed; Issue #189 refactor v1 had the same
+  //   flaw — reviewer caught it)
+  const now = new Date()
+  const dayOfMonth = now.getDate()
+  const daysInMonth = getDaysInMonth(now)
+  const monthStart = getMonthStart(now)
+  const monthTotal = calculateMonthTotal(expenses, monthStart)
 
   const status = budget != null
     ? classifyBudgetStatus({

@@ -33,55 +33,81 @@ export function calculateMonthTotal(expenses: readonly Expense[], since: Date): 
 export type BudgetStatusKind = 'ok' | 'overPace' | 'overBudget'
 
 export interface BudgetStatus {
-  /** Clamped 0..N; no cap on over-budget so "125%" still renders correctly. */
+  /**
+   * Spent / budget × 100, rounded. Not clamped — values above 100 are valid
+   * and displayed as e.g. "125%". UI may choose to cap the visual bar width
+   * at 100% separately.
+   */
   percentUsed: number
   /** Linear-pace expected spend at today's day-of-month. */
   expectedByNow: number
   kind: BudgetStatusKind
-  /** True when `spent > budget`. */
+  /** True when `spent > budget` (strict). Equal is NOT over-budget. */
   overBudget: boolean
-  /** True when `spent > expectedByNow` (includes overBudget). */
+  /**
+   * True when `spent > expectedByNow` (strict). Equal is NOT over-pace.
+   * Note: `overBudget === true` always implies `overPace === true` (exceeding
+   * the full budget necessarily exceeds the linear-pace point).
+   */
   overPace: boolean
   /**
-   * Localized status phrase:
-   *   - overBudget → `超支 NT$N`
-   *   - overPace (but under budget) → `超速 NT$N`
-   *   - ok → `領先 NT$N`
+   * Localized status phrase using the provided currency formatter:
+   *   - overBudget → `超支 ${fmt(N)}`
+   *   - overPace (but under budget) → `超速 ${fmt(N)}`
+   *   - ok → `領先 ${fmt(N)}`
    */
   statusText: string
 }
 
+/** Default formatter matches app-wide `currency()` format (`NT$ 1,234`). */
+const DEFAULT_CURRENCY_FORMAT = (n: number): string => `NT$ ${n.toLocaleString()}`
+
 /**
  * Classify current spending against the monthly budget at a given pace point.
- * Assumes `budget > 0`. Caller must gate on `budget != null` before calling.
+ * Caller should pre-check `budget != null`; `budget <= 0` returns an all-zero
+ * "ok" status (no division by zero). `daysInMonth <= 0` falls back to 30 to
+ * avoid division by zero on pathological inputs.
  */
 export function classifyBudgetStatus(args: {
   budget: number
   spent: number
   dayOfMonth: number
   daysInMonth: number
-  /** Optional currency formatter; defaults to a simple `NT$` formatter so the
-   * helper stays pure (no import of the app-wide currency helper). Pass the app
-   * `currency` function for real UI calls. */
+  /**
+   * Optional currency formatter. Defaults to `NT$ 1,234` to stay consistent
+   * with the app-wide `currency()` helper in `@/lib/utils`. Kept as injection
+   * to avoid this module depending on app-layer code.
+   */
   formatCurrency?: (_n: number) => string
 }): BudgetStatus {
   const { budget, spent, dayOfMonth, daysInMonth } = args
-  const fmt = args.formatCurrency ?? ((n) => `NT$${n.toLocaleString()}`)
+  const fmt = args.formatCurrency ?? DEFAULT_CURRENCY_FORMAT
 
-  // Guard pathological inputs instead of dividing by zero.
+  // Defensive: daysInMonth = 0 shouldn't happen from real Date usage but guard
+  // against it to keep the helper total-function.
   const safeDaysInMonth = daysInMonth > 0 ? daysInMonth : 30
-  const safeBudget = budget > 0 ? budget : 0
 
-  const expectedByNow = safeBudget > 0 ? (safeBudget * dayOfMonth) / safeDaysInMonth : 0
-  const percentUsed = safeBudget > 0 ? Math.round((spent / safeBudget) * 100) : 0
-  const overBudget = safeBudget > 0 && spent > safeBudget
-  const overPace = safeBudget > 0 && spent > expectedByNow
+  if (budget <= 0) {
+    return {
+      percentUsed: 0,
+      expectedByNow: 0,
+      kind: 'ok',
+      overBudget: false,
+      overPace: false,
+      statusText: `領先 ${fmt(0)}`,
+    }
+  }
+
+  const expectedByNow = (budget * dayOfMonth) / safeDaysInMonth
+  const percentUsed = Math.round((spent / budget) * 100)
+  const overBudget = spent > budget
+  const overPace = spent > expectedByNow
 
   let kind: BudgetStatusKind
   let statusText: string
   if (overBudget) {
     kind = 'overBudget'
-    statusText = `超支 ${fmt(Math.round(spent - safeBudget))}`
+    statusText = `超支 ${fmt(Math.round(spent - budget))}`
   } else if (overPace) {
     kind = 'overPace'
     statusText = `超速 ${fmt(Math.round(spent - expectedByNow))}`

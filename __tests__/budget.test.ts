@@ -101,12 +101,17 @@ describe('calculateMonthTotal', () => {
     expect(calculateMonthTotal(expenses, start)).toBe(0)
   })
 
-  it('handles mixed-month lists correctly', () => {
+  it('includes everything >= since regardless of month (caller filters upper bound)', () => {
+    // Helper's contract is `date >= since`, full stop. The component passes
+    // "first of current month" as `since` and naturally has no future
+    // expenses, so upper bound isn't needed. This test documents the helper
+    // itself doesn't cap at end-of-month — a later call with a past `since`
+    // date would include all subsequent months.
     const expenses = [
-      expense(new Date(2026, 2, 20), 1000), // March — excluded
+      expense(new Date(2026, 2, 20), 1000), // March — excluded (< April start)
       expense(new Date(2026, 3, 5), 200), // April — included
       expense(new Date(2026, 3, 10), 300), // April — included
-      expense(new Date(2026, 4, 1), 500), // May — included (still >= April start)
+      expense(new Date(2026, 4, 1), 500), // May — included (≥ April start; NOT capped)
     ]
     expect(calculateMonthTotal(expenses, start)).toBe(1000)
   })
@@ -172,9 +177,11 @@ describe('classifyBudgetStatus', () => {
     expect(r.expectedByNow).toBe(15000) // 30000 * 15 / 30
   })
 
-  it('uses default NT$ formatter when none provided', () => {
+  it('default formatter matches app currency() style (NT$ with space + comma)', () => {
+    // Regression guard: default must match the app-wide `currency()` helper
+    // in @/lib/utils so UI rendered with default formatter looks identical.
     const r = classifyBudgetStatus({ budget: 30000, spent: 10000, dayOfMonth: 15, daysInMonth: 30 })
-    expect(r.statusText).toMatch(/NT\$/)
+    expect(r.statusText).toBe('領先 NT$ 5,000')
   })
 
   it('formatter with thousand separator produces readable output', () => {
@@ -184,5 +191,11 @@ describe('classifyBudgetStatus', () => {
     })
     // 1M * 15/30 = 500000; spent 600000 → over pace by 100000
     expect(r.statusText).toBe('超速 NT$100,000')
+  })
+
+  it('negative budget treated as zero (no crash, returns ok)', () => {
+    const r = classifyBudgetStatus({ budget: -5000, spent: 100, dayOfMonth: 10, daysInMonth: 30 })
+    expect(r.kind).toBe('ok')
+    expect(r.percentUsed).toBe(0)
   })
 })
