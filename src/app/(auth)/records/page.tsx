@@ -17,6 +17,14 @@ import { ReceiptGallery } from '@/components/receipt-gallery'
 import { normalizeReceiptPaths } from '@/lib/services/image-upload'
 import type { Expense } from '@/lib/types'
 import type { DocumentSnapshot } from 'firebase/firestore'
+import {
+  currentMonthRange,
+  shiftMonth,
+  parseYearMonth,
+  isExactMonth,
+  isCurrentMonth,
+  formatMonthLabel,
+} from '@/lib/month-nav'
 
 type FilterType = '全部' | '共同' | '個人'
 
@@ -58,10 +66,44 @@ export default function RecordsPage() {
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [dateStart, setDateStart] = useState(() => searchParams.get('start') ?? '')
-  const [dateEnd, setDateEnd] = useState(() => searchParams.get('end') ?? '')
+  // Default to current month for efficiency — families mostly care about the
+  // current monthly summary. URL params (`?start=&end=`) override for deep
+  // links (e.g., from statistics page drill-downs). Use `||` not `??` so an
+  // empty string `?start=` also falls back to the default (not treated as
+  // "all time"). Issue #185.
+  const [dateStart, setDateStart] = useState(() => searchParams.get('start') || currentMonthRange().start)
+  const [dateEnd, setDateEnd] = useState(() => searchParams.get('end') || currentMonthRange().end)
   const [payerFilter, setPayerFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState(() => searchParams.get('category') ?? '')
+
+  // Derived: which month does the current date filter represent?
+  // - Exact-month range → show prev/next month navigation
+  // - Custom or all-time → show "自訂區間" and a "回本月" shortcut
+  const monthNav = useMemo(() => {
+    if (!dateStart || !dateEnd) return { kind: 'custom' as const }
+    if (!isExactMonth(dateStart, dateEnd)) return { kind: 'custom' as const }
+    const ym = parseYearMonth(dateStart)
+    if (!ym) return { kind: 'custom' as const }
+    return {
+      kind: 'month' as const,
+      year: ym.year,
+      month: ym.month,
+      isCurrent: isCurrentMonth(dateStart, dateEnd),
+    }
+  }, [dateStart, dateEnd])
+
+  function jumpToMonth(delta: number) {
+    if (monthNav.kind !== 'month') return
+    const next = shiftMonth(monthNav.year, monthNav.month, delta)
+    setDateStart(next.start)
+    setDateEnd(next.end)
+  }
+
+  function jumpToCurrentMonth() {
+    const curr = currentMonthRange()
+    setDateStart(curr.start)
+    setDateEnd(curr.end)
+  }
 
   // Debounce search input by 300ms
   useEffect(() => {
@@ -69,7 +111,13 @@ export default function RecordsPage() {
     return () => clearTimeout(t)
   }, [searchInput])
 
-  const hasAdvancedFilter = dateStart || dateEnd || payerFilter || categoryFilter
+  // "Advanced filter" means the user has narrowed beyond the default
+  // current-month view. The default month is NOT treated as active filtering
+  // (so the summary bar / indicator dots don't light up on plain page load).
+  // Issue #185.
+  const isOnCurrentMonth = isCurrentMonth(dateStart, dateEnd)
+  const customDateRange = !!(dateStart || dateEnd) && !isOnCurrentMonth
+  const hasAdvancedFilter = customDateRange || !!payerFilter || !!categoryFilter
 
   const filtered = useMemo(() => {
     return expenses.filter((e) => {
@@ -117,8 +165,12 @@ export default function RecordsPage() {
   function clearFilters() {
     setSearchInput('')
     setSearchQuery('')
-    setDateStart('')
-    setDateEnd('')
+    // "Clear filters" resets to the default (current-month) view, not a
+    // no-date-range "all time" view. Keeps semantics consistent with the new
+    // default behavior added in Issue #185.
+    const curr = currentMonthRange()
+    setDateStart(curr.start)
+    setDateEnd(curr.end)
     setPayerFilter('')
     setCategoryFilter('')
   }
@@ -162,6 +214,56 @@ export default function RecordsPage() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Month navigation (Issue #185) */}
+      <div className="mb-3 flex items-center gap-2">
+        {monthNav.kind === 'month' ? (
+          <>
+            <button
+              onClick={() => jumpToMonth(-1)}
+              aria-label="上一個月"
+              className="h-9 w-9 rounded-lg border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--muted)] transition flex items-center justify-center text-sm"
+            >
+              ◀
+            </button>
+            <div className="flex-1 text-center">
+              <div className="text-sm font-semibold tabular-nums">
+                {formatMonthLabel({ year: monthNav.year, month: monthNav.month })}
+              </div>
+              {monthNav.isCurrent && (
+                <div className="text-[10px] text-[var(--muted-foreground)]">本月</div>
+              )}
+            </div>
+            <button
+              onClick={() => jumpToMonth(1)}
+              aria-label="下一個月"
+              className="h-9 w-9 rounded-lg border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--muted)] transition flex items-center justify-center text-sm"
+            >
+              ▶
+            </button>
+            {!monthNav.isCurrent && (
+              <button
+                onClick={jumpToCurrentMonth}
+                className="h-9 px-3 rounded-lg border border-[var(--border)] bg-[var(--card)] text-xs font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)] transition"
+              >
+                回本月
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="flex-1 text-sm text-[var(--muted-foreground)]">
+              自訂區間 {dateStart && dateEnd ? `(${dateStart} ~ ${dateEnd})` : ''}
+            </div>
+            <button
+              onClick={jumpToCurrentMonth}
+              className="h-9 px-3 rounded-lg border border-[var(--border)] bg-[var(--card)] text-xs font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)] transition"
+            >
+              回本月
+            </button>
+          </>
+        )}
       </div>
 
       {/* Quick filter chips */}

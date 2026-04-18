@@ -6,15 +6,41 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Family expense sharing app (家計本) built with Next.js App Router, React 19, TypeScript, and Firebase. Supports shared expense tracking, automatic split calculation, debt simplification, and real-time sync across family members.
 
+## ⚠ 重要警告：此 cwd 是 PM2 的 live-serve 路徑
+
+**此專案目錄（`/Users/openclaw/.openclaw/shared/projects/family-ledger-web`）同時是 PM2 `family-ledger-web` 的 production serve cwd**（port 3013，Tailscale 上家人在用）。
+
+任何會寫入 `.next/` 的命令會**立即影響生產使用者**：
+
+| 命令 | 在此 cwd 安全嗎？ |
+|------|----------------|
+| `npm run lint` / `npm test` / `npx tsc --noEmit` | ✅ 唯讀，安全 |
+| `npm run build` / `npm run dev` / `npm run start` | ❌ **會覆蓋 `.next/`**，PM2 的 server process 記憶體仍持舊 chunk 參考 → 使用者看到 chunk 404 → 「載入失敗」error boundary |
+| `npm ci` / `npm install` | ⚠️ 寫 `node_modules`，native addon 或熱重載模組可能 break |
+
+**正確做法**：debug 或 build 請用 worktree：
+```bash
+git worktree add ../family-ledger-debug main
+cd ../family-ledger-debug
+npm run build  # 安全，自己的 .next，不碰 prod
+```
+
+若必須在此 cwd build：`pm2 stop family-ledger-web && npm run build && pm2 restart family-ledger-web`。
+
+此規則的血淚來源：2026-04-18 在此 cwd 跑 `npm run build` 除錯，反而直接造成 production 「新增支出載入失敗」。
+
 ## Commands
 
 ```bash
+# 唯讀（safe in this cwd）
+npm run lint     # ESLint check
+npm run test     # Jest unit tests
+npx playwright test  # E2E tests (requires Auth emulator)
+
+# 寫入 .next（在此 cwd 等同 deploy — 見上方警告）
 npm run dev      # Start development server (Turbopack)
 npm run build    # Production build
 npm run start    # Start production server
-npm run lint     # ESLint check
-npm run test     # Jest unit tests (42 tests)
-npx playwright test  # E2E tests (54 tests, 20 passing, 34 require Auth)
 ```
 
 ## Tech Stack
