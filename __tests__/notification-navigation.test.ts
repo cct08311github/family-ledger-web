@@ -72,5 +72,14 @@ describe('getNotificationHref', () => {
       const href = getNotificationHref(n('expense_added', 'weird/id?x=1'))
       expect(href).toBe('/expense/weird%2Fid%3Fx%3D1')
     })
+
+    it('treats empty / whitespace-only entityId as missing', () => {
+      // Firestore rules don't validate entityId today; a writer could save "".
+      // Without normalization we'd emit `/expense/` → Next.js collapses to
+      // the list page, contradicting the advertised "open edit page" UX.
+      expect(getNotificationHref(n('expense_added', ''))).toBe('/records')
+      expect(getNotificationHref(n('expense_added', '   '))).toBe('/records')
+      expect(getNotificationHref(n('expense_updated', ''))).toBe('/records')
+    })
   })
 })

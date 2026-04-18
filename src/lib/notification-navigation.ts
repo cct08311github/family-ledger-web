@@ -22,13 +22,19 @@ const DELETED_ENTITY_FALLBACK = '/settings/activity-log'
 export function getNotificationHref(notif: NotificationLike): string | null {
   const { type, entityId } = notif
 
+  // Treat whitespace-only entityId as missing. Firestore rules do not currently
+  // validate entityId format, so a malicious (or buggy) writer could store ""
+  // and have us produce `/expense/` which Next.js collapses to the list page —
+  // not the edit page we advertise. Normalize here defensively.
+  const id = typeof entityId === 'string' && entityId.trim() ? entityId : null
+
   switch (type) {
     case 'expense_added':
     case 'expense_updated':
       // Edit page — if no entityId, fall back to the records list so the user
       // at least lands somewhere relevant instead of seeing a dead link.
-      return entityId
-        ? `/expense/${encodeURIComponent(entityId)}`
+      return id
+        ? `/expense/${encodeURIComponent(id)}`
         : '/records'
 
     case 'expense_deleted':
@@ -45,6 +51,10 @@ export function getNotificationHref(notif: NotificationLike): string | null {
     case 'member_added':
     case 'member_updated':
     case 'member_removed':
+      // Forward-compatible routing — member-service.ts does NOT currently
+      // emit notifications for these events (activity log only). Kept in the
+      // switch so if a future PR wires up member notifications, the click
+      // target is already defined.
       return '/settings'
 
     default:

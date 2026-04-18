@@ -16,8 +16,21 @@ const TYPE_ICONS: Record<string, string> = {
   expense_updated: '✏️',
   expense_deleted: '🗑️',
   settlement_created: '✅',
+  settlement_deleted: '↩️',
   member_added: '👤',
+  member_updated: '👤',
+  member_removed: '👤',
   reminder: '🔔',
+}
+
+// Class resolver for the notification row. Three-way: unread / read-clickable /
+// read-static. Extracted for readability + testability.
+function rowClass(isRead: boolean, hasHref: boolean): string {
+  const base =
+    'w-full flex items-start gap-3 px-4 py-3 border-b border-[var(--border)] last:border-b-0 text-left transition-colors'
+  if (!isRead) return `${base} bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 cursor-pointer`
+  if (hasHref) return `${base} hover:bg-[var(--muted)]/40 cursor-pointer`
+  return `${base} cursor-default`
 }
 
 export default function NotificationsPage() {
@@ -68,14 +81,17 @@ export default function NotificationsPage() {
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
           {notifications.map((notif) => {
             const href = getNotificationHref(notif)
-            const onClickMark = () => notif.id && !notif.isRead && handleMarkOneRead(notif.id)
-            const sharedClass = `w-full flex items-start gap-3 px-4 py-3 border-b border-[var(--border)] last:border-b-0 text-left transition-colors ${
-              !notif.isRead
-                ? 'bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 cursor-pointer'
-                : href
-                ? 'hover:bg-[var(--muted)]/40 cursor-pointer'
-                : 'cursor-default'
-            }`
+            // Fire-and-forget mark-read. Firestore SDK immediately commits to
+            // the local write buffer (optimistic update), so navigation
+            // interrupting this call is safe in practice. `void` explicitly
+            // documents the floating promise.
+            const onClickMark = () => {
+              if (notif.id && !notif.isRead) void handleMarkOneRead(notif.id)
+            }
+            const className = rowClass(notif.isRead, href !== null)
+            const ariaLabel = notif.isRead
+              ? notif.title
+              : `${notif.title} – 點擊查看並標為已讀`
             const inner = (
               <>
                 <div
@@ -99,17 +115,18 @@ export default function NotificationsPage() {
                 )}
               </>
             )
-            // With an href: render a Link so the browser can pre-fetch and
-            // middle-click/cmd-click opens in a new tab. onClick still fires
-            // before navigation so mark-read runs in-flight.
-            // Without an href (e.g. generic "reminder"): fall back to a button
-            // that only marks-read. Issue #205.
+            // With an href: Link so the browser can pre-fetch and cmd-click
+            // opens in a new tab. onClick fires before navigation so mark-read
+            // runs in-flight. Without an href (e.g. generic "reminder" type):
+            // fall back to a button that only marks-read; disabled when
+            // already read so the click does nothing visible (a11y). #205
             return href ? (
               <Link
                 key={notif.id ?? notif.title}
                 href={href}
                 onClick={onClickMark}
-                className={sharedClass}
+                className={className}
+                aria-label={ariaLabel}
               >
                 {inner}
               </Link>
@@ -117,7 +134,9 @@ export default function NotificationsPage() {
               <button
                 key={notif.id ?? notif.title}
                 onClick={onClickMark}
-                className={sharedClass}
+                disabled={notif.isRead}
+                aria-label={ariaLabel}
+                className={className}
               >
                 {inner}
               </button>
