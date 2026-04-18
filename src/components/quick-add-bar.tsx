@@ -11,6 +11,7 @@ import { addExpense, type ExpenseInput } from '@/lib/services/expense-service'
 import { parseExpense } from '@/lib/services/local-expense-parser'
 import { learnFromExpense, suggestCategory, isAuthError } from '@/lib/services/transaction-rules-service'
 import { useToast } from '@/components/toast'
+import { useSubmitGuard } from '@/lib/hooks/use-submit-guard'
 import { logger } from '@/lib/logger'
 
 export function QuickAddBar() {
@@ -26,7 +27,7 @@ export function QuickAddBar() {
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState('')
   const [autoFilled, setAutoFilled] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const { inFlight: saving, run: runSubmit } = useSubmitGuard()
 
   const activeCategories = useMemo(
     () => categories.filter((c) => c.isActive).map((c) => c.name).slice(0, 6),
@@ -119,30 +120,29 @@ export function QuickAddBar() {
       createdBy: user.uid,
     }
 
-    setSaving(true)
-    try {
-      await addExpense(group.id, input, { id: payerId, name: payerName })
-      // Learn the (description, category) pair for future auto-fill suggestions.
-      // Non-fatal by design — except for auth errors, which surface to the user
-      // so they can re-authenticate (Issue #164).
-      learnFromExpense(group.id, description.trim(), input.category).catch((e) => {
-        if (isAuthError(e)) {
-          logger.error('[QuickAdd] learnFromExpense auth error', e)
-          addToast('登入狀態失效，規則學習已停止', 'warning')
-        }
-      })
-      addToast(`已記錄 ${description.trim()} $${amt}`, 'success')
-      setDescription('')
-      setAmount('')
-      setCategory('')
-      setAutoFilled(false)
-      setExpanded(false)
-    } catch (e) {
-      logger.error('[QuickAdd] Failed:', e)
-      addToast('記帳失敗，請重試', 'error')
-    } finally {
-      setSaving(false)
-    }
+    await runSubmit(async () => {
+      try {
+        await addExpense(group.id, input, { id: payerId, name: payerName })
+        // Learn the (description, category) pair for future auto-fill suggestions.
+        // Non-fatal by design — except for auth errors, which surface to the user
+        // so they can re-authenticate (Issue #164).
+        learnFromExpense(group.id, description.trim(), input.category).catch((e) => {
+          if (isAuthError(e)) {
+            logger.error('[QuickAdd] learnFromExpense auth error', e)
+            addToast('登入狀態失效，規則學習已停止', 'warning')
+          }
+        })
+        addToast(`已記錄 ${description.trim()} $${amt}`, 'success')
+        setDescription('')
+        setAmount('')
+        setCategory('')
+        setAutoFilled(false)
+        setExpanded(false)
+      } catch (e) {
+        logger.error('[QuickAdd] Failed:', e)
+        addToast('記帳失敗，請重試', 'error')
+      }
+    })
   }
 
   if (!group) return null
