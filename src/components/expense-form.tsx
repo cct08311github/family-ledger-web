@@ -19,6 +19,7 @@ import { learnFromExpense, suggestCategory, isAuthError } from '@/lib/services/t
 import { useAuth, getActor } from '@/lib/auth'
 import { toDate } from '@/lib/utils'
 import { saveButtonLabel, type UploadProgress } from '@/lib/save-button-label'
+import { findPossibleDuplicate } from '@/lib/duplicate-expense-detector'
 import { useSubmitGuard } from '@/lib/hooks/use-submit-guard'
 import { ref as storageRef, getDownloadURL } from 'firebase/storage'
 import { storage } from '@/lib/firebase'
@@ -354,6 +355,31 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
     }
   }, [members, source, payerId, participantIds.size])
 
+  // Warn when a family member appears to have recorded the same bill in the
+  // last 5 minutes. Skip when user explicitly dismissed this candidate.
+  // Issue #211.
+  const [dismissedDuplicateKey, setDismissedDuplicateKey] = useState<string | null>(null)
+  const possibleDuplicate = useMemo(() => {
+    if (!description.trim() || !amount) return null
+    const amt = parseFloat(amount)
+    if (!Number.isFinite(amt) || amt <= 0) return null
+    return findPossibleDuplicate(
+      { description, amount: amt, isEditingId: existingExpense?.id },
+      expenses.map((e) => ({
+        id: e.id,
+        description: e.description,
+        amount: e.amount,
+        payerName: e.payerName,
+        createdAt: e.createdAt,
+      })),
+      Date.now(),
+    )
+  }, [description, amount, expenses, existingExpense?.id])
+  const duplicateKey = possibleDuplicate
+    ? `${possibleDuplicate.id}-${possibleDuplicate.amount}`
+    : null
+  const showDuplicateWarning = !!possibleDuplicate && duplicateKey !== dismissedDuplicateKey
+
   const buildSplits = (): SplitDetail[] => {
     const amt = parseFloat(amount) || 0
     const participants = members.filter((m) => participantIds.has(m.id))
@@ -614,6 +640,39 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
             className="w-full h-11 rounded-lg border border-[var(--border)] bg-[var(--card)] pl-12 pr-3 text-sm" />
         </div>
       </div>
+
+      {/* Possible-duplicate warning (Issue #211). Shown only when description +
+          amount both filled AND another family member already recorded a near-
+          identical expense in the last 5 min. User can dismiss per candidate. */}
+      {showDuplicateWarning && possibleDuplicate && (
+        <div
+          className="rounded-lg border p-3 flex items-start gap-3 text-xs"
+          style={{
+            borderColor: 'color-mix(in oklch, var(--primary), transparent 60%)',
+            backgroundColor: 'color-mix(in oklch, var(--primary), transparent 92%)',
+          }}
+          role="status"
+          aria-live="polite"
+        >
+          <span className="text-lg">📋</span>
+          <div className="flex-1 min-w-0">
+            <div className="font-medium">似乎重複了？</div>
+            <div className="text-[var(--muted-foreground)] mt-0.5">
+              <span className="font-medium text-[var(--foreground)]">{possibleDuplicate.payerName}</span> 剛剛記了
+              <span className="font-medium text-[var(--foreground)]"> 「{possibleDuplicate.description}」</span>
+              （NT$ {possibleDuplicate.amount.toLocaleString()}），確定要再記一筆？
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDismissedDuplicateKey(duplicateKey)}
+            aria-label="忽略重複提醒"
+            className="shrink-0 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition px-1"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* 類別 */}
       <div>
