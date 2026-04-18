@@ -192,7 +192,9 @@ service cloud.firestore {
         allow create: if isGroupMember(groupId)
           && hasReasonableSize()
           && request.resource.data.actorId is string
-          && request.resource.data.action is string;
+          && request.resource.data.action is string
+          && request.resource.data.description is string
+          && request.resource.data.description.size() <= 300;
         allow update, delete: if false;
       }
 

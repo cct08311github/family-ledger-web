@@ -1,5 +1,8 @@
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { truncateActivityDescription } from '@/lib/activity-description-limit'
+
+export { MAX_ACTIVITY_LOG_DESCRIPTION_LENGTH, truncateActivityDescription } from '@/lib/activity-description-limit'
 
 export type LogAction =
   | 'expense_created'
@@ -37,12 +40,14 @@ export interface LogInput {
 }
 
 export async function addActivityLog(groupId: string, input: LogInput): Promise<void> {
+  const rawDesc = input.description || (ACTION_LABELS[input.action] ?? input.action)
+  const description = truncateActivityDescription(rawDesc)
   await addDoc(collection(db, 'groups', groupId, 'activityLogs'), {
     groupId,
     action: input.action,
     actorName: input.actorName,
     actorId: input.actorId,
-    description: input.description || (ACTION_LABELS[input.action] ?? input.action),
+    description,
     entityId: input.entityId ?? null,
     createdAt: serverTimestamp(),
   })
