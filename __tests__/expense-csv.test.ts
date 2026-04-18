@@ -57,6 +57,17 @@ describe('escapeCSVCell', () => {
     expect(escapeCSVCell('-1234')).toBe(`"'-1234"`)
     expect(escapeCSVCell('@alias')).toBe(`"'@alias"`)
   })
+
+  it('strips leading BOM before the formula-injection check', () => {
+    // LibreOffice strips \uFEFF before evaluating, so "\uFEFF=..." used to slip
+    // past FORMULA_LEAD. Now we strip locally first.
+    expect(escapeCSVCell('\uFEFF=HYPERLINK("evil.com")')).toBe(`"'=HYPERLINK(""evil.com"")"`)
+  })
+
+  it('strips leading zero-width + tab chars that could mask a formula', () => {
+    expect(escapeCSVCell('\u200B=SUM(A1)')).toBe(`"'=SUM(A1)"`)
+    expect(escapeCSVCell('\t=SUM(A1)')).toBe(`"'=SUM(A1)"`)
+  })
 })
 
 describe('expensesToCSV', () => {

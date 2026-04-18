@@ -27,6 +27,16 @@ export const CSV_BOM = '\uFEFF'
 export const CSV_HEADER = '日期,描述,金額,類別,付款人,類型,付款方式,備註'
 
 const FORMULA_LEAD = /^[=+\-@]/
+// Unicode zero-width / BOM characters that some spreadsheets strip before
+// evaluating the cell — stripping them locally first means the FORMULA_LEAD
+// check catches payloads like "\uFEFF=HYPERLINK(...)" that LibreOffice would
+// otherwise execute. Also strips leading TAB since tab+= is a known DDE
+// carrier in TSV-aware importers. ZWJ/ZWNJ in a char class normally triggers
+// `no-misleading-character-class` (designed for emoji sequences) — here we
+// match each code point individually at the leading edge and the warning
+// does not apply.
+// eslint-disable-next-line no-misleading-character-class
+const STRIP_LEADING = /^[\uFEFF\u200B\u200C\u200D\u2060\t]+/
 
 function coerceDate(d: CSVExpense['date']): Date | null {
   if (!d) return null
@@ -57,9 +67,12 @@ export function escapeCSVCell(value: unknown): string {
     return String(value)
   }
   let s = String(value)
+  // Strip invisible leads (BOM, zero-width, tab) before the formula check so
+  // payloads like "\uFEFF=HYPERLINK(...)" can't bypass detection.
+  s = s.replace(STRIP_LEADING, '')
   // Defuse CSV formula injection before any other quoting logic.
   if (FORMULA_LEAD.test(s)) s = `'${s}`
-  const needsQuote = /[",\n\r]/.test(s) || s.startsWith("'")
+  const needsQuote = /[",\n\r\t]/.test(s) || s.startsWith("'")
   if (!needsQuote) return s
   return `"${s.replace(/"/g, '""')}"`
 }

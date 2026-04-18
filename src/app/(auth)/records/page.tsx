@@ -416,7 +416,9 @@ export default function RecordsPage() {
               合計 <span className="font-semibold" style={{ color: 'var(--primary)' }}>{currency(totalFiltered)}</span>
             </span>
           ) : (
-            <span />
+            <span>
+              共 <span className="font-semibold text-[var(--foreground)]">{filtered.length}</span> 筆記錄
+            </span>
           )}
           <div className="flex items-center gap-3">
             {(searchQuery || hasAdvancedFilter) && (
@@ -430,6 +432,7 @@ export default function RecordsPage() {
             <button
               onClick={() => handleExportCSV()}
               title="匯出目前顯示的支出為 CSV（Excel / Google Sheets 可開）"
+              aria-label={`匯出 ${filtered.length} 筆記錄為 CSV`}
               className="text-xs px-2.5 py-1 rounded-md border border-[var(--border)] hover:bg-[var(--muted)] transition"
             >
               ⤓ 匯出 CSV
