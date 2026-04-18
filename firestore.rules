@@ -262,6 +262,52 @@ service cloud.firestore {
       }
     }
 
+    // ─── Email 寄送佇列（Firebase Trigger Email Extension）───
+    //
+    // 由 notifyByEmail helper 在 in-app 通知建立時同步寫入，待 extension 讀取
+    // 並透過 Gmail SMTP 寄送。schema 符合 ext-firestore-send-email 預期：
+    //   { to: string, message: { subject, text, html? }, meta: { groupId, recipientUid }, createdAt }
+    //
+    // 關鍵安全機制（防止 open relay）：
+    //   - `to` 必須 == 宣稱 recipientUid 已 opt-in 的 userPreferences.email
+    //   - 寫入者與 recipient 必須同 group 成員
+    // 這讓惡意使用者無法把 SMTP 當成對外發信工具：只能發給已經登記 email 的同群
+    // 成員本人。
+    //
+    // Extension 以 Cloud Function service account 執行，bypass rules，可自由
+    // update delivery 欄位 + 任意 read；因此此處 read/update/delete 全拒 client。
+    // Issue #187.
+    match /mail/{mailId} {
+      allow read: if false;
+      allow create: if isSignedIn()
+        // Shape validation
+        && request.resource.data.to is string
+        && request.resource.data.to.size() > 0
+        && request.resource.data.to.size() <= 200
+        && request.resource.data.message is map
+        && request.resource.data.message.subject is string
+        && request.resource.data.message.subject.size() > 0
+        && request.resource.data.message.subject.size() <= 200
+        && request.resource.data.message.text is string
+        && request.resource.data.message.text.size() <= 5000
+        && request.resource.data.meta is map
+        && request.resource.data.meta.groupId is string
+        && request.resource.data.meta.recipientUid is string
+        // Writer must belong to the claimed group
+        && request.auth.uid in
+          firestore.get(/databases/$(database)/documents/groups/$(request.resource.data.meta.groupId)).data.memberUids
+        // Recipient must also belong to the same group
+        && request.resource.data.meta.recipientUid in
+          firestore.get(/databases/$(database)/documents/groups/$(request.resource.data.meta.groupId)).data.memberUids
+        // The `to` address must match the recipient's registered preference email
+        // (this is the open-relay guard). Reading userPreferences is allowed
+        // for group members; if the recipient hasn't opted in the read fails
+        // because `email` field is null/missing and equality fails.
+        && request.resource.data.to ==
+          firestore.get(/databases/$(database)/documents/groups/$(request.resource.data.meta.groupId)/userPreferences/$(request.resource.data.meta.recipientUid)).data.email;
+      allow update, delete: if false;
+    }
+
     // ─── 系統日誌（production debugging） ───
     //
     // 所有 logger.error()/warn() 在 production 會寫入此 collection。

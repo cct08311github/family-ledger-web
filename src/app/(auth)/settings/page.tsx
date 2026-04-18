@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation'
 import { BudgetSection } from '@/components/budget-section'
 import { OrphanCleanupSection } from '@/components/orphan-cleanup-section'
 import { RuleCleanupSection } from '@/components/rule-cleanup-section'
+import { EmailPreferenceSection } from '@/components/email-preference-section'
 import type { FamilyMember, Category } from '@/lib/types'
 
 import { useToast } from '@/components/toast'
@@ -717,6 +718,12 @@ export default function SettingsPage() {
         {group && user?.uid === group.ownerUid && (
           <Section title="🧼 分類規則清理">
             <RuleCleanupSection groupId={group.id} />
+          </Section>
+        )}
+
+        {group && (
+          <Section title="🔔 Email 通知">
+            <EmailPreferenceSection groupId={group.id} />
           </Section>
         )}
 
