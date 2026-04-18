@@ -293,18 +293,21 @@ service cloud.firestore {
         && request.resource.data.meta is map
         && request.resource.data.meta.groupId is string
         && request.resource.data.meta.recipientUid is string
-        // Writer must belong to the claimed group
+        // Writer must belong to the claimed group. NOTE: Firestore rules use
+        // `get()`, NOT `firestore.get()` — the latter is Storage rules cross-
+        // service syntax and silently evaluates to permission-denied here.
+        // Issue #191.
         && request.auth.uid in
-          firestore.get(/databases/$(database)/documents/groups/$(request.resource.data.meta.groupId)).data.memberUids
+          get(/databases/$(database)/documents/groups/$(request.resource.data.meta.groupId)).data.memberUids
         // Recipient must also belong to the same group
         && request.resource.data.meta.recipientUid in
-          firestore.get(/databases/$(database)/documents/groups/$(request.resource.data.meta.groupId)).data.memberUids
+          get(/databases/$(database)/documents/groups/$(request.resource.data.meta.groupId)).data.memberUids
         // The `to` address must match the recipient's registered preference email
         // (this is the open-relay guard). Reading userPreferences is allowed
         // for group members; if the recipient hasn't opted in the read fails
         // because `email` field is null/missing and equality fails.
         && request.resource.data.to ==
-          firestore.get(/databases/$(database)/documents/groups/$(request.resource.data.meta.groupId)/userPreferences/$(request.resource.data.meta.recipientUid)).data.email;
+          get(/databases/$(database)/documents/groups/$(request.resource.data.meta.groupId)/userPreferences/$(request.resource.data.meta.recipientUid)).data.email;
       allow update, delete: if false;
     }
 
