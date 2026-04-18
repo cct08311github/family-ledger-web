@@ -125,6 +125,34 @@ export function BudgetProgress({ group, expenses }: BudgetProgressProps) {
         </span>
         <span>{status.statusText}</span>
       </div>
+
+      {/* Month-end projection (Issue #203). Hidden if nothing has been spent
+          yet — an "estimate" of 0 is noise. Early in the month the projection
+          is volatile (day 1 splurge would extrapolate to 30×), so we badge
+          "估算中" through day 5. The underlying math is identical to the
+          overPace label, but presentation is the forward-looking framing. */}
+      {monthTotal > 0 && (
+        <div className="text-xs flex items-center justify-between pt-2 border-t border-[var(--border)]">
+          <span className="text-[var(--muted-foreground)]">
+            按目前速度，月底預計花費
+            {dayOfMonth <= 5 && (
+              <span className="ml-1 opacity-60">（估算中）</span>
+            )}
+          </span>
+          <span
+            className={`font-semibold ${
+              status.projectedOverBudget
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-[var(--foreground)]'
+            }`}
+          >
+            {currency(status.projected)}
+            <span className="ml-1 text-[var(--muted-foreground)] font-normal">
+              ({status.projectedPercent}%)
+            </span>
+          </span>
+        </div>
+      )}
     </div>
   )
 }
