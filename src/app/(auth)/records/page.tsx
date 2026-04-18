@@ -68,9 +68,11 @@ export default function RecordsPage() {
   const [showAdvanced, setShowAdvanced] = useState(false)
   // Default to current month for efficiency — families mostly care about the
   // current monthly summary. URL params (`?start=&end=`) override for deep
-  // links (e.g., from statistics page drill-downs). Issue #185.
-  const [dateStart, setDateStart] = useState(() => searchParams.get('start') ?? currentMonthRange().start)
-  const [dateEnd, setDateEnd] = useState(() => searchParams.get('end') ?? currentMonthRange().end)
+  // links (e.g., from statistics page drill-downs). Use `||` not `??` so an
+  // empty string `?start=` also falls back to the default (not treated as
+  // "all time"). Issue #185.
+  const [dateStart, setDateStart] = useState(() => searchParams.get('start') || currentMonthRange().start)
+  const [dateEnd, setDateEnd] = useState(() => searchParams.get('end') || currentMonthRange().end)
   const [payerFilter, setPayerFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState(() => searchParams.get('category') ?? '')
 
@@ -109,7 +111,13 @@ export default function RecordsPage() {
     return () => clearTimeout(t)
   }, [searchInput])
 
-  const hasAdvancedFilter = dateStart || dateEnd || payerFilter || categoryFilter
+  // "Advanced filter" means the user has narrowed beyond the default
+  // current-month view. The default month is NOT treated as active filtering
+  // (so the summary bar / indicator dots don't light up on plain page load).
+  // Issue #185.
+  const isOnCurrentMonth = isCurrentMonth(dateStart, dateEnd)
+  const customDateRange = !!(dateStart || dateEnd) && !isOnCurrentMonth
+  const hasAdvancedFilter = customDateRange || !!payerFilter || !!categoryFilter
 
   const filtered = useMemo(() => {
     return expenses.filter((e) => {
@@ -157,8 +165,12 @@ export default function RecordsPage() {
   function clearFilters() {
     setSearchInput('')
     setSearchQuery('')
-    setDateStart('')
-    setDateEnd('')
+    // "Clear filters" resets to the default (current-month) view, not a
+    // no-date-range "all time" view. Keeps semantics consistent with the new
+    // default behavior added in Issue #185.
+    const curr = currentMonthRange()
+    setDateStart(curr.start)
+    setDateEnd(curr.end)
     setPayerFilter('')
     setCategoryFilter('')
   }
