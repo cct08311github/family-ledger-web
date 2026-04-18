@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useExpenses } from '@/lib/hooks/use-expenses'
@@ -8,6 +8,7 @@ import { useSettlements } from '@/lib/hooks/use-settlements'
 import { useMembers } from '@/lib/hooks/use-members'
 import { calculateNetBalances, simplifyDebts } from '@/lib/services/split-calculator'
 import { addSettlement, addSettlements, deleteSettlement } from '@/lib/services/settlement-service'
+import { findLastSettlementBetween, formatSettlementAge } from '@/lib/settlement-history'
 import { useToast } from '@/components/toast'
 import { currency, signedCurrency, toDate, fmtDateFull } from '@/lib/utils'
 import { useAuth, getActor } from '@/lib/auth'
@@ -187,6 +188,19 @@ export default function SplitPage() {
 
   const netBalances = calculateNetBalances(expenses, settlements)
   const debts = simplifyDebts(expenses, settlements, nameMap)
+
+  // Batch-compute "last settled N days ago" for every debt pair. Snapshots
+  // `now` once per render so all rows share the same reference point (and
+  // unrelated state changes don't tick individual rows). Issue #209.
+  const debtAges = useMemo(() => {
+    const now = Date.now()
+    const map = new Map<string, ReturnType<typeof formatSettlementAge>>()
+    for (const d of debts) {
+      const last = findLastSettlementBetween(settlements, d.from, d.to)
+      map.set(`${d.from}-${d.to}`, formatSettlementAge(last?.date ?? null, now))
+    }
+    return map
+  }, [debts, settlements])
 
   // 所有出現過的成員 ID（union of members and expense splits）
   const expenseMemberIds = Array.from(new Set(expenses.flatMap((e) => e.splits.map((s) => s.memberId))))
@@ -381,7 +395,13 @@ export default function SplitPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {debts.map((d) => (
+              {debts.map((d) => {
+                const age = debtAges.get(`${d.from}-${d.to}`) ?? {
+                  text: '尚未結算',
+                  daysAgo: null,
+                  isStale: false,
+                }
+                return (
                 <div
                   key={`${d.from}-${d.to}`}
                   className="flex items-center gap-3 p-3 rounded-xl"
@@ -398,7 +418,16 @@ export default function SplitPage() {
                         {d.toName}
                       </span>
                     </div>
-                    <div className="text-xs text-[var(--muted-foreground)] mt-0.5 ml-0.5">轉帳</div>
+                    <div
+                      className={`text-xs mt-0.5 ml-0.5 ${
+                        age.isStale
+                          ? 'text-amber-600 dark:text-amber-400 font-medium'
+                          : 'text-[var(--muted-foreground)]'
+                      }`}
+                    >
+                      {age.isStale ? '⚠ ' : '🕒 '}
+                      {age.text}
+                    </div>
                   </div>
                   <div className="font-bold">{currency(d.amount)}</div>
                   <button
@@ -410,7 +439,8 @@ export default function SplitPage() {
                     記錄
                   </button>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
