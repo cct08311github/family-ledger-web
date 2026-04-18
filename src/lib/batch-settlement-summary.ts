@@ -34,13 +34,14 @@ export function formatBatchSettlementSummary(
 
   const shown = settlements
     .slice(0, MAX_INLINE)
-    .map((s) => `${s.fromMemberName}→${s.toMemberName} ${formatAmount(s.amount)}`)
+    .map((s) => `${s.fromMemberName} → ${s.toMemberName} ${formatAmount(s.amount)}`)
     .join('、')
 
-  const tail =
-    settlements.length > MAX_INLINE
-      ? `…等 ${settlements.length} 筆`
-      : ''
+  // tail is the count of items NOT shown inline ("remaining"), not the total.
+  // "列 3 筆 + …等 5 筆" would read as if 5 more existed after the 3; we want
+  // "列 3 筆 + …等 2 筆" for 5 total. Issue #196 review feedback.
+  const remaining = settlements.length - MAX_INLINE
+  const tail = remaining > 0 ? `…等 ${remaining} 筆` : ''
 
   return `批次結清（共 ${settlements.length} 筆）：${shown}${tail}`
 }

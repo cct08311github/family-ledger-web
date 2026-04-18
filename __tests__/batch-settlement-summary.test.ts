@@ -25,10 +25,12 @@ describe('formatBatchSettlementSummary', () => {
       ],
       fmt,
     )
-    expect(out).toBe('批次結清（共 3 筆）：爸爸→泳淳 NT$ 100、媽媽→泳淳 NT$ 200、爸爸→媽媽 NT$ 300')
+    expect(out).toBe(
+      '批次結清（共 3 筆）：爸爸 → 泳淳 NT$ 100、媽媽 → 泳淳 NT$ 200、爸爸 → 媽媽 NT$ 300',
+    )
   })
 
-  it('truncates after 3 items when count > 3', () => {
+  it('truncates after 3 items when count > 3 and names the REMAINING count', () => {
     const out = formatBatchSettlementSummary(
       [
         { fromMemberName: 'A', toMemberName: 'B', amount: 10 },
@@ -39,11 +41,25 @@ describe('formatBatchSettlementSummary', () => {
       ],
       fmt,
     )
-    expect(out).toContain('A→B NT$ 10')
-    expect(out).toContain('C→D NT$ 20')
-    expect(out).toContain('E→F NT$ 30')
-    expect(out).not.toContain('G→H')
-    expect(out).toContain('…等 5 筆')
+    expect(out).toContain('A → B NT$ 10')
+    expect(out).toContain('C → D NT$ 20')
+    expect(out).toContain('E → F NT$ 30')
+    expect(out).not.toContain('G → H')
+    // 5 total, 3 shown → "…等 2 筆" (remaining), not "…等 5 筆" (total).
+    expect(out).toContain('…等 2 筆')
+    expect(out).toContain('共 5 筆')
+  })
+
+  it('shows exactly 0 remaining when count === MAX_INLINE', () => {
+    const out = formatBatchSettlementSummary(
+      [
+        { fromMemberName: 'A', toMemberName: 'B', amount: 1 },
+        { fromMemberName: 'C', toMemberName: 'D', amount: 2 },
+        { fromMemberName: 'E', toMemberName: 'F', amount: 3 },
+      ],
+      fmt,
+    )
+    expect(out).not.toContain('…等')
   })
 
   it('uses the provided amount formatter', () => {
@@ -68,8 +84,10 @@ describe('formatBatchSettlementSummary', () => {
       amount: i,
     }))
     const out = formatBatchSettlementSummary(items, fmt)
-    expect(out).toContain('…等 50 筆')
-    expect(out).toContain('M0→N0')
-    expect(out).not.toContain('M3→N3')
+    // 50 total, 3 shown → "…等 47 筆".
+    expect(out).toContain('…等 47 筆')
+    expect(out).toContain('共 50 筆')
+    expect(out).toContain('M0 → N0')
+    expect(out).not.toContain('M3 → N3')
   })
 })
