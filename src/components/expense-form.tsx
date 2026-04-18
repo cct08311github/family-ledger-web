@@ -417,6 +417,11 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
       }
     }
     setError(null)
+    // Guard acquired here, inside runSubmit. All earlier validation (buildSplits,
+    // parseFloat, sum check) is synchronous, so tryAcquire() runs before this
+    // async handler yields to the event loop — second clicks are blocked.
+    // If future changes insert any await between the click entry and this
+    // runSubmit call, move the guard earlier.
     await runSubmit(async () => {
       try {
         const expenseId = isEditing ? existingExpense!.id : genExpenseId()

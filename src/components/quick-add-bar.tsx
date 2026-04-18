@@ -120,6 +120,11 @@ export function QuickAddBar() {
       createdBy: user.uid,
     }
 
+    // Guard acquired here, inside runSubmit. All earlier validation is sync,
+    // so the guard's tryAcquire() runs before this handler yields — second
+    // clicks arrive after the sync run() body has already flipped the flag.
+    // If future changes insert any await between the click entry and this
+    // runSubmit call, move the guard earlier.
     await runSubmit(async () => {
       try {
         await addExpense(group.id, input, { id: payerId, name: payerName })

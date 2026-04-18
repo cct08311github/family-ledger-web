@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
-import { createSubmitGuard, type SubmitGuard } from '@/lib/submit-guard'
+import { createSubmitGuard } from '@/lib/submit-guard'
 
 /**
  * React hook wrapping `createSubmitGuard` for form handlers.
@@ -23,23 +23,21 @@ import { createSubmitGuard, type SubmitGuard } from '@/lib/submit-guard'
  *
  * Returns `undefined` when a second concurrent call is rejected, so callers
  * can distinguish "did not run" from "ran and returned undefined".
+ *
+ * Scope: this is a client-side, single-JS-environment guard. It does NOT
+ * protect against cross-tab, post-reload, or API-bypass duplicates. For those
+ * paths, rely on server-side idempotency (Firestore rule `allow create: if
+ * !exists(...)` on pre-generated doc IDs, or a dedicated idempotencyKey).
  */
-// eslint-disable-next-line no-unused-vars
-type RunFn = <T>(fn: () => Promise<T>) => Promise<T | undefined>
-
-export function useSubmitGuard(): {
-  inFlight: boolean
-  run: RunFn
-} {
-  const guardRef = useRef<SubmitGuard | null>(null)
-  if (guardRef.current === null) {
-    guardRef.current = createSubmitGuard()
-  }
+export function useSubmitGuard() {
+  // Direct init: createSubmitGuard() is a pure, cheap allocation, and useRef
+  // only invokes the initializer once. Avoids render-body side effects.
+  const guardRef = useRef(createSubmitGuard())
   const [inFlight, setInFlight] = useState(false)
 
-  const run = useCallback(async <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
+  const run = useCallback(async function runImpl<T>(fn: () => Promise<T>): Promise<T | undefined> {
     const guard = guardRef.current
-    if (!guard || !guard.tryAcquire()) return undefined
+    if (!guard.tryAcquire()) return undefined
     setInFlight(true)
     try {
       return await fn()
