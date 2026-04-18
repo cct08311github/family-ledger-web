@@ -57,6 +57,24 @@ export interface BudgetStatus {
    *   - ok → `領先 ${fmt(N)}`
    */
   statusText: string
+  /**
+   * Linear extrapolation of month-end total: `spent / dayOfMonth × daysInMonth`.
+   * Early in the month the estimate is volatile (one big expense on day 1
+   * implies a 30× month) — callers should show a "stabilising" hint for small
+   * dayOfMonth. Issue #203.
+   */
+  projected: number
+  /**
+   * `projected / budget × 100`, rounded. Returns 0 when budget ≤ 0 so the UI
+   * can unconditionally read the field without a NaN guard.
+   */
+  projectedPercent: number
+  /**
+   * True when `projected > budget` (strict). Over-pace does NOT imply
+   * over-projection: a single splurge early in the month can lift projection
+   * even while cumulative spend remains below today's pace line.
+   */
+  projectedOverBudget: boolean
 }
 
 /** Default formatter matches app-wide `currency()` format (`NT$ 1,234`). */
@@ -87,6 +105,11 @@ export function classifyBudgetStatus(args: {
   // against it to keep the helper total-function.
   const safeDaysInMonth = daysInMonth > 0 ? daysInMonth : 30
 
+  // dayOfMonth = 0 is pathological (Date.getDate() is 1-31), but fall back to
+  // 1 to keep the helper total-function rather than NaN-propagating.
+  const safeDayOfMonth = dayOfMonth > 0 ? dayOfMonth : 1
+  const projected = (spent / safeDayOfMonth) * safeDaysInMonth
+
   if (budget <= 0) {
     return {
       percentUsed: 0,
@@ -95,6 +118,9 @@ export function classifyBudgetStatus(args: {
       overBudget: false,
       overPace: false,
       statusText: `領先 ${fmt(0)}`,
+      projected,
+      projectedPercent: 0,
+      projectedOverBudget: false,
     }
   }
 
@@ -102,6 +128,8 @@ export function classifyBudgetStatus(args: {
   const percentUsed = Math.round((spent / budget) * 100)
   const overBudget = spent > budget
   const overPace = spent > expectedByNow
+  const projectedPercent = Math.round((projected / budget) * 100)
+  const projectedOverBudget = projected > budget
 
   let kind: BudgetStatusKind
   let statusText: string
@@ -116,5 +144,15 @@ export function classifyBudgetStatus(args: {
     statusText = `領先 ${fmt(Math.round(expectedByNow - spent))}`
   }
 
-  return { percentUsed, expectedByNow, kind, overBudget, overPace, statusText }
+  return {
+    percentUsed,
+    expectedByNow,
+    kind,
+    overBudget,
+    overPace,
+    statusText,
+    projected,
+    projectedPercent,
+    projectedOverBudget,
+  }
 }
