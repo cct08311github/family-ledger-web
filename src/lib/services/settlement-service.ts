@@ -3,6 +3,7 @@ import { db, auth } from '@/lib/firebase'
 import { addActivityLog } from './activity-log-service'
 import { addNotification } from './notification-service'
 import { notifyByEmailFanOut } from './email-notification'
+import { formatBatchSettlementSummary } from '@/lib/batch-settlement-summary'
 import { currency } from '@/lib/utils'
 
 import { logger } from '@/lib/logger'
@@ -102,23 +103,23 @@ export async function addSettlements(
     })
   }
 
-  await batch.commit()
-
+  // Consolidate the batch into a single activity log row. Previously we wrote
+  // N log rows in a serial for/await, producing N round-trips and N nearly
+  // identical entries. Issue #196.
   if (actor) {
-    try {
-      for (const s of settlements) {
-        await addActivityLog(groupId, {
-          action: 'settlement_created',
-          actorId: actor.id,
-          actorName: actor.name,
-          description: `批次結清：${s.fromMemberName} → ${s.toMemberName} ${currency(s.amount)}`,
-          entityId: '',
-        })
-      }
-    } catch (e) {
-      logger.error('[SettlementService] Failed to log batch activity:', e)
-    }
+    const logRef = doc(collection(db, 'groups', groupId, 'activityLogs'))
+    batch.set(logRef, {
+      groupId,
+      action: 'settlement_created',
+      actorName: actor.name,
+      actorId: actor.id,
+      description: formatBatchSettlementSummary(settlements, currency),
+      entityId: null,
+      createdAt: serverTimestamp(),
+    })
   }
+
+  await batch.commit()
 
   // Notify other group members about the batch settlement (in-app + email).
   try {
