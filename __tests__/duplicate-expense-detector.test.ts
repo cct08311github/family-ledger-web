@@ -41,18 +41,25 @@ describe('findPossibleDuplicate', () => {
     expect(hit?.id).toBe('e1')
   })
 
-  it('matches when candidate description contains recent description', () => {
+  it('matches when candidate description is a prefix-extension of recent', () => {
     // User typed "電費 4 月" after partner recorded plain "電費"; same amount.
     const recent = [rec('e1', '電費', 1200, 1)]
     const hit = findPossibleDuplicate(cand('電費 4 月', 1200), recent, NOW)
     expect(hit?.id).toBe('e1')
   })
 
-  it('matches when recent description contains candidate description', () => {
+  it('matches when recent description is a prefix-extension of candidate', () => {
     // Reverse — user typed short "電費" but partner recorded verbose "電費 4 月".
     const recent = [rec('e1', '電費 4 月', 1200, 1)]
     const hit = findPossibleDuplicate(cand('電費', 1200), recent, NOW)
     expect(hit?.id).toBe('e1')
+  })
+
+  it('REJECTS middle-contains (guard against "水費" ⊂ "台北水費" false positive)', () => {
+    // Reviewer flagged: bare substring `includes` let "水費" match "台北水費"
+    // even though they're different bills. Must use prefix-only now.
+    const recent = [rec('e1', '台北水費', 1200, 1)]
+    expect(findPossibleDuplicate(cand('水費', 1200), recent, NOW)).toBeNull()
   })
 
   it('trims whitespace on both sides before comparing', () => {

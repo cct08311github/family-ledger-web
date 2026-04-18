@@ -59,8 +59,9 @@ function descriptionsOverlap(a: string, b: string): boolean {
   const nb = normalise(b)
   if (!na || !nb) return false
   if (na.length < MIN_DESCRIPTION_LENGTH || nb.length < MIN_DESCRIPTION_LENGTH) return false
-  // Equal or either contains the other — covers short "電費" vs verbose "電費 4月"
-  return na === nb || na.includes(nb) || nb.includes(na)
+  // Equal or prefix relationship: covers "電費" vs "電費 4月" but rejects
+  // "水費" vs "台北水費" (middle-contains — reviewer flagged as too loose).
+  return na === nb || na.startsWith(nb) || nb.startsWith(na)
 }
 
 export function findPossibleDuplicate(

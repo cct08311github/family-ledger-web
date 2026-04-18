@@ -359,12 +359,26 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   // last 5 minutes. Skip when user explicitly dismissed this candidate.
   // Issue #211.
   const [dismissedDuplicateKey, setDismissedDuplicateKey] = useState<string | null>(null)
+  // 1-min tick so the banner self-clears once the 5-min window expires
+  // without requiring any field change (reviewer flagged that Date.now()
+  // inside useMemo was a hidden dep).
+  const [nowTick, setNowTick] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 60_000)
+    return () => clearInterval(t)
+  }, [])
   const possibleDuplicate = useMemo(() => {
     if (!description.trim() || !amount) return null
     const amt = parseFloat(amount)
     if (!Number.isFinite(amt) || amt <= 0) return null
     return findPossibleDuplicate(
-      { description, amount: amt, isEditingId: existingExpense?.id },
+      {
+        description,
+        amount: amt,
+        // Exclude both edit-target and duplicate-source so the banner doesn't
+        // point at "this very record" in either flow.
+        isEditingId: existingExpense?.id ?? duplicateFrom?.id,
+      },
       expenses.map((e) => ({
         id: e.id,
         description: e.description,
@@ -372,11 +386,14 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         payerName: e.payerName,
         createdAt: e.createdAt,
       })),
-      Date.now(),
+      nowTick,
     )
-  }, [description, amount, expenses, existingExpense?.id])
+  }, [description, amount, expenses, existingExpense?.id, duplicateFrom?.id, nowTick])
+  // Key includes amount + trimmed description so a dismiss only sticks for
+  // the exact (id, amount, desc) combo — editing description reveals a fresh
+  // banner rather than silently staying dismissed.
   const duplicateKey = possibleDuplicate
-    ? `${possibleDuplicate.id}-${possibleDuplicate.amount}`
+    ? `${possibleDuplicate.id}-${possibleDuplicate.amount}-${description.trim().toLowerCase()}`
     : null
   const showDuplicateWarning = !!possibleDuplicate && duplicateKey !== dismissedDuplicateKey
 
@@ -651,7 +668,7 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
             borderColor: 'color-mix(in oklch, var(--primary), transparent 60%)',
             backgroundColor: 'color-mix(in oklch, var(--primary), transparent 92%)',
           }}
-          role="status"
+          role="alert"
           aria-live="polite"
         >
           <span className="text-lg">📋</span>
