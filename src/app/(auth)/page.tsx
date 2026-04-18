@@ -13,6 +13,7 @@ import { currency, toDate, fmtDate } from '@/lib/utils'
 import { QuickAddBar } from '@/components/quick-add-bar'
 import { WeeklyDigest } from '@/components/weekly-digest'
 import { BudgetProgress } from '@/components/budget-progress'
+import { RecentActivitySection } from '@/components/recent-activity-section'
 import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
 import { logger } from '@/lib/logger'
 import { useToast } from '@/components/toast'
@@ -249,7 +250,8 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* 最近記錄 — 右欄 */}
+        {/* 右欄：最近記錄 + 家庭動態並排 */}
+        <div className="space-y-4 md:space-y-6">
         <div className="card p-5 md:p-6 space-y-3 animate-fade-up stagger-3">
           <div className="flex items-center gap-2 font-semibold">📝 最近記錄</div>
           {recent.length === 0 ? (
@@ -282,6 +284,10 @@ export default function HomePage() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* 家庭動態 — 右欄最近記錄之下 */}
+        <RecentActivitySection />
         </div>
 
       </div>

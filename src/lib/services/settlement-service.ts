@@ -1,6 +1,6 @@
 import { addDoc, collection, deleteDoc, doc, getDoc, serverTimestamp, Timestamp, writeBatch } from 'firebase/firestore'
 import { db, auth } from '@/lib/firebase'
-import { addActivityLog } from './activity-log-service'
+import { addActivityLog, truncateActivityDescription } from './activity-log-service'
 import { addNotification } from './notification-service'
 import { notifyByEmailFanOut } from './email-notification'
 import { formatBatchSettlementSummary } from '@/lib/batch-settlement-summary'
@@ -113,7 +113,7 @@ export async function addSettlements(
       action: 'settlement_created',
       actorName: actor.name,
       actorId: actor.id,
-      description: formatBatchSettlementSummary(settlements, currency),
+      description: truncateActivityDescription(formatBatchSettlementSummary(settlements, currency)),
       entityId: null,
       createdAt: serverTimestamp(),
     })

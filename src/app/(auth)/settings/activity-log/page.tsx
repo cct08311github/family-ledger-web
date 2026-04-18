@@ -3,18 +3,7 @@
 import { useGroup } from '@/lib/hooks/use-group'
 import { useActivityLog } from '@/lib/hooks/use-activity-log'
 import { toDate, fmtDateFull } from '@/lib/utils'
-
-const ACTION_ICONS: Record<string, string> = {
-  expense_created: '💸',
-  expense_updated: '✏️',
-  expense_deleted: '🗑️',
-  settlement_created: '✅',
-  member_added: '👤',
-  member_removed: '👤',
-  category_created: '📂',
-  category_updated: '✏️',
-  category_deleted: '🗑️',
-}
+import { getActivityIcon } from '@/lib/activity-format'
 
 export default function ActivityLogPage() {
   const { group, loading: groupLoading } = useGroup()
@@ -46,7 +35,7 @@ export default function ActivityLogPage() {
             >
               <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0 mt-0.5"
                 style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 85%)' }}>
-                {ACTION_ICONS[log.action] ?? '📌'}
+                {getActivityIcon(log.action)}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium">{log.description}</div>
