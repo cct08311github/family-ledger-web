@@ -31,7 +31,42 @@ describe('buildEmailPayload', () => {
   it('body text includes app link and unsubscribe hint', () => {
     const p = buildEmailPayload({ title: 't', body: 'b' })
     expect(p.text).toContain('前往查看')
-    expect(p.text).toMatch(/取消勾選.*Email/)
+    expect(p.text).toMatch(/Email 通知/)
+  })
+
+  // --- Issue #187 HIGH fixes: SMTP header injection guards ---
+
+  it('strips CRLF from title to prevent SMTP header injection', () => {
+    // The real exploit is injecting CRLF so the SMTP server treats the rest as
+    // a new header (e.g., Bcc:). After sanitization, "Bcc:" may still appear
+    // as plain subject text but has no structural effect without the CRLF
+    // delimiter. The security property we verify is: subject contains no CRLF.
+    const p = buildEmailPayload({
+      title: '新增支出\r\nBcc: attacker@evil.com',
+      body: 'b',
+    })
+    expect(p.subject).not.toMatch(/[\r\n]/)
+  })
+
+  it('strips CRLF from groupName (also flows into header via the tag prefix)', () => {
+    const p = buildEmailPayload({
+      title: 't',
+      body: 'b',
+      groupName: '家裡\r\nX-Injected: yes',
+    })
+    expect(p.subject).not.toMatch(/[\r\n]/)
+  })
+
+  it('multiple consecutive CRLFs collapse to a single space (no hidden blanks)', () => {
+    const p = buildEmailPayload({ title: 'A\r\n\r\n\r\nB', body: 'b' })
+    expect(p.subject).not.toMatch(/[\r\n]/)
+    // A and B should be separated by exactly one space, not preserved as gap
+    expect(p.subject).toContain('A B')
+  })
+
+  it('allows CRLF in body text (body is not a header)', () => {
+    const p = buildEmailPayload({ title: 't', body: 'line1\nline2\nline3' })
+    expect(p.text).toContain('line1\nline2\nline3')
   })
 
   it('empty title still produces a valid subject', () => {

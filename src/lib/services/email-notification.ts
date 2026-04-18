@@ -37,15 +37,37 @@ export interface EmailPayload {
   text: string
 }
 
+/**
+ * Strip CR/LF from a string to prevent SMTP header injection when the value
+ * ends up in a `Subject:` or similar header. A malicious actor writing
+ * `description` or `actorName` with `\r\nBcc: evil@attacker.com` could
+ * otherwise inject additional headers. Called on every untrusted input that
+ * feeds buildEmailPayload.
+ */
+function sanitizeHeader(s: string): string {
+  return s.replace(/[\r\n]+/g, ' ').trim()
+}
+
+/**
+ * App URL used in email body for the "go to app" link. Reads from
+ * `NEXT_PUBLIC_APP_URL` env var with a generic fallback — avoids hardcoding
+ * a Tailscale/personal URL into source. Set in `.env.local`.
+ */
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://family-ledger-web.local/'
+
 export function buildEmailPayload(args: {
   title: string
   body: string
   groupName?: string
 }): EmailPayload {
-  const groupTag = args.groupName ? `【${args.groupName}】` : '【家計本】'
+  const safeTitle = sanitizeHeader(args.title)
+  const safeGroup = args.groupName ? sanitizeHeader(args.groupName) : ''
+  const groupTag = safeGroup ? `【${safeGroup}】` : '【家計本】'
+  // Body is plain text (not a header), so CRLF is allowed — just avoid the
+  // hardcoded Tailscale URL by routing via env var.
   return {
-    subject: `${groupTag} ${args.title}`,
-    text: `${args.body}\n\n—\n前往查看：https://claude-openclaw.tail7fcdd.ts.net/family-ledger-web/\n若不想再收到此類郵件，請到 設定 → 個人通知 取消勾選 Email 通知。`,
+    subject: `${groupTag} ${safeTitle}`,
+    text: `${args.body}\n\n—\n前往查看：${APP_URL}\n若不想再收到此類郵件，請到 設定 → 🔔 Email 通知 關閉開關。`,
   }
 }
 
