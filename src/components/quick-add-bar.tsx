@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useMembers } from '@/lib/hooks/use-members'
@@ -12,6 +12,7 @@ import { parseExpense } from '@/lib/services/local-expense-parser'
 import { learnFromExpense, suggestCategory, isAuthError } from '@/lib/services/transaction-rules-service'
 import { useToast } from '@/components/toast'
 import { useSubmitGuard } from '@/lib/hooks/use-submit-guard'
+import { buildDraftKey, parseDraft, serializeDraft } from '@/lib/quick-add-draft'
 import { logger } from '@/lib/logger'
 
 export function QuickAddBar() {
@@ -33,6 +34,64 @@ export function QuickAddBar() {
     () => categories.filter((c) => c.isActive).map((c) => c.name).slice(0, 6),
     [categories],
   )
+
+  const draftKey = buildDraftKey(group?.id, user?.uid)
+
+  function clearDraftFor(key: string | null) {
+    if (!key || typeof window === 'undefined') return
+    try { sessionStorage.removeItem(key) } catch { /* ignore */ }
+  }
+  function clearDraft() {
+    clearDraftFor(draftKey)
+  }
+
+  // Restore on mount / when group/user change. If a valid unexpired draft
+  // exists, auto-expand the bar and populate the fields — the user was
+  // clearly mid-entry before navigating away. ExpenseForm uses a banner
+  // because its form is long; QuickAddBar is small enough that auto-restore
+  // is friendlier than adding a restore prompt. Issue #199.
+  useEffect(() => {
+    if (!draftKey || typeof window === 'undefined') return
+    try {
+      const raw = sessionStorage.getItem(draftKey)
+      if (!raw) return
+      const parsed = parseDraft(raw, Date.now())
+      if (!parsed) {
+        clearDraftFor(draftKey)
+        return
+      }
+      setDescription(parsed.description)
+      setAmount(parsed.amount)
+      setCategory(parsed.category)
+      setExpanded(true)
+    } catch {
+      clearDraftFor(draftKey)
+    }
+  }, [draftKey])
+
+  // Autosave (debounced). When all content is cleared, actively drop the old
+  // draft so a stale (but TTL-live) copy doesn't resurrect on next mount.
+  useEffect(() => {
+    if (!draftKey || typeof window === 'undefined') return
+    if (!description.trim() && !amount) {
+      clearDraftFor(draftKey)
+      return
+    }
+    const handle = setTimeout(() => {
+      try {
+        sessionStorage.setItem(
+          draftKey,
+          serializeDraft({
+            description,
+            amount,
+            category,
+            savedAt: Date.now(),
+          }),
+        )
+      } catch { /* quota exceeded — silent */ }
+    }, 500)
+    return () => clearTimeout(handle)
+  }, [draftKey, description, amount, category])
 
   function handleDescriptionChange(text: string) {
     setDescription(text)
@@ -138,6 +197,7 @@ export function QuickAddBar() {
           }
         })
         addToast(`已記錄 ${description.trim()} $${amt}`, 'success')
+        clearDraft()
         setDescription('')
         setAmount('')
         setCategory('')
@@ -170,7 +230,22 @@ export function QuickAddBar() {
     <div className="card p-4 space-y-3 animate-fade-up">
       <div className="flex items-center gap-2 text-sm font-semibold">
         ⚡ 快速記帳
-        <button onClick={() => setExpanded(false)} className="ml-auto text-[var(--muted-foreground)] hover:text-[var(--foreground)]">✕</button>
+        <button
+          onClick={() => {
+            // Close and discard the draft; user's intent is to abandon this
+            // entry. (Auto-restore on next mount would otherwise re-open the bar.)
+            clearDraft()
+            setDescription('')
+            setAmount('')
+            setCategory('')
+            setAutoFilled(false)
+            setExpanded(false)
+          }}
+          aria-label="關閉快速記帳"
+          className="ml-auto text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+        >
+          ✕
+        </button>
       </div>
 
       <div className="flex gap-2">
