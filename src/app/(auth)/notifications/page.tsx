@@ -1,11 +1,13 @@
 'use client'
 
+import Link from 'next/link'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useNotifications } from '@/lib/hooks/use-notifications'
 import { useAuth } from '@/lib/auth'
 import { markAllNotificationsRead, markNotificationRead } from '@/lib/services/notification-service'
 import { toDate, fmtDateFull } from '@/lib/utils'
 import { useToast } from '@/components/toast'
+import { getNotificationHref } from '@/lib/notification-navigation'
 
 import { logger } from '@/lib/logger'
 
@@ -64,32 +66,63 @@ export default function NotificationsPage() {
         </div>
       ) : (
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
-          {notifications.map((notif) => (
-            <button
-              key={notif.id ?? notif.title}
-              onClick={() => notif.id && !notif.isRead && handleMarkOneRead(notif.id)}
-              className={`w-full flex items-start gap-3 px-4 py-3 border-b border-[var(--border)] last:border-b-0 text-left transition-colors ${
-                !notif.isRead
-                  ? 'bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 cursor-pointer'
-                  : 'cursor-default'
-              }`}
-            >
-              <div className="w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0"
-                style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 85%)' }}>
-                {TYPE_ICONS[notif.type] ?? '🔔'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium">{notif.title}</div>
-                <div className="text-xs text-[var(--muted-foreground)] mt-0.5">{notif.body}</div>
-                <div className="text-xs text-[var(--muted-foreground)] mt-1">
-                  {fmtDateFull(toDate(notif.createdAt))}
+          {notifications.map((notif) => {
+            const href = getNotificationHref(notif)
+            const onClickMark = () => notif.id && !notif.isRead && handleMarkOneRead(notif.id)
+            const sharedClass = `w-full flex items-start gap-3 px-4 py-3 border-b border-[var(--border)] last:border-b-0 text-left transition-colors ${
+              !notif.isRead
+                ? 'bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 cursor-pointer'
+                : href
+                ? 'hover:bg-[var(--muted)]/40 cursor-pointer'
+                : 'cursor-default'
+            }`
+            const inner = (
+              <>
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0"
+                  style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 85%)' }}
+                >
+                  {TYPE_ICONS[notif.type] ?? '🔔'}
                 </div>
-              </div>
-              {!notif.isRead && (
-                <div className="w-2 h-2 rounded-full bg-[var(--primary)] flex-shrink-0 mt-1.5" aria-hidden="true" />
-              )}
-            </button>
-          ))}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium">{notif.title}</div>
+                  <div className="text-xs text-[var(--muted-foreground)] mt-0.5">{notif.body}</div>
+                  <div className="text-xs text-[var(--muted-foreground)] mt-1">
+                    {fmtDateFull(toDate(notif.createdAt))}
+                  </div>
+                </div>
+                {!notif.isRead && (
+                  <div
+                    className="w-2 h-2 rounded-full bg-[var(--primary)] flex-shrink-0 mt-1.5"
+                    aria-hidden="true"
+                  />
+                )}
+              </>
+            )
+            // With an href: render a Link so the browser can pre-fetch and
+            // middle-click/cmd-click opens in a new tab. onClick still fires
+            // before navigation so mark-read runs in-flight.
+            // Without an href (e.g. generic "reminder"): fall back to a button
+            // that only marks-read. Issue #205.
+            return href ? (
+              <Link
+                key={notif.id ?? notif.title}
+                href={href}
+                onClick={onClickMark}
+                className={sharedClass}
+              >
+                {inner}
+              </Link>
+            ) : (
+              <button
+                key={notif.id ?? notif.title}
+                onClick={onClickMark}
+                className={sharedClass}
+              >
+                {inner}
+              </button>
+            )
+          })}
         </div>
       )}
     </div>
