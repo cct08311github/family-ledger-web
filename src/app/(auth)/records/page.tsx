@@ -25,6 +25,7 @@ import {
   isCurrentMonth,
   formatMonthLabel,
 } from '@/lib/month-nav'
+import { expensesToCSV, buildCSVFilename } from '@/lib/expense-csv'
 
 type FilterType = '全部' | '共同' | '個人'
 
@@ -173,6 +174,38 @@ export default function RecordsPage() {
     setDateEnd(curr.end)
     setPayerFilter('')
     setCategoryFilter('')
+  }
+
+  function handleExportCSV() {
+    if (typeof window === 'undefined' || filtered.length === 0) return
+    // `filtered` is already scoped to the user's current view (month, category,
+    // payer, search, type tab) — exporting exactly what they see is the least
+    // surprising behaviour. Issue #207.
+    const csv = expensesToCSV(
+      filtered.map((e) => ({
+        date: e.date,
+        description: e.description,
+        amount: e.amount,
+        category: e.category,
+        payerName: e.payerName,
+        isShared: e.isShared,
+        paymentMethod: paymentLabel(e.paymentMethod),
+        note: e.note,
+      })),
+    )
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    try {
+      const a = document.createElement('a')
+      a.href = url
+      a.download = buildCSVFilename()
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+    } finally {
+      URL.revokeObjectURL(url)
+    }
+    addToast(`已匯出 ${filtered.length} 筆記錄`, 'success')
   }
 
   async function handleLoadMore() {
@@ -373,22 +406,35 @@ export default function RecordsPage() {
         </div>
       )}
 
-      {/* Filter summary */}
-      {isFiltering && !loading && (
+      {/* Filter summary + export */}
+      {!loading && filtered.length > 0 && (
         <div className="text-sm text-[var(--muted-foreground)] mb-3 flex items-center justify-between flex-wrap gap-2">
-          <span>
-            顯示 <span className="font-semibold text-[var(--foreground)]">{filtered.length}</span> 筆
-            （共 {expenses.length} 筆）·
-            合計 <span className="font-semibold" style={{ color: 'var(--primary)' }}>{currency(totalFiltered)}</span>
-          </span>
-          {(searchQuery || hasAdvancedFilter) && (
-            <button
-              onClick={clearFilters}
-              className="text-xs underline underline-offset-2 hover:text-[var(--foreground)] transition"
-            >
-              清除所有篩選
-            </button>
+          {isFiltering ? (
+            <span>
+              顯示 <span className="font-semibold text-[var(--foreground)]">{filtered.length}</span> 筆
+              （共 {expenses.length} 筆）·
+              合計 <span className="font-semibold" style={{ color: 'var(--primary)' }}>{currency(totalFiltered)}</span>
+            </span>
+          ) : (
+            <span />
           )}
+          <div className="flex items-center gap-3">
+            {(searchQuery || hasAdvancedFilter) && (
+              <button
+                onClick={clearFilters}
+                className="text-xs underline underline-offset-2 hover:text-[var(--foreground)] transition"
+              >
+                清除所有篩選
+              </button>
+            )}
+            <button
+              onClick={() => handleExportCSV()}
+              title="匯出目前顯示的支出為 CSV（Excel / Google Sheets 可開）"
+              className="text-xs px-2.5 py-1 rounded-md border border-[var(--border)] hover:bg-[var(--muted)] transition"
+            >
+              ⤓ 匯出 CSV
+            </button>
+          </div>
         </div>
       )}
 
