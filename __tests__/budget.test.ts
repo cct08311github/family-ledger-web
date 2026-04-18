@@ -249,4 +249,36 @@ describe('classifyBudgetStatus', () => {
     expect(r.projected).toBe(30000)
     expect(r.projectedOverBudget).toBe(false)
   })
+
+  it('projection: overPace and projectedOverBudget track the same threshold', () => {
+    // Math: spent > budget*day/days  ⇔  projected > budget. The two flags are
+    // two labels for the same inequality. Reviewer caught the JSDoc had this
+    // backwards — this test pins the correct relationship.
+    const overPace = classifyBudgetStatus({ budget: 30000, spent: 20000, dayOfMonth: 15, daysInMonth: 30 })
+    expect(overPace.overPace).toBe(true)
+    expect(overPace.projectedOverBudget).toBe(true)
+
+    const onPace = classifyBudgetStatus({ budget: 30000, spent: 15000, dayOfMonth: 15, daysInMonth: 30 })
+    expect(onPace.overPace).toBe(false)
+    expect(onPace.projectedOverBudget).toBe(false)
+
+    const underPace = classifyBudgetStatus({ budget: 30000, spent: 10000, dayOfMonth: 15, daysInMonth: 30 })
+    expect(underPace.overPace).toBe(false)
+    expect(underPace.projectedOverBudget).toBe(false)
+  })
+
+  it('projection: daysInMonth=0 fallback (30) applies to projected too', () => {
+    const r = classifyBudgetStatus({ budget: 30000, spent: 10000, dayOfMonth: 15, daysInMonth: 0 })
+    expect(r.projected).toBe(20000) // 10000 / 15 * 30
+  })
+
+  it('projection: percent derives from rounded projected (display consistency)', () => {
+    // Was a reviewer-flagged inconsistency: percent computed from raw float
+    // could differ from the displayed rounded amount. Now both use the
+    // already-rounded projected value.
+    const r = classifyBudgetStatus({ budget: 30000, spent: 9999, dayOfMonth: 15, daysInMonth: 30 })
+    // 9999 / 15 * 30 = 19998 (exact integer, round no-op); percent = 67
+    expect(r.projected).toBe(19998)
+    expect(r.projectedPercent).toBe(67)
+  })
 })

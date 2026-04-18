@@ -70,9 +70,16 @@ export interface BudgetStatus {
    */
   projectedPercent: number
   /**
-   * True when `projected > budget` (strict). Over-pace does NOT imply
-   * over-projection: a single splurge early in the month can lift projection
-   * even while cumulative spend remains below today's pace line.
+   * True when `projected > budget` (strict).
+   * Note on implication relationships (mathematically equivalent when
+   * `dayOfMonth > 0` and `daysInMonth > 0`):
+   *   spent > budget×day/daysInMonth
+   *     ⇔ (spent/day)×daysInMonth > budget
+   *     ⇔ projected > budget
+   * So `overPace` and `projectedOverBudget` coincide at the same threshold
+   * — they are TWO LABELS for the same inequality. Kept as two fields because
+   * the UI renders them differently (badge vs. projection line).
+   * `overBudget` is the stricter case `spent > budget` and implies both.
    */
   projectedOverBudget: boolean
 }
@@ -108,7 +115,9 @@ export function classifyBudgetStatus(args: {
   // dayOfMonth = 0 is pathological (Date.getDate() is 1-31), but fall back to
   // 1 to keep the helper total-function rather than NaN-propagating.
   const safeDayOfMonth = dayOfMonth > 0 ? dayOfMonth : 1
-  const projected = (spent / safeDayOfMonth) * safeDaysInMonth
+  // Round once here so `projectedPercent` derives from the same integer that
+  // the UI will display (prevents display-vs-percent off-by-one drift).
+  const projected = Math.round((spent / safeDayOfMonth) * safeDaysInMonth)
 
   if (budget <= 0) {
     return {
