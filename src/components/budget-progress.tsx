@@ -2,7 +2,13 @@
 
 import { useMemo } from 'react'
 import Link from 'next/link'
-import { currency, toDate } from '@/lib/utils'
+import { currency } from '@/lib/utils'
+import {
+  getMonthStart,
+  getDaysInMonth,
+  calculateMonthTotal,
+  classifyBudgetStatus,
+} from '@/lib/budget'
 import type { Expense, FamilyGroup } from '@/lib/types'
 
 interface BudgetProgressProps {
@@ -13,26 +19,32 @@ interface BudgetProgressProps {
 export function BudgetProgress({ group, expenses }: BudgetProgressProps) {
   const budget = group?.monthlyBudget ?? null
 
-  const now = new Date()
-  const dayOfMonth = now.getDate()
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-
-  const monthTotal = useMemo(() => {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1)
-    return expenses
-      .filter((e) => toDate(e.date) >= start)
-      .reduce((s, e) => s + e.amount, 0)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Single memo keeps `now`-derived values and `monthTotal` consistent across
+  // renders. Previously these were split, causing a (rare) mismatch at the
+  // midnight month boundary where `dayOfMonth` refreshed but `monthTotal`
+  // stayed cached from the prior month. Issue #189.
+  const derived = useMemo(() => {
+    const now = new Date()
+    const dayOfMonth = now.getDate()
+    const daysInMonth = getDaysInMonth(now)
+    const monthStart = getMonthStart(now)
+    const monthTotal = calculateMonthTotal(expenses, monthStart)
+    return { dayOfMonth, daysInMonth, monthTotal }
   }, [expenses])
+  const { dayOfMonth, daysInMonth, monthTotal } = derived
 
-  // Expected cumulative spending if linearly paced
-  const expectedByNow = budget != null ? (budget * dayOfMonth) / daysInMonth : 0
-  const percentUsed = budget && budget > 0 ? Math.round((monthTotal / budget) * 100) : 0
-  const overBudget = budget != null && monthTotal > budget
-  const overPace = budget != null && monthTotal > expectedByNow
+  const status = budget != null
+    ? classifyBudgetStatus({
+        budget,
+        spent: monthTotal,
+        dayOfMonth,
+        daysInMonth,
+        formatCurrency: currency,
+      })
+    : null
 
   // Nothing set yet — show a minimal prompt
-  if (budget == null) {
+  if (budget == null || status == null) {
     return (
       <Link
         href="/settings"
@@ -53,19 +65,13 @@ export function BudgetProgress({ group, expenses }: BudgetProgressProps) {
   }
 
   // Color scheme: green (on pace) → amber (over pace, under budget) → red (over budget)
-  const barColor = overBudget
+  const barColor = status.kind === 'overBudget'
     ? 'var(--destructive)'
-    : overPace
+    : status.kind === 'overPace'
     ? 'oklch(0.65 0.18 60)' // amber
     : 'var(--primary)'
 
-  const statusText = overBudget
-    ? `超支 ${currency(monthTotal - budget)}`
-    : overPace
-    ? `超速 ${currency(Math.round(monthTotal - expectedByNow))}`
-    : `領先 ${currency(Math.round(expectedByNow - monthTotal))}`
-
-  const barWidth = Math.min(percentUsed, 100)
+  const barWidth = Math.min(status.percentUsed, 100)
 
   return (
     <div className="card p-5 space-y-3 animate-fade-up">
@@ -89,7 +95,7 @@ export function BudgetProgress({ group, expenses }: BudgetProgressProps) {
           </span>
         </div>
         <div className={`text-sm font-bold`} style={{ color: barColor }}>
-          {percentUsed}%
+          {status.percentUsed}%
         </div>
       </div>
 
@@ -100,7 +106,7 @@ export function BudgetProgress({ group, expenses }: BudgetProgressProps) {
           style={{ width: `${barWidth}%`, backgroundColor: barColor }}
         />
         {/* Expected pace marker */}
-        {!overBudget && (
+        {!status.overBudget && (
           <div
             className="absolute top-0 h-full w-0.5 bg-[var(--foreground)] opacity-40"
             style={{ left: `${Math.min((dayOfMonth / daysInMonth) * 100, 100)}%` }}
@@ -112,15 +118,15 @@ export function BudgetProgress({ group, expenses }: BudgetProgressProps) {
       {/* Status line */}
       <div className="text-xs text-[var(--muted-foreground)] flex items-center justify-between">
         <span>
-          {overBudget ? (
+          {status.kind === 'overBudget' ? (
             <span className="text-[var(--destructive)] font-medium">⚠️ 已超出本月預算</span>
-          ) : overPace ? (
+          ) : status.kind === 'overPace' ? (
             <span className="text-amber-600 dark:text-amber-400 font-medium">⚡ 超過預期進度</span>
           ) : (
             <span className="text-green-600 dark:text-green-400 font-medium">✓ 在預算範圍內</span>
           )}
         </span>
-        <span>{statusText}</span>
+        <span>{status.statusText}</span>
       </div>
     </div>
   )
