@@ -8,6 +8,7 @@ import { useSettlements } from '@/lib/hooks/use-settlements'
 import { useMembers } from '@/lib/hooks/use-members'
 import { calculateNetBalances, simplifyDebts } from '@/lib/services/split-calculator'
 import { addSettlement, addSettlements, deleteSettlement } from '@/lib/services/settlement-service'
+import { findLastSettlementBetween, formatSettlementAge } from '@/lib/settlement-history'
 import { useToast } from '@/components/toast'
 import { currency, signedCurrency, toDate, fmtDateFull } from '@/lib/utils'
 import { useAuth, getActor } from '@/lib/auth'
@@ -381,7 +382,17 @@ export default function SplitPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {debts.map((d) => (
+              {debts.map((d) => {
+                // Time-since-last-settlement for this pair. Computed per row
+                // (N is tiny — usually ≤ 5 debts in a family). Settlements
+                // are Firestore Timestamps; helper accepts the duck type.
+                const last = findLastSettlementBetween(
+                  settlements as unknown as Parameters<typeof findLastSettlementBetween>[0],
+                  d.from,
+                  d.to,
+                )
+                const age = formatSettlementAge(last?.date ?? null, Date.now())
+                return (
                 <div
                   key={`${d.from}-${d.to}`}
                   className="flex items-center gap-3 p-3 rounded-xl"
@@ -398,7 +409,16 @@ export default function SplitPage() {
                         {d.toName}
                       </span>
                     </div>
-                    <div className="text-xs text-[var(--muted-foreground)] mt-0.5 ml-0.5">轉帳</div>
+                    <div
+                      className={`text-xs mt-0.5 ml-0.5 ${
+                        age.isStale
+                          ? 'text-amber-600 dark:text-amber-400 font-medium'
+                          : 'text-[var(--muted-foreground)]'
+                      }`}
+                    >
+                      {age.isStale ? '⚠ ' : '🕒 '}
+                      {age.text}
+                    </div>
                   </div>
                   <div className="font-bold">{currency(d.amount)}</div>
                   <button
@@ -410,7 +430,8 @@ export default function SplitPage() {
                     記錄
                   </button>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
