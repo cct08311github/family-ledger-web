@@ -13,6 +13,7 @@ import { currency, toDate, fmtDate } from '@/lib/utils'
 import { QuickAddBar } from '@/components/quick-add-bar'
 import { WeeklyDigest } from '@/components/weekly-digest'
 import { BudgetProgress } from '@/components/budget-progress'
+import { RecentActivitySection } from '@/components/recent-activity-section'
 import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
 import { logger } from '@/lib/logger'
 import { useToast } from '@/components/toast'
@@ -283,6 +284,9 @@ export default function HomePage() {
             </div>
           )}
         </div>
+
+        {/* 家庭動態 — 右欄底部 */}
+        <RecentActivitySection />
 
       </div>
     </div>
