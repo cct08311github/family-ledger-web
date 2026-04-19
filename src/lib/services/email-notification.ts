@@ -1,6 +1,7 @@
 import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { logger } from '@/lib/logger'
+import type { ExpenseChange } from '@/lib/expense-diff'
 
 /**
  * Email notification pipeline for in-app notifications (Issue #187).
@@ -65,6 +66,12 @@ export type EmailDetails =
        * kind, not the current entity state. (Issue #215)
        */
       deleted?: boolean
+      /**
+       * List of changed fields for edit notifications. When present and non-empty,
+       * renders a "變更：" section in the email body so recipients can see what
+       * changed. Undefined or empty array → section omitted. (Issue #216)
+       */
+      changes?: ExpenseChange[]
     }
   | {
       kind: 'settlement'
@@ -192,6 +199,13 @@ function buildExpenseSection(d: Extract<EmailDetails, { kind: 'expense' }>): str
     const splitLines = d.splits.map((s) => `  - ${truncate(s.name)}  ${fmtAmount(s.share)}`)
     lines.push(`分攤（${d.splits.length} 人）：`)
     lines.push(...splitLines)
+  }
+
+  if (d.changes && d.changes.length > 0) {
+    lines.push('變更：')
+    for (const c of d.changes) {
+      lines.push(`  - ${c.label}：${truncate(c.from, EMAIL_FIELD_LIMIT)} → ${truncate(c.to, EMAIL_FIELD_LIMIT)}`)
+    }
   }
 
   if (d.note) {
