@@ -38,6 +38,39 @@ export interface EmailPayload {
 }
 
 /**
+ * Structured detail objects passed to buildEmailPayload (Issue #213).
+ * When `details` is present the text body becomes multi-line.
+ */
+export type EmailDetails =
+  | {
+      kind: 'expense'
+      date: Date | { toDate(): Date }
+      description: string
+      amount: number
+      isShared: boolean
+      payerName?: string
+      splits?: Array<{ name: string; share: number }>
+      note?: string
+    }
+  | {
+      kind: 'settlement'
+      date: Date | { toDate(): Date }
+      fromName: string
+      toName: string
+      amount: number
+    }
+  | {
+      kind: 'settlement_batch'
+      count: number
+      /**
+       * Pass the FULL list — `buildEmailPayload` truncates to the top 3 for
+       * display. `count` must reflect the full count including those not passed
+       * (in case you still want to truncate upstream for size reasons).
+       */
+      items?: Array<{ fromName: string; toName: string; amount: number }>
+    }
+
+/**
  * Strip CR/LF from a string to prevent SMTP header injection when the value
  * ends up in a `Subject:` or similar header. A malicious actor writing
  * `description` or `actorName` with `\r\nBcc: evil@attacker.com` could
@@ -55,19 +88,156 @@ function sanitizeHeader(s: string): string {
  */
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://family-ledger-web.local/'
 
+/**
+ * Maximum character length for untrusted string fields in the email body.
+ * Prevents oversized Firestore mail documents.
+ */
+const EMAIL_FIELD_LIMIT = 500
+
+/**
+ * Truncate a string to `limit` characters, appending `…` when exceeded.
+ */
+function truncate(s: string, limit: number = EMAIL_FIELD_LIMIT): string {
+  return s.length > limit ? s.slice(0, limit) + '…' : s
+}
+
+/**
+ * YYYY-MM-DD date formatter pinned to Asia/Taipei timezone.
+ * Handles both native Date and Firestore Timestamp-like objects.
+ * Try/catch mirrors the coerceDate pattern used elsewhere in this repo for
+ * Firestore Timestamp duck-type inputs.
+ *
+ * Locale + timezone fixed to Asia/Taipei so all recipients (regardless of
+ * where the server runs) see the expense's local date. en-CA locale gives
+ * YYYY-MM-DD; pinning timezone to Asia/Taipei keeps dates stable regardless
+ * of server deployment location.
+ */
+export function formatEmailDate(d: Date | { toDate(): Date } | null | undefined): string {
+  if (!d) return ''
+  let date: Date
+  try {
+    if (d instanceof Date) {
+      date = d
+    } else if (typeof (d as { toDate?: unknown }).toDate === 'function') {
+      date = (d as { toDate(): Date }).toDate()
+    } else {
+      return ''
+    }
+  } catch {
+    return ''
+  }
+  if (!(date instanceof Date) || !Number.isFinite(date.getTime())) return ''
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Taipei',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
+}
+
+/**
+ * Format an amount as NT$ 1,000 using locale-aware thousands separator.
+ * Pinning to zh-TW ensures thousand separators even on small-ICU Node builds.
+ */
+function fmtAmount(n: number): string {
+  return `NT$ ${n.toLocaleString('zh-TW')}`
+}
+
+/**
+ * Build multi-line body section for an expense EmailDetails.
+ */
+function buildExpenseSection(d: Extract<EmailDetails, { kind: 'expense' }>): string {
+  const lines: string[] = []
+  lines.push(`項目：${truncate(d.description)}`)
+  lines.push(`金額：${fmtAmount(d.amount)}`)
+  lines.push(`日期：${formatEmailDate(d.date)}`)
+  if (d.payerName) {
+    lines.push(`付款人：${truncate(d.payerName)}`)
+  }
+
+  if (!d.isShared) {
+    lines.push('分攤：個人支出（不分攤）')
+  } else if (!d.splits || d.splits.length === 0) {
+    // Shared but no split detail available
+    lines.push('分攤：（無）')
+  } else {
+    const splitLines = d.splits.map((s) => `  - ${truncate(s.name)}  ${fmtAmount(s.share)}`)
+    lines.push(`分攤（${d.splits.length} 人）：`)
+    lines.push(...splitLines)
+  }
+
+  if (d.note) {
+    lines.push(`備註：${truncate(d.note)}`)
+  }
+
+  return lines.join('\n')
+}
+
+/**
+ * Build multi-line body section for a settlement EmailDetails.
+ */
+function buildSettlementSection(d: Extract<EmailDetails, { kind: 'settlement' }>): string {
+  const lines: string[] = []
+  lines.push(`日期：${formatEmailDate(d.date)}`)
+  lines.push(`金額：${fmtAmount(d.amount)}`)
+  lines.push(`${truncate(d.fromName)} → ${truncate(d.toName)}`)
+  return lines.join('\n')
+}
+
+/**
+ * Build multi-line body section for a batch settlement EmailDetails.
+ * The builder owns the top-3 truncation — callers should pass the FULL items
+ * array. The `…` indicator is appended when the total count exceeds 3.
+ */
+function buildSettlementBatchSection(d: Extract<EmailDetails, { kind: 'settlement_batch' }>): string {
+  const lines: string[] = []
+  lines.push(`共 ${d.count} 筆：`)
+  if (d.items && d.items.length > 0) {
+    const top = d.items.slice(0, 3)
+    for (const item of top) {
+      lines.push(`  - ${truncate(item.fromName)} → ${truncate(item.toName)}  ${fmtAmount(item.amount)}`)
+    }
+    if (d.count > top.length) {
+      lines.push('  …')
+    }
+  }
+  return lines.join('\n')
+}
+
+/**
+ * Build the details section string based on the EmailDetails kind.
+ */
+function buildDetailsSection(details: EmailDetails): string {
+  if (details.kind === 'expense') return buildExpenseSection(details)
+  if (details.kind === 'settlement') return buildSettlementSection(details)
+  return buildSettlementBatchSection(details)
+}
+
+const EMAIL_FOOTER = `—\n前往查看：${APP_URL}\n若不想再收到此類郵件，請到 設定 → 🔔 Email 通知 關閉開關。`
+
 export function buildEmailPayload(args: {
   title: string
   body: string
   groupName?: string
+  details?: EmailDetails
 }): EmailPayload {
   const safeTitle = sanitizeHeader(args.title)
   const safeGroup = args.groupName ? sanitizeHeader(args.groupName) : ''
   const groupTag = safeGroup ? `【${safeGroup}】` : '【家計本】'
   // Body is plain text (not a header), so CRLF is allowed — just avoid the
   // hardcoded Tailscale URL by routing via env var.
+
+  let text: string
+  if (args.details) {
+    const detailSection = buildDetailsSection(args.details)
+    text = `${args.body}\n\n${detailSection}\n\n${EMAIL_FOOTER}`
+  } else {
+    text = `${args.body}\n\n${EMAIL_FOOTER}`
+  }
+
   return {
     subject: `${groupTag} ${safeTitle}`,
-    text: `${args.body}\n\n—\n前往查看：${APP_URL}\n若不想再收到此類郵件，請到 設定 → 🔔 Email 通知 關閉開關。`,
+    text,
   }
 }
 
@@ -103,6 +273,7 @@ export async function notifyByEmail(args: {
   title: string
   body: string
   groupName?: string
+  details?: EmailDetails
 }): Promise<void> {
   try {
     const pref = await getRecipientEmailPreference(args.groupId, args.recipientUid)
@@ -111,6 +282,7 @@ export async function notifyByEmail(args: {
       title: args.title,
       body: args.body,
       groupName: args.groupName,
+      details: args.details,
     })
     await addDoc(collection(db, 'mail'), {
       to: pref.email,
@@ -140,6 +312,7 @@ export async function notifyByEmailFanOut(args: {
   title: string
   body: string
   groupName?: string
+  details?: EmailDetails
 }): Promise<void> {
   await Promise.all(
     args.recipientUids.map((uid) =>
@@ -149,6 +322,7 @@ export async function notifyByEmailFanOut(args: {
         title: args.title,
         body: args.body,
         groupName: args.groupName,
+        details: args.details,
       }),
     ),
   )

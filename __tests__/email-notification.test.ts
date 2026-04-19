@@ -10,7 +10,8 @@ jest.mock('@/lib/logger', () => ({
   logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn(), debug: jest.fn() },
 }))
 
-import { buildEmailPayload } from '@/lib/services/email-notification'
+import { buildEmailPayload, formatEmailDate } from '@/lib/services/email-notification'
+import type { EmailDetails } from '@/lib/services/email-notification'
 
 describe('buildEmailPayload', () => {
   it('prefixes subject with group name when provided', () => {
@@ -85,5 +86,347 @@ describe('buildEmailPayload', () => {
     const p = buildEmailPayload({ title: 'Hi', body: 'b', groupName: 'G' })
     // Format: 【G】 Hi (one space between bracket and title)
     expect(p.subject).toMatch(/^【G】 Hi$/)
+  })
+
+  // --- Issue #213: structured details in body ---
+
+  describe('with details — expense (shared with splits)', () => {
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: '午餐',
+      amount: 300,
+      isShared: true,
+      payerName: '爸爸',
+      splits: [
+        { name: '爸爸', share: 150 },
+        { name: '媽媽', share: 150 },
+      ],
+      note: '家庭聚餐',
+    }
+
+    it('body contains 項目', () => {
+      const p = buildEmailPayload({ title: 't', body: '爸爸新增了 午餐（NT$ 300）', details })
+      expect(p.text).toContain('項目：午餐')
+    })
+
+    it('body contains 金額 with NT$ prefix', () => {
+      const p = buildEmailPayload({ title: 't', body: 'b', details })
+      expect(p.text).toContain('NT$')
+      expect(p.text).toContain('300')
+    })
+
+    it('body contains 日期 in YYYY-MM-DD format', () => {
+      const p = buildEmailPayload({ title: 't', body: 'b', details })
+      expect(p.text).toContain('日期：2026-04-19')
+    })
+
+    it('body contains 付款人', () => {
+      const p = buildEmailPayload({ title: 't', body: 'b', details })
+      expect(p.text).toContain('付款人：爸爸')
+    })
+
+    it('body contains split member lines', () => {
+      const p = buildEmailPayload({ title: 't', body: 'b', details })
+      expect(p.text).toContain('爸爸')
+      expect(p.text).toContain('媽媽')
+      expect(p.text).toContain('分攤（2 人）')
+    })
+
+    it('body contains 備註', () => {
+      const p = buildEmailPayload({ title: 't', body: 'b', details })
+      expect(p.text).toContain('備註：家庭聚餐')
+    })
+
+    it('one-liner lead line is still present', () => {
+      const p = buildEmailPayload({ title: 't', body: '爸爸新增了 午餐（NT$ 300）', details })
+      expect(p.text).toContain('爸爸新增了 午餐（NT$ 300）')
+    })
+
+    it('body is NOT sanitized of newlines (plain text)', () => {
+      const p = buildEmailPayload({ title: 't', body: 'b', details })
+      // Multi-line body must contain actual newlines
+      expect(p.text).toContain('\n')
+    })
+
+    it('amount uses toLocaleString format (1000 separator)', () => {
+      const bigDetails: EmailDetails = { ...details, amount: 1000 }
+      const p = buildEmailPayload({ title: 't', body: 'b', details: bigDetails })
+      // 1000 formatted with toLocaleString — in most envs this produces "1,000"
+      // but at minimum it should render "1000" or "1,000". Check NT$ + digits.
+      expect(p.text).toMatch(/NT\$\s*[\d,]+/)
+    })
+  })
+
+  describe('with details — expense personal (not shared)', () => {
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: '個人咖啡',
+      amount: 80,
+      isShared: false,
+    }
+
+    it('body contains 分攤：個人支出（不分攤）', () => {
+      const p = buildEmailPayload({ title: 't', body: 'b', details })
+      expect(p.text).toContain('分攤：個人支出（不分攤）')
+    })
+
+    it('body does not show 付款人 when not provided', () => {
+      const p = buildEmailPayload({ title: 't', body: 'b', details })
+      expect(p.text).not.toContain('付款人：')
+    })
+
+    it('body does not show 備註 when not provided', () => {
+      const p = buildEmailPayload({ title: 't', body: 'b', details })
+      expect(p.text).not.toContain('備註：')
+    })
+  })
+
+  describe('with details — expense shared but splits empty', () => {
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: '飲料',
+      amount: 50,
+      isShared: true,
+      splits: [],
+    }
+
+    it('body contains 分攤：（無）', () => {
+      const p = buildEmailPayload({ title: 't', body: 'b', details })
+      expect(p.text).toContain('分攤：（無）')
+    })
+  })
+
+  describe('with details — settlement', () => {
+    const details: EmailDetails = {
+      kind: 'settlement',
+      date: new Date('2026-04-15T00:00:00Z'),
+      fromName: '媽媽',
+      toName: '爸爸',
+      amount: 500,
+    }
+
+    it('body contains 日期', () => {
+      const p = buildEmailPayload({ title: 't', body: 'b', details })
+      expect(p.text).toContain('日期：2026-04-15')
+    })
+
+    it('body contains 金額', () => {
+      const p = buildEmailPayload({ title: 't', body: 'b', details })
+      expect(p.text).toContain('500')
+    })
+
+    it('body contains from → to', () => {
+      const p = buildEmailPayload({ title: 't', body: 'b', details })
+      expect(p.text).toContain('媽媽 → 爸爸')
+    })
+
+    it('footer link still present', () => {
+      const p = buildEmailPayload({ title: 't', body: 'b', details })
+      expect(p.text).toContain('前往查看')
+    })
+  })
+
+  describe('with details — settlement_batch with 5 items', () => {
+    const details: EmailDetails = {
+      kind: 'settlement_batch',
+      count: 5,
+      items: [
+        { fromName: 'A', toName: 'B', amount: 100 },
+        { fromName: 'C', toName: 'D', amount: 200 },
+        { fromName: 'E', toName: 'F', amount: 300 },
+        { fromName: 'G', toName: 'H', amount: 400 },
+        { fromName: 'I', toName: 'J', amount: 500 },
+      ],
+    }
+
+    it('body contains 共 5 筆', () => {
+      const p = buildEmailPayload({ title: 't', body: 'b', details })
+      expect(p.text).toContain('共 5 筆')
+    })
+
+    it('body contains top 3 items', () => {
+      const p = buildEmailPayload({ title: 't', body: 'b', details })
+      expect(p.text).toContain('A → B')
+      expect(p.text).toContain('C → D')
+      expect(p.text).toContain('E → F')
+    })
+
+    it('body contains ellipsis for items beyond top 3', () => {
+      const p = buildEmailPayload({ title: 't', body: 'b', details })
+      expect(p.text).toContain('…')
+    })
+
+    it('body does NOT contain 4th or 5th items', () => {
+      const p = buildEmailPayload({ title: 't', body: 'b', details })
+      expect(p.text).not.toContain('G → H')
+      expect(p.text).not.toContain('I → J')
+    })
+  })
+
+  describe('with details — settlement_batch exactly 3 items (no ellipsis)', () => {
+    const details: EmailDetails = {
+      kind: 'settlement_batch',
+      count: 3,
+      items: [
+        { fromName: 'A', toName: 'B', amount: 100 },
+        { fromName: 'C', toName: 'D', amount: 200 },
+        { fromName: 'E', toName: 'F', amount: 300 },
+      ],
+    }
+
+    it('body does NOT contain ellipsis when count equals items shown', () => {
+      const p = buildEmailPayload({ title: 't', body: 'b', details })
+      expect(p.text).not.toContain('…')
+    })
+  })
+
+  describe('no details — backward compat', () => {
+    it('produces old one-liner format without details section', () => {
+      const p = buildEmailPayload({ title: 't', body: '爸爸新增了午餐（NT$ 150）' })
+      expect(p.text).toBe(
+        '爸爸新增了午餐（NT$ 150）\n\n—\n前往查看：' +
+          (process.env.NEXT_PUBLIC_APP_URL || 'https://family-ledger-web.local/') +
+          '\n若不想再收到此類郵件，請到 設定 → 🔔 Email 通知 關閉開關。',
+      )
+    })
+
+    it('does not contain 項目 or 日期 when no details', () => {
+      const p = buildEmailPayload({ title: 't', body: 'b' })
+      expect(p.text).not.toContain('項目：')
+      expect(p.text).not.toContain('日期：')
+    })
+  })
+
+  describe('sanitizeHeader still applied to title (regression)', () => {
+    it('title with injected CRLF still produces clean subject when details present', () => {
+      const details: EmailDetails = {
+        kind: 'expense',
+        date: new Date('2026-04-19'),
+        description: '測試',
+        amount: 100,
+        isShared: true,
+      }
+      const p = buildEmailPayload({
+        title: '惡意\r\nBcc: attacker@evil.com',
+        body: 'b',
+        details,
+      })
+      expect(p.subject).not.toMatch(/[\r\n]/)
+    })
+  })
+})
+
+describe('formatEmailDate', () => {
+  it('formats a native Date as YYYY-MM-DD', () => {
+    expect(formatEmailDate(new Date('2026-04-19T12:00:00Z'))).toBe('2026-04-19')
+  })
+
+  it('formats a Firestore Timestamp-like object (with toDate())', () => {
+    const ts = { toDate: () => new Date('2026-01-05T00:00:00Z') }
+    expect(formatEmailDate(ts)).toBe('2026-01-05')
+  })
+
+  it('pads month and day with leading zeros', () => {
+    expect(formatEmailDate(new Date('2026-03-07T00:00:00Z'))).toBe('2026-03-07')
+  })
+
+  // --- New tests for reviewer feedback (Issue #214) ---
+
+  it('returns empty string when toDate() throws', () => {
+    const bad = { toDate: () => { throw new Error('boom') } }
+    expect(formatEmailDate(bad)).toBe('')
+  })
+
+  it('returns empty string for null', () => {
+    expect(formatEmailDate(null)).toBe('')
+  })
+
+  it('returns empty string for undefined', () => {
+    expect(formatEmailDate(undefined)).toBe('')
+  })
+
+  it('returns deterministic YYYY-MM-DD in Asia/Taipei regardless of server TZ', () => {
+    // 2026-04-18T20:00:00Z = 2026-04-19T04:00:00+08:00 → should be 2026-04-19
+    expect(formatEmailDate(new Date('2026-04-18T20:00:00Z'))).toBe('2026-04-19')
+  })
+})
+
+describe('buildEmailPayload — reviewer feedback fixes (Issue #214)', () => {
+  it('settlement_batch with 10 items: builder slices to top 3 + ellipsis (caller passes all 10)', () => {
+    const items = Array.from({ length: 10 }, (_, i) => ({
+      fromName: `From${i}`,
+      toName: `To${i}`,
+      amount: (i + 1) * 100,
+    }))
+    const details: EmailDetails = {
+      kind: 'settlement_batch',
+      count: 10,
+      items,
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('From0 → To0')
+    expect(p.text).toContain('From1 → To1')
+    expect(p.text).toContain('From2 → To2')
+    expect(p.text).not.toContain('From3 → To3')
+    expect(p.text).toContain('…')
+  })
+
+  it('truncates description longer than 500 chars with ellipsis', () => {
+    const longDesc = 'a'.repeat(501)
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: longDesc,
+      amount: 100,
+      isShared: false,
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('…')
+    // The truncated description should be exactly 500 chars + '…'
+    expect(p.text).toContain('項目：' + 'a'.repeat(500) + '…')
+  })
+
+  it('truncates note longer than 500 chars with ellipsis', () => {
+    const longNote = 'n'.repeat(502)
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: '午餐',
+      amount: 100,
+      isShared: false,
+      note: longNote,
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('備註：' + 'n'.repeat(500) + '…')
+  })
+
+  it('truncates splits name longer than 500 chars with ellipsis', () => {
+    const longName = 'x'.repeat(600)
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: '午餐',
+      amount: 200,
+      isShared: true,
+      splits: [{ name: longName, share: 200 }],
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('x'.repeat(500) + '…')
+  })
+
+  it('fmtAmount produces thousand separators for 1,234,567', () => {
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: '大額支出',
+      amount: 1234567,
+      isShared: false,
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    // zh-TW locale should produce "1,234,567"
+    expect(p.text).toContain('1,234,567')
   })
 })

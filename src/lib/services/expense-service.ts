@@ -3,6 +3,7 @@ import { db, auth } from '@/lib/firebase'
 import { addActivityLog } from './activity-log-service'
 import { addNotification } from './notification-service'
 import { notifyByEmailFanOut } from './email-notification'
+import type { EmailDetails } from './email-notification'
 import { deleteReceiptImages, normalizeReceiptPaths } from './image-upload'
 import { currency } from '@/lib/utils'
 import type { Expense, SplitDetail, SplitMethod, PaymentMethod } from '@/lib/types'
@@ -27,7 +28,7 @@ const genId = genExpenseId
  */
 async function notifyMembersAboutExpense(
   groupId: string,
-  payload: { type: string; title: string; body: string; entityId: string },
+  payload: { type: string; title: string; body: string; entityId: string; details?: EmailDetails },
 ): Promise<void> {
   try {
     const groupSnap = await getDoc(doc(db, 'groups', groupId))
@@ -48,6 +49,7 @@ async function notifyMembersAboutExpense(
       title: payload.title,
       body: payload.body,
       groupName,
+      details: payload.details,
     })
   } catch (e) {
     logger.error('[ExpenseService] Failed to send notifications:', e)
@@ -107,6 +109,18 @@ export async function addExpense(
       title: '新增共同支出',
       body: `${actor?.name ?? '成員'}新增了 ${input.description}（${currency(input.amount)}）`,
       entityId: id,
+      details: {
+        kind: 'expense',
+        date: input.date,
+        description: input.description,
+        amount: input.amount,
+        isShared: input.isShared,
+        payerName: input.payerName,
+        splits: input.splits
+          .filter((s) => s.isParticipant && s.shareAmount > 0)
+          .map((s) => ({ name: s.memberName, share: s.shareAmount })),
+        note: input.note,
+      },
     })
   }
 
@@ -120,13 +134,30 @@ export async function updateExpense(groupId: string, expenseId: string, input: P
   let prevShared = false
   let prevDescription = ''
   let prevAmount = 0
+  let prevDate: Date | undefined
+  let prevPayerName: string | undefined
+  let prevSplits: Array<{ name: string; share: number }> | undefined
   try {
     const snap = await getDoc(ref)
     if (snap.exists()) {
-      const d = snap.data() as { isShared?: boolean; description?: string; amount?: number }
+      const d = snap.data() as {
+        isShared?: boolean
+        description?: string
+        amount?: number
+        date?: { toDate(): Date }
+        payerName?: string
+        splits?: Array<{ memberName?: string; shareAmount?: number; isParticipant?: boolean }>
+      }
       prevShared = !!d.isShared
       prevDescription = d.description ?? ''
       prevAmount = d.amount ?? 0
+      prevDate = d.date ? d.date.toDate() : undefined
+      prevPayerName = d.payerName
+      if (d.splits) {
+        prevSplits = d.splits
+          .filter((s) => s.isParticipant && (s.shareAmount ?? 0) > 0)
+          .map((s) => ({ name: s.memberName ?? '', share: s.shareAmount ?? 0 }))
+      }
     }
   } catch (e) {
     logger.error('[ExpenseService] Failed to read pre-update snapshot:', e)
@@ -162,11 +193,31 @@ export async function updateExpense(groupId: string, expenseId: string, input: P
   if (prevShared || nowShared) {
     const description = input.description ?? prevDescription
     const amount = input.amount ?? prevAmount
+    const notifyDate = input.date ?? prevDate
+    const notifyIsShared = input.isShared ?? prevShared
+    const notifyPayerName = input.payerName ?? prevPayerName
+    const notifySplits = input.splits
+      ? input.splits
+          .filter((s) => s.isParticipant && s.shareAmount > 0)
+          .map((s) => ({ name: s.memberName, share: s.shareAmount }))
+      : prevSplits
     await notifyMembersAboutExpense(groupId, {
       type: 'expense_updated',
       title: '編輯共同支出',
       body: `${actor?.name ?? '成員'}編輯了 ${description}（${currency(amount)}）`,
       entityId: expenseId,
+      details: notifyDate
+        ? {
+            kind: 'expense',
+            date: notifyDate,
+            description,
+            amount,
+            isShared: notifyIsShared,
+            payerName: notifyPayerName,
+            splits: notifySplits,
+            note: input.note,
+          }
+        : undefined,
     })
   }
 }
@@ -209,6 +260,9 @@ export async function deleteExpense(groupId: string, expenseId: string, actor?: 
   let wasShared = false
   let description = ''
   let amount = 0
+  let deleteDate: Date | undefined
+  let deletePayerName: string | undefined
+  let deleteSplits: Array<{ name: string; share: number }> | undefined
   try {
     const snap = await getDoc(ref)
     if (snap.exists()) {
@@ -218,10 +272,20 @@ export async function deleteExpense(groupId: string, expenseId: string, actor?: 
         amount?: number
         receiptPaths?: string[]
         receiptPath?: string | null
+        date?: { toDate(): Date }
+        payerName?: string
+        splits?: Array<{ memberName?: string; shareAmount?: number; isParticipant?: boolean }>
       }
       wasShared = !!d.isShared
       description = d.description ?? ''
       amount = d.amount ?? 0
+      deleteDate = d.date ? d.date.toDate() : undefined
+      deletePayerName = d.payerName
+      if (d.splits) {
+        deleteSplits = d.splits
+          .filter((s) => s.isParticipant && (s.shareAmount ?? 0) > 0)
+          .map((s) => ({ name: s.memberName ?? '', share: s.shareAmount ?? 0 }))
+      }
       const paths = normalizeReceiptPaths(d)
       if (paths.length > 0) await deleteReceiptImages(paths)
     }
@@ -250,6 +314,17 @@ export async function deleteExpense(groupId: string, expenseId: string, actor?: 
       title: '刪除共同支出',
       body: `${actor?.name ?? '成員'}刪除了 ${description}（${currency(amount)}）`,
       entityId: expenseId,
+      details: deleteDate
+        ? {
+            kind: 'expense',
+            date: deleteDate,
+            description,
+            amount,
+            isShared: true,
+            payerName: deletePayerName,
+            splits: deleteSplits,
+          }
+        : undefined,
     })
   }
 }
