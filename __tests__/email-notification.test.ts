@@ -10,7 +10,7 @@ jest.mock('@/lib/logger', () => ({
   logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn(), debug: jest.fn() },
 }))
 
-import { buildEmailPayload, formatEmailDate } from '@/lib/services/email-notification'
+import { buildEmailPayload, formatEmailDate, buildDeepLinkUrl, isValidEntityId } from '@/lib/services/email-notification'
 import type { EmailDetails } from '@/lib/services/email-notification'
 
 describe('buildEmailPayload', () => {
@@ -225,7 +225,8 @@ describe('buildEmailPayload', () => {
 
     it('footer link still present', () => {
       const p = buildEmailPayload({ title: 't', body: 'b', details })
-      expect(p.text).toContain('前往查看')
+      // Settlement deep link → /split; footer now uses "前往結算" label.
+      expect(p.text).toMatch(/前往結算|前往查看|前往首頁/)
     })
   })
 
@@ -428,5 +429,269 @@ describe('buildEmailPayload — reviewer feedback fixes (Issue #214)', () => {
     const p = buildEmailPayload({ title: 't', body: 'b', details })
     // zh-TW locale should produce "1,234,567"
     expect(p.text).toContain('1,234,567')
+  })
+})
+
+// --- Issue #215: category + deep link ---
+
+describe('buildEmailPayload — category (Issue #215)', () => {
+  it('body contains 類別：餐飲 when category is provided', () => {
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: '午餐',
+      amount: 150,
+      isShared: true,
+      category: '餐飲',
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('類別：餐飲')
+  })
+
+  it('body does NOT contain 類別： when category is absent', () => {
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: '午餐',
+      amount: 150,
+      isShared: true,
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).not.toContain('類別：')
+  })
+
+  it('category longer than 500 chars is truncated with ellipsis', () => {
+    const longCategory = 'c'.repeat(501)
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: '午餐',
+      amount: 150,
+      isShared: false,
+      category: longCategory,
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('類別：' + 'c'.repeat(500) + '…')
+  })
+})
+
+describe('buildEmailPayload — deep link footer (Issue #215)', () => {
+  it('footer contains /expense/:id deep link when entityId is provided', () => {
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: '午餐',
+      amount: 150,
+      isShared: true,
+      entityId: 'abc123',
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('/expense/abc123')
+    expect(p.text).toContain('查看此筆')
+  })
+
+  it('footer routes to /settings/activity-log when deleted: true', () => {
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: '午餐',
+      amount: 150,
+      isShared: true,
+      entityId: 'abc123',
+      deleted: true,
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('/settings/activity-log')
+    expect(p.text).not.toContain('/expense/abc123')
+  })
+
+  it('settlement footer shows /split link', () => {
+    const details: EmailDetails = {
+      kind: 'settlement',
+      date: new Date('2026-04-15T00:00:00Z'),
+      fromName: '媽媽',
+      toName: '爸爸',
+      amount: 500,
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('/split')
+  })
+
+  it('settlement_batch footer shows /split link', () => {
+    const details: EmailDetails = {
+      kind: 'settlement_batch',
+      count: 3,
+      items: [{ fromName: 'A', toName: 'B', amount: 100 }],
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('/split')
+  })
+
+  it('no details → no deep link, only generic 前往查看 line (backward compat)', () => {
+    const p = buildEmailPayload({ title: 't', body: 'b' })
+    expect(p.text).toContain('前往查看：')
+    expect(p.text).not.toContain('查看此筆：')
+  })
+})
+
+describe('buildDeepLinkUrl (Issue #215)', () => {
+  it('strips trailing slash from base URL to avoid double-slash', () => {
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date(),
+      description: 'x',
+      amount: 1,
+      isShared: false,
+      entityId: 'e1',
+    }
+    const url = buildDeepLinkUrl(details, 'https://app.example.com/')
+    expect(url).toBe('https://app.example.com/expense/e1')
+    // Path segment should not contain a double-slash after the protocol //
+    expect(url?.replace('https://', '')).not.toContain('//')
+  })
+
+  it('rejects entityId with special chars (spaces/&/=) — falls back to /records (isValidEntityId guard)', () => {
+    // isValidEntityId allows only [A-Za-z0-9_-]{1,64}. An id with spaces and
+    // special chars is rejected to prevent oversized or malformed URLs. The
+    // caller would need Firestore write access to inject such an id anyway.
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date(),
+      description: 'x',
+      amount: 1,
+      isShared: false,
+      entityId: 'id with spaces & special=chars',
+    }
+    const url = buildDeepLinkUrl(details, 'https://app.example.com')
+    expect(url).toBe('https://app.example.com/records')
+  })
+
+  it('returns null when details is undefined', () => {
+    expect(buildDeepLinkUrl(undefined, 'https://app.example.com')).toBeNull()
+  })
+})
+
+// --- Issue #217: reviewer feedback ---
+
+describe('buildDeepLinkUrl — reviewer feedback (Issue #217)', () => {
+  const base = 'https://app.example.com'
+
+  it('empty string entityId falls back to /records (not null)', () => {
+    // Aligns with getNotificationHref: expense_added/updated without entityId → /records
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date(),
+      description: 'x',
+      amount: 1,
+      isShared: false,
+      entityId: '',
+    }
+    expect(buildDeepLinkUrl(details, base)).toBe(`${base}/records`)
+  })
+
+  it('whitespace-only entityId falls back to /records', () => {
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date(),
+      description: 'x',
+      amount: 1,
+      isShared: false,
+      entityId: '   ',
+    }
+    expect(buildDeepLinkUrl(details, base)).toBe(`${base}/records`)
+  })
+
+  it('oversized entityId (70 chars) is rejected → falls back to /records', () => {
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date(),
+      description: 'x',
+      amount: 1,
+      isShared: false,
+      entityId: 'a'.repeat(70),
+    }
+    // isValidEntityId rejects ids longer than 64 chars
+    expect(buildDeepLinkUrl(details, base)).toBe(`${base}/records`)
+  })
+
+  it('entityId with slash (a/b) is rejected → falls back to /records', () => {
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date(),
+      description: 'x',
+      amount: 1,
+      isShared: false,
+      entityId: 'a/b',
+    }
+    expect(buildDeepLinkUrl(details, base)).toBe(`${base}/records`)
+  })
+})
+
+describe('buildEmailPayload footer labels — reviewer feedback (Issue #217)', () => {
+  it('settlement footer contains "前往結算" (not "查看此筆")', () => {
+    const details: EmailDetails = {
+      kind: 'settlement',
+      date: new Date('2026-04-15T00:00:00Z'),
+      fromName: '媽媽',
+      toName: '爸爸',
+      amount: 500,
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('前往結算：')
+    expect(p.text).not.toContain('查看此筆：')
+  })
+
+  it('expense with deleted:true footer contains "查看紀錄" (not "查看此筆")', () => {
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: '午餐',
+      amount: 150,
+      isShared: true,
+      entityId: 'abc123',
+      deleted: true,
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('查看紀錄：')
+    expect(p.text).not.toContain('查看此筆：')
+  })
+
+  it('expense without entityId footer deep link is /records (align with getNotificationHref)', () => {
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: '午餐',
+      amount: 150,
+      isShared: true,
+      // no entityId
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('/records')
+  })
+})
+
+describe('isValidEntityId (Issue #217)', () => {
+  it('accepts a normal Firestore auto-id (alphanumeric + hyphens)', () => {
+    expect(isValidEntityId('abc123-XYZ_456')).toBe(true)
+  })
+
+  it('rejects an empty string', () => {
+    expect(isValidEntityId('')).toBe(false)
+  })
+
+  it('rejects an id longer than 64 chars', () => {
+    expect(isValidEntityId('a'.repeat(65))).toBe(false)
+  })
+
+  it('accepts an id of exactly 64 chars', () => {
+    expect(isValidEntityId('a'.repeat(64))).toBe(true)
+  })
+
+  it('rejects an id containing a slash', () => {
+    expect(isValidEntityId('a/b')).toBe(false)
+  })
+
+  it('rejects an id containing a space', () => {
+    expect(isValidEntityId('a b')).toBe(false)
   })
 })

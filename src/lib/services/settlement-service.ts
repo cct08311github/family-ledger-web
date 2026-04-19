@@ -79,6 +79,7 @@ export async function addSettlement(groupId: string, data: NewSettlement, actor?
         fromName: data.fromMemberName,
         toName: data.toMemberName,
         amount: data.amount,
+        entityId: ref.id,
       },
     })
   } catch (e) {
@@ -246,6 +247,8 @@ export async function deleteSettlement(groupId: string, settlementId: string, ac
               fromName: deleteFromName,
               toName: deleteToName,
               amount: deleteAmount,
+              deleted: true,
+              entityId: settlementId,
             }
           : undefined,
     })
