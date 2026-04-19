@@ -7,6 +7,8 @@ import type { EmailDetails } from './email-notification'
 import { deleteReceiptImages, normalizeReceiptPaths } from './image-upload'
 import { currency } from '@/lib/utils'
 import type { Expense, SplitDetail, SplitMethod, PaymentMethod } from '@/lib/types'
+import { diffExpense } from '@/lib/expense-diff'
+import type { ExpenseSnapshot } from '@/lib/expense-diff'
 
 import { logger } from '@/lib/logger'
 
@@ -132,7 +134,8 @@ export async function addExpense(
 export async function updateExpense(groupId: string, expenseId: string, input: Partial<ExpenseInput>, actor?: Actor): Promise<void> {
   const ref = doc(db, 'groups', groupId, 'expenses', expenseId)
 
-  // Read the previous state so we can notify when either old or new was shared.
+  // Read the previous state so we can notify when either old or new was shared,
+  // and to compute the field-level diff for the edit notification. (Issue #216)
   let prevShared = false
   let prevDescription = ''
   let prevAmount = 0
@@ -140,6 +143,10 @@ export async function updateExpense(groupId: string, expenseId: string, input: P
   let prevPayerName: string | undefined
   let prevCategory: string | undefined
   let prevSplits: Array<{ name: string; share: number }> | undefined
+  let beforeSnapshot: ExpenseSnapshot = {}
+  // FIX #218: track whether the pre-update Firestore read failed so we can
+  // suppress the diff section rather than emitting false "（無）→ value" changes.
+  let snapshotReadFailed = false
   try {
     const snap = await getDoc(ref)
     if (snap.exists()) {
@@ -150,6 +157,9 @@ export async function updateExpense(groupId: string, expenseId: string, input: P
         date?: { toDate(): Date }
         payerName?: string
         category?: string
+        splitMethod?: string
+        paymentMethod?: string
+        note?: string
         splits?: Array<{ memberName?: string; shareAmount?: number; isParticipant?: boolean }>
       }
       prevShared = !!d.isShared
@@ -163,9 +173,21 @@ export async function updateExpense(groupId: string, expenseId: string, input: P
           .filter((s) => s.isParticipant && (s.shareAmount ?? 0) > 0)
           .map((s) => ({ name: s.memberName ?? '', share: s.shareAmount ?? 0 }))
       }
+      beforeSnapshot = {
+        description: d.description,
+        amount: d.amount,
+        category: d.category,
+        date: d.date,
+        payerName: d.payerName,
+        isShared: d.isShared,
+        splitMethod: d.splitMethod,
+        paymentMethod: d.paymentMethod,
+        note: d.note,
+      }
     }
   } catch (e) {
     logger.error('[ExpenseService] Failed to read pre-update snapshot:', e)
+    snapshotReadFailed = true
   }
 
   const { receiptPaths, note, ...rest } = input
@@ -211,6 +233,26 @@ export async function updateExpense(groupId: string, expenseId: string, input: P
     // (user cleared category) is kept as '' — buildExpenseSection will omit
     // the 類別 row since '' is falsy.
     const notifyCategory = input.category ?? prevCategory
+
+    // Compute field-level diff for the "what changed" section in the email. (Issue #216)
+    // FIX #218: when input is Partial<ExpenseInput>, undefined fields mean "not
+    // changed by this update". Fall back to the beforeSnapshot value so diffExpense
+    // doesn't report a spurious "午餐 → （無）" change for unmodified fields.
+    // Special-case note: `undefined` = field absent from partial update (no change);
+    // `''` or `null` = user explicitly cleared the note.
+    const afterSnapshot: ExpenseSnapshot = {
+      description: input.description ?? beforeSnapshot.description,
+      amount: input.amount ?? beforeSnapshot.amount,
+      category: input.category ?? beforeSnapshot.category,
+      date: input.date ?? beforeSnapshot.date,
+      payerName: input.payerName ?? beforeSnapshot.payerName,
+      isShared: input.isShared ?? beforeSnapshot.isShared,
+      splitMethod: input.splitMethod ?? beforeSnapshot.splitMethod,
+      paymentMethod: input.paymentMethod ?? beforeSnapshot.paymentMethod,
+      note: input.note !== undefined ? input.note : beforeSnapshot.note,
+    }
+    const changes = diffExpense(beforeSnapshot, afterSnapshot)
+
     await notifyMembersAboutExpense(groupId, {
       type: 'expense_updated',
       title: '編輯共同支出',
@@ -228,6 +270,9 @@ export async function updateExpense(groupId: string, expenseId: string, input: P
             splits: notifySplits,
             note: input.note,
             entityId: expenseId,
+            // FIX #218: omit changes when the pre-update read failed — better
+            // to show no diff than to display "（無）→ value" false diffs.
+            changes: (!snapshotReadFailed && changes.length > 0) ? changes : undefined,
           }
         : undefined,
     })

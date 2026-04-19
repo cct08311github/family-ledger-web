@@ -1,6 +1,10 @@
 import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { logger } from '@/lib/logger'
+import type { ExpenseChange } from '@/lib/expense-diff'
+// Import for internal use; also re-exported below for backward-compat callers.
+import { formatEmailDate } from '@/lib/email-date-format'
+export { formatEmailDate } from '@/lib/email-date-format'
 
 /**
  * Email notification pipeline for in-app notifications (Issue #187).
@@ -65,6 +69,12 @@ export type EmailDetails =
        * kind, not the current entity state. (Issue #215)
        */
       deleted?: boolean
+      /**
+       * List of changed fields for edit notifications. When present and non-empty,
+       * renders a "變更：" section in the email body so recipients can see what
+       * changed. Undefined or empty array → section omitted. (Issue #216)
+       */
+      changes?: ExpenseChange[]
     }
   | {
       kind: 'settlement'
@@ -127,40 +137,6 @@ function truncate(s: string, limit: number = EMAIL_FIELD_LIMIT): string {
 }
 
 /**
- * YYYY-MM-DD date formatter pinned to Asia/Taipei timezone.
- * Handles both native Date and Firestore Timestamp-like objects.
- * Try/catch mirrors the coerceDate pattern used elsewhere in this repo for
- * Firestore Timestamp duck-type inputs.
- *
- * Locale + timezone fixed to Asia/Taipei so all recipients (regardless of
- * where the server runs) see the expense's local date. en-CA locale gives
- * YYYY-MM-DD; pinning timezone to Asia/Taipei keeps dates stable regardless
- * of server deployment location.
- */
-export function formatEmailDate(d: Date | { toDate(): Date } | null | undefined): string {
-  if (!d) return ''
-  let date: Date
-  try {
-    if (d instanceof Date) {
-      date = d
-    } else if (typeof (d as { toDate?: unknown }).toDate === 'function') {
-      date = (d as { toDate(): Date }).toDate()
-    } else {
-      return ''
-    }
-  } catch {
-    return ''
-  }
-  if (!(date instanceof Date) || !Number.isFinite(date.getTime())) return ''
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Taipei',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(date)
-}
-
-/**
  * Format an amount as NT$ 1,000 using locale-aware thousands separator.
  * Pinning to zh-TW ensures thousand separators even on small-ICU Node builds.
  */
@@ -192,6 +168,19 @@ function buildExpenseSection(d: Extract<EmailDetails, { kind: 'expense' }>): str
     const splitLines = d.splits.map((s) => `  - ${truncate(s.name)}  ${fmtAmount(s.share)}`)
     lines.push(`分攤（${d.splits.length} 人）：`)
     lines.push(...splitLines)
+  }
+
+  if (d.changes && d.changes.length > 0) {
+    lines.push('變更：')
+    for (const c of d.changes) {
+      // Security: redact the old value of free-text notes to prevent leaking
+      // personal memo content to all group members via email. The new value
+      // is shown so recipients know the note was changed. Description is NOT
+      // redacted — it is the public identifier for the expense. (Issue #218)
+      const from = c.label === '備註' ? '（已修改）' : truncate(c.from, EMAIL_FIELD_LIMIT)
+      const to = truncate(c.to, EMAIL_FIELD_LIMIT)
+      lines.push(`  - ${c.label}：${from} → ${to}`)
+    }
   }
 
   if (d.note) {

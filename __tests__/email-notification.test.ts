@@ -695,3 +695,117 @@ describe('isValidEntityId (Issue #217)', () => {
     expect(isValidEntityId('a b')).toBe(false)
   })
 })
+
+// --- Issue #216: expense edit diff rendering ---
+
+describe('buildEmailPayload — expense changes diff (Issue #216)', () => {
+  const baseDetails: EmailDetails = {
+    kind: 'expense',
+    date: new Date('2026-04-19T00:00:00Z'),
+    description: '午餐',
+    amount: 200,
+    isShared: true,
+  }
+
+  it('body contains 變更： heading when changes are present', () => {
+    const details: EmailDetails = {
+      ...baseDetails,
+      changes: [{ label: '金額', from: 'NT$ 100', to: 'NT$ 200' }],
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('變更：')
+  })
+
+  it('body contains each change entry in - label：from → to format', () => {
+    const details: EmailDetails = {
+      ...baseDetails,
+      changes: [
+        { label: '金額', from: 'NT$ 100', to: 'NT$ 200' },
+        { label: '描述', from: '早餐', to: '早午餐' },
+        { label: '類別', from: '餐飲', to: '外食' },
+      ],
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('  - 金額：NT$ 100 → NT$ 200')
+    expect(p.text).toContain('  - 描述：早餐 → 早午餐')
+    expect(p.text).toContain('  - 類別：餐飲 → 外食')
+  })
+
+  it('body does NOT contain 變更： when changes is empty array', () => {
+    const details: EmailDetails = { ...baseDetails, changes: [] }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).not.toContain('變更：')
+  })
+
+  it('body does NOT contain 變更： when changes is undefined', () => {
+    const details: EmailDetails = { ...baseDetails, changes: undefined }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).not.toContain('變更：')
+  })
+
+  it('long from/to values are truncated with …', () => {
+    const longFrom = 'f'.repeat(501)
+    const longTo = 't'.repeat(502)
+    const details: EmailDetails = {
+      ...baseDetails,
+      changes: [{ label: '描述', from: longFrom, to: longTo }],
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('f'.repeat(500) + '…')
+    expect(p.text).toContain('t'.repeat(500) + '…')
+  })
+
+  // --- Issue #218: note redaction and description non-redaction ---
+
+  it('備註 change: from is redacted to （已修改）, to is still shown', () => {
+    const details: EmailDetails = {
+      ...baseDetails,
+      changes: [{ label: '備註', from: '原本的私密備忘', to: '新的備注' }],
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('  - 備註：（已修改） → 新的備注')
+    expect(p.text).not.toContain('原本的私密備忘')
+  })
+
+  it('non-note change: from value is NOT redacted (regression)', () => {
+    const details: EmailDetails = {
+      ...baseDetails,
+      changes: [{ label: '金額', from: 'NT$ 100', to: 'NT$ 200' }],
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('  - 金額：NT$ 100 → NT$ 200')
+  })
+
+  it('描述 change is NOT redacted (description is the public expense identifier)', () => {
+    const details: EmailDetails = {
+      ...baseDetails,
+      changes: [{ label: '描述', from: '早餐', to: '早午餐' }],
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('  - 描述：早餐 → 早午餐')
+    expect(p.text).not.toContain('（已修改）')
+  })
+
+  it('backward compat: expense without changes still renders normal body (regression from #214/#217)', () => {
+    // No changes field at all — should render exactly like pre-#216
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: '午餐',
+      amount: 300,
+      isShared: true,
+      payerName: '爸爸',
+      splits: [
+        { name: '爸爸', share: 150 },
+        { name: '媽媽', share: 150 },
+      ],
+      note: '家庭聚餐',
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('項目：午餐')
+    expect(p.text).toContain('金額：')
+    expect(p.text).toContain('分攤（2 人）')
+    expect(p.text).toContain('備註：家庭聚餐')
+    expect(p.text).not.toContain('變更：')
+  })
+})
