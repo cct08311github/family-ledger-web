@@ -157,7 +157,7 @@ export async function addSettlements(
       details: {
         kind: 'settlement_batch',
         count: settlements.length,
-        items: settlements.slice(0, 3).map((s) => ({
+        items: settlements.map((s) => ({
           fromName: s.fromMemberName,
           toName: s.toMemberName,
           amount: s.amount,

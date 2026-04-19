@@ -215,7 +215,7 @@ export async function updateExpense(groupId: string, expenseId: string, input: P
             isShared: notifyIsShared,
             payerName: notifyPayerName,
             splits: notifySplits,
-            note: input.note ?? undefined,
+            note: input.note,
           }
         : undefined,
     })

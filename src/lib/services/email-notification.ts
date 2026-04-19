@@ -44,7 +44,7 @@ export interface EmailPayload {
 export type EmailDetails =
   | {
       kind: 'expense'
-      date: Date
+      date: Date | { toDate(): Date }
       description: string
       amount: number
       isShared: boolean
@@ -54,7 +54,7 @@ export type EmailDetails =
     }
   | {
       kind: 'settlement'
-      date: Date
+      date: Date | { toDate(): Date }
       fromName: string
       toName: string
       amount: number
@@ -62,6 +62,11 @@ export type EmailDetails =
   | {
       kind: 'settlement_batch'
       count: number
+      /**
+       * Pass the FULL list — `buildEmailPayload` truncates to the top 3 for
+       * display. `count` must reflect the full count including those not passed
+       * (in case you still want to truncate upstream for size reasons).
+       */
       items?: Array<{ fromName: string; toName: string; amount: number }>
     }
 
@@ -84,25 +89,58 @@ function sanitizeHeader(s: string): string {
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://family-ledger-web.local/'
 
 /**
- * Locale-independent YYYY-MM-DD date formatter.
- * Handles both native Date and Firestore Timestamp-like objects that have a
- * `toDate()` method.
+ * Maximum character length for untrusted string fields in the email body.
+ * Prevents oversized Firestore mail documents.
  */
-export function formatEmailDate(d: Date | { toDate(): Date }): string {
-  const date = typeof (d as { toDate?: unknown }).toDate === 'function'
-    ? (d as { toDate(): Date }).toDate()
-    : (d as Date)
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+const EMAIL_FIELD_LIMIT = 500
+
+/**
+ * Truncate a string to `limit` characters, appending `…` when exceeded.
+ */
+function truncate(s: string, limit: number = EMAIL_FIELD_LIMIT): string {
+  return s.length > limit ? s.slice(0, limit) + '…' : s
+}
+
+/**
+ * YYYY-MM-DD date formatter pinned to Asia/Taipei timezone.
+ * Handles both native Date and Firestore Timestamp-like objects.
+ * Try/catch mirrors the coerceDate pattern used elsewhere in this repo for
+ * Firestore Timestamp duck-type inputs.
+ *
+ * Locale + timezone fixed to Asia/Taipei so all recipients (regardless of
+ * where the server runs) see the expense's local date. en-CA locale gives
+ * YYYY-MM-DD; pinning timezone to Asia/Taipei keeps dates stable regardless
+ * of server deployment location.
+ */
+export function formatEmailDate(d: Date | { toDate(): Date } | null | undefined): string {
+  if (!d) return ''
+  let date: Date
+  try {
+    if (d instanceof Date) {
+      date = d
+    } else if (typeof (d as { toDate?: unknown }).toDate === 'function') {
+      date = (d as { toDate(): Date }).toDate()
+    } else {
+      return ''
+    }
+  } catch {
+    return ''
+  }
+  if (!(date instanceof Date) || !Number.isFinite(date.getTime())) return ''
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Taipei',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
 }
 
 /**
  * Format an amount as NT$ 1,000 using locale-aware thousands separator.
+ * Pinning to zh-TW ensures thousand separators even on small-ICU Node builds.
  */
 function fmtAmount(n: number): string {
-  return `NT$ ${n.toLocaleString()}`
+  return `NT$ ${n.toLocaleString('zh-TW')}`
 }
 
 /**
@@ -110,11 +148,11 @@ function fmtAmount(n: number): string {
  */
 function buildExpenseSection(d: Extract<EmailDetails, { kind: 'expense' }>): string {
   const lines: string[] = []
-  lines.push(`項目：${d.description}`)
+  lines.push(`項目：${truncate(d.description)}`)
   lines.push(`金額：${fmtAmount(d.amount)}`)
   lines.push(`日期：${formatEmailDate(d.date)}`)
   if (d.payerName) {
-    lines.push(`付款人：${d.payerName}`)
+    lines.push(`付款人：${truncate(d.payerName)}`)
   }
 
   if (!d.isShared) {
@@ -123,13 +161,13 @@ function buildExpenseSection(d: Extract<EmailDetails, { kind: 'expense' }>): str
     // Shared but no split detail available
     lines.push('分攤：（無）')
   } else {
-    const splitLines = d.splits.map((s) => `  - ${s.name}  ${fmtAmount(s.share)}`)
+    const splitLines = d.splits.map((s) => `  - ${truncate(s.name)}  ${fmtAmount(s.share)}`)
     lines.push(`分攤（${d.splits.length} 人）：`)
     lines.push(...splitLines)
   }
 
   if (d.note) {
-    lines.push(`備註：${d.note}`)
+    lines.push(`備註：${truncate(d.note)}`)
   }
 
   return lines.join('\n')
@@ -142,12 +180,14 @@ function buildSettlementSection(d: Extract<EmailDetails, { kind: 'settlement' }>
   const lines: string[] = []
   lines.push(`日期：${formatEmailDate(d.date)}`)
   lines.push(`金額：${fmtAmount(d.amount)}`)
-  lines.push(`${d.fromName} → ${d.toName}`)
+  lines.push(`${truncate(d.fromName)} → ${truncate(d.toName)}`)
   return lines.join('\n')
 }
 
 /**
  * Build multi-line body section for a batch settlement EmailDetails.
+ * The builder owns the top-3 truncation — callers should pass the FULL items
+ * array. The `…` indicator is appended when the total count exceeds 3.
  */
 function buildSettlementBatchSection(d: Extract<EmailDetails, { kind: 'settlement_batch' }>): string {
   const lines: string[] = []
@@ -155,7 +195,7 @@ function buildSettlementBatchSection(d: Extract<EmailDetails, { kind: 'settlemen
   if (d.items && d.items.length > 0) {
     const top = d.items.slice(0, 3)
     for (const item of top) {
-      lines.push(`  - ${item.fromName} → ${item.toName}  ${fmtAmount(item.amount)}`)
+      lines.push(`  - ${truncate(item.fromName)} → ${truncate(item.toName)}  ${fmtAmount(item.amount)}`)
     }
     if (d.count > top.length) {
       lines.push('  …')

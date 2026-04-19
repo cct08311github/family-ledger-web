@@ -332,4 +332,101 @@ describe('formatEmailDate', () => {
   it('pads month and day with leading zeros', () => {
     expect(formatEmailDate(new Date('2026-03-07T00:00:00Z'))).toBe('2026-03-07')
   })
+
+  // --- New tests for reviewer feedback (Issue #214) ---
+
+  it('returns empty string when toDate() throws', () => {
+    const bad = { toDate: () => { throw new Error('boom') } }
+    expect(formatEmailDate(bad)).toBe('')
+  })
+
+  it('returns empty string for null', () => {
+    expect(formatEmailDate(null)).toBe('')
+  })
+
+  it('returns empty string for undefined', () => {
+    expect(formatEmailDate(undefined)).toBe('')
+  })
+
+  it('returns deterministic YYYY-MM-DD in Asia/Taipei regardless of server TZ', () => {
+    // 2026-04-18T20:00:00Z = 2026-04-19T04:00:00+08:00 → should be 2026-04-19
+    expect(formatEmailDate(new Date('2026-04-18T20:00:00Z'))).toBe('2026-04-19')
+  })
+})
+
+describe('buildEmailPayload — reviewer feedback fixes (Issue #214)', () => {
+  it('settlement_batch with 10 items: builder slices to top 3 + ellipsis (caller passes all 10)', () => {
+    const items = Array.from({ length: 10 }, (_, i) => ({
+      fromName: `From${i}`,
+      toName: `To${i}`,
+      amount: (i + 1) * 100,
+    }))
+    const details: EmailDetails = {
+      kind: 'settlement_batch',
+      count: 10,
+      items,
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('From0 → To0')
+    expect(p.text).toContain('From1 → To1')
+    expect(p.text).toContain('From2 → To2')
+    expect(p.text).not.toContain('From3 → To3')
+    expect(p.text).toContain('…')
+  })
+
+  it('truncates description longer than 500 chars with ellipsis', () => {
+    const longDesc = 'a'.repeat(501)
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: longDesc,
+      amount: 100,
+      isShared: false,
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('…')
+    // The truncated description should be exactly 500 chars + '…'
+    expect(p.text).toContain('項目：' + 'a'.repeat(500) + '…')
+  })
+
+  it('truncates note longer than 500 chars with ellipsis', () => {
+    const longNote = 'n'.repeat(502)
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: '午餐',
+      amount: 100,
+      isShared: false,
+      note: longNote,
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('備註：' + 'n'.repeat(500) + '…')
+  })
+
+  it('truncates splits name longer than 500 chars with ellipsis', () => {
+    const longName = 'x'.repeat(600)
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: '午餐',
+      amount: 200,
+      isShared: true,
+      splits: [{ name: longName, share: 200 }],
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('x'.repeat(500) + '…')
+  })
+
+  it('fmtAmount produces thousand separators for 1,234,567', () => {
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: '大額支出',
+      amount: 1234567,
+      isShared: false,
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    // zh-TW locale should produce "1,234,567"
+    expect(p.text).toContain('1,234,567')
+  })
 })
