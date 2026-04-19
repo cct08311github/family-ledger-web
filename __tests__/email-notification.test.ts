@@ -755,6 +755,37 @@ describe('buildEmailPayload — expense changes diff (Issue #216)', () => {
     expect(p.text).toContain('t'.repeat(500) + '…')
   })
 
+  // --- Issue #218: note redaction and description non-redaction ---
+
+  it('備註 change: from is redacted to （已修改）, to is still shown', () => {
+    const details: EmailDetails = {
+      ...baseDetails,
+      changes: [{ label: '備註', from: '原本的私密備忘', to: '新的備注' }],
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('  - 備註：（已修改） → 新的備注')
+    expect(p.text).not.toContain('原本的私密備忘')
+  })
+
+  it('non-note change: from value is NOT redacted (regression)', () => {
+    const details: EmailDetails = {
+      ...baseDetails,
+      changes: [{ label: '金額', from: 'NT$ 100', to: 'NT$ 200' }],
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('  - 金額：NT$ 100 → NT$ 200')
+  })
+
+  it('描述 change is NOT redacted (description is the public expense identifier)', () => {
+    const details: EmailDetails = {
+      ...baseDetails,
+      changes: [{ label: '描述', from: '早餐', to: '早午餐' }],
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('  - 描述：早餐 → 早午餐')
+    expect(p.text).not.toContain('（已修改）')
+  })
+
   it('backward compat: expense without changes still renders normal body (regression from #214/#217)', () => {
     // No changes field at all — should render exactly like pre-#216
     const details: EmailDetails = {

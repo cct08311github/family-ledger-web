@@ -3,7 +3,7 @@
  * No Firebase imports — fully unit-testable in isolation.
  */
 import { paymentLabel } from '@/lib/utils'
-import { formatEmailDate } from '@/lib/services/email-notification'
+import { formatEmailDate } from '@/lib/email-date-format'
 
 /**
  * Minimal snapshot of an expense's diffable scalar fields.
