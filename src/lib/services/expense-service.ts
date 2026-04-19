@@ -115,11 +115,13 @@ export async function addExpense(
         description: input.description,
         amount: input.amount,
         isShared: input.isShared,
+        category: input.category,
         payerName: input.payerName,
         splits: input.splits
           .filter((s) => s.isParticipant && s.shareAmount > 0)
           .map((s) => ({ name: s.memberName, share: s.shareAmount })),
         note: input.note,
+        entityId: id,
       },
     })
   }
@@ -136,6 +138,7 @@ export async function updateExpense(groupId: string, expenseId: string, input: P
   let prevAmount = 0
   let prevDate: Date | undefined
   let prevPayerName: string | undefined
+  let prevCategory: string | undefined
   let prevSplits: Array<{ name: string; share: number }> | undefined
   try {
     const snap = await getDoc(ref)
@@ -146,6 +149,7 @@ export async function updateExpense(groupId: string, expenseId: string, input: P
         amount?: number
         date?: { toDate(): Date }
         payerName?: string
+        category?: string
         splits?: Array<{ memberName?: string; shareAmount?: number; isParticipant?: boolean }>
       }
       prevShared = !!d.isShared
@@ -153,6 +157,7 @@ export async function updateExpense(groupId: string, expenseId: string, input: P
       prevAmount = d.amount ?? 0
       prevDate = d.date ? d.date.toDate() : undefined
       prevPayerName = d.payerName
+      prevCategory = d.category
       if (d.splits) {
         prevSplits = d.splits
           .filter((s) => s.isParticipant && (s.shareAmount ?? 0) > 0)
@@ -201,6 +206,7 @@ export async function updateExpense(groupId: string, expenseId: string, input: P
           .filter((s) => s.isParticipant && s.shareAmount > 0)
           .map((s) => ({ name: s.memberName, share: s.shareAmount }))
       : prevSplits
+    const notifyCategory = input.category ?? prevCategory
     await notifyMembersAboutExpense(groupId, {
       type: 'expense_updated',
       title: '編輯共同支出',
@@ -213,9 +219,11 @@ export async function updateExpense(groupId: string, expenseId: string, input: P
             description,
             amount,
             isShared: notifyIsShared,
+            category: notifyCategory,
             payerName: notifyPayerName,
             splits: notifySplits,
             note: input.note,
+            entityId: expenseId,
           }
         : undefined,
     })
@@ -262,6 +270,7 @@ export async function deleteExpense(groupId: string, expenseId: string, actor?: 
   let amount = 0
   let deleteDate: Date | undefined
   let deletePayerName: string | undefined
+  let deleteCategory: string | undefined
   let deleteSplits: Array<{ name: string; share: number }> | undefined
   try {
     const snap = await getDoc(ref)
@@ -274,6 +283,7 @@ export async function deleteExpense(groupId: string, expenseId: string, actor?: 
         receiptPath?: string | null
         date?: { toDate(): Date }
         payerName?: string
+        category?: string
         splits?: Array<{ memberName?: string; shareAmount?: number; isParticipant?: boolean }>
       }
       wasShared = !!d.isShared
@@ -281,6 +291,7 @@ export async function deleteExpense(groupId: string, expenseId: string, actor?: 
       amount = d.amount ?? 0
       deleteDate = d.date ? d.date.toDate() : undefined
       deletePayerName = d.payerName
+      deleteCategory = d.category
       if (d.splits) {
         deleteSplits = d.splits
           .filter((s) => s.isParticipant && (s.shareAmount ?? 0) > 0)
@@ -321,8 +332,11 @@ export async function deleteExpense(groupId: string, expenseId: string, actor?: 
             description,
             amount,
             isShared: true,
+            category: deleteCategory,
             payerName: deletePayerName,
             splits: deleteSplits,
+            deleted: true,
+            entityId: expenseId,
           }
         : undefined,
     })

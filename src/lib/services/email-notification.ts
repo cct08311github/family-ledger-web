@@ -48,9 +48,19 @@ export type EmailDetails =
       description: string
       amount: number
       isShared: boolean
+      /** Category label, e.g. "餐飲". Renders as "類別：餐飲" when present. (Issue #215) */
+      category?: string
       payerName?: string
       splits?: Array<{ name: string; share: number }>
       note?: string
+      /** Firestore document id — used to build a deep link to the edit page. (Issue #215) */
+      entityId?: string
+      /**
+       * Set to true when the expense has been deleted.
+       * Deep link routes to /settings/activity-log instead of /expense/:id
+       * because the entity no longer exists. (Issue #215)
+       */
+      deleted?: boolean
     }
   | {
       kind: 'settlement'
@@ -58,6 +68,13 @@ export type EmailDetails =
       fromName: string
       toName: string
       amount: number
+      /** Firestore document id — used to confirm the entity exists. (Issue #215) */
+      entityId?: string
+      /**
+       * Set to true when the settlement has been deleted.
+       * Deep link still routes to /split (the settlement history page). (Issue #215)
+       */
+      deleted?: boolean
     }
   | {
       kind: 'settlement_batch'
@@ -151,6 +168,9 @@ function buildExpenseSection(d: Extract<EmailDetails, { kind: 'expense' }>): str
   lines.push(`項目：${truncate(d.description)}`)
   lines.push(`金額：${fmtAmount(d.amount)}`)
   lines.push(`日期：${formatEmailDate(d.date)}`)
+  if (d.category) {
+    lines.push(`類別：${truncate(d.category)}`)
+  }
   if (d.payerName) {
     lines.push(`付款人：${truncate(d.payerName)}`)
   }
@@ -213,7 +233,55 @@ function buildDetailsSection(details: EmailDetails): string {
   return buildSettlementBatchSection(details)
 }
 
-const EMAIL_FOOTER = `—\n前往查看：${APP_URL}\n若不想再收到此類郵件，請到 設定 → 🔔 Email 通知 關閉開關。`
+const UNSUBSCRIBE_HINT = '若不想再收到此類郵件，請到 設定 → 🔔 Email 通知 關閉開關。'
+
+/**
+ * Build the entity-specific deep link URL, or null when no meaningful link can
+ * be derived. Exported for unit-testability. (Issue #215)
+ *
+ * Rules:
+ * - expense (not deleted) + entityId → /expense/:entityId (edit page)
+ * - expense (deleted)               → /settings/activity-log (entity is gone)
+ * - settlement (any)                → /split
+ * - settlement_batch                → /split
+ * - otherwise                       → null
+ */
+export function buildDeepLinkUrl(details: EmailDetails | undefined, baseUrl: string): string | null {
+  if (!details) return null
+  // Strip trailing slash to avoid double-slashes in concatenation.
+  const base = baseUrl.replace(/\/+$/, '')
+
+  switch (details.kind) {
+    case 'expense':
+      if (details.deleted) return `${base}/settings/activity-log`
+      if (details.entityId && details.entityId.trim()) {
+        return `${base}/expense/${encodeURIComponent(details.entityId)}`
+      }
+      return null
+    case 'settlement':
+      return `${base}/split`
+    case 'settlement_batch':
+      return `${base}/split`
+  }
+}
+
+/**
+ * Build the plain-text email footer with optional deep link. (Issue #215)
+ *
+ * - When a deep link is available AND differs from the home URL, show both:
+ *     查看此筆：{DEEP_LINK}
+ *     前往首頁：{APP_URL}
+ * - Otherwise show a single generic "前往查看" line (backward-compat).
+ */
+function buildEmailFooter(details: EmailDetails | undefined): string {
+  const deepLink = buildDeepLinkUrl(details, APP_URL)
+  const homeUrl = APP_URL.replace(/\/+$/, '')
+
+  if (deepLink && deepLink !== homeUrl && deepLink !== APP_URL) {
+    return `—\n查看此筆：${deepLink}\n前往首頁：${APP_URL}\n${UNSUBSCRIBE_HINT}`
+  }
+  return `—\n前往查看：${APP_URL}\n${UNSUBSCRIBE_HINT}`
+}
 
 export function buildEmailPayload(args: {
   title: string
@@ -227,12 +295,14 @@ export function buildEmailPayload(args: {
   // Body is plain text (not a header), so CRLF is allowed — just avoid the
   // hardcoded Tailscale URL by routing via env var.
 
+  const footer = buildEmailFooter(args.details)
+
   let text: string
   if (args.details) {
     const detailSection = buildDetailsSection(args.details)
-    text = `${args.body}\n\n${detailSection}\n\n${EMAIL_FOOTER}`
+    text = `${args.body}\n\n${detailSection}\n\n${footer}`
   } else {
-    text = `${args.body}\n\n${EMAIL_FOOTER}`
+    text = `${args.body}\n\n${footer}`
   }
 
   return {
