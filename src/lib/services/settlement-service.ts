@@ -67,7 +67,20 @@ export async function addSettlement(groupId: string, data: NewSettlement, actor?
         addNotification(groupId, { type: 'settlement_created', title, body, recipientId: uid, entityId: ref.id }),
       ),
     )
-    await notifyByEmailFanOut({ groupId, recipientUids: recipients, title, body, groupName })
+    await notifyByEmailFanOut({
+      groupId,
+      recipientUids: recipients,
+      title,
+      body,
+      groupName,
+      details: {
+        kind: 'settlement',
+        date: data.date,
+        fromName: data.fromMemberName,
+        toName: data.toMemberName,
+        amount: data.amount,
+      },
+    })
   } catch (e) {
     logger.error('[SettlementService] Failed to send notifications:', e)
   }
@@ -135,7 +148,22 @@ export async function addSettlements(
         addNotification(groupId, { type: 'settlement_created', title, body, recipientId: u }),
       ),
     )
-    await notifyByEmailFanOut({ groupId, recipientUids: recipients, title, body, groupName })
+    await notifyByEmailFanOut({
+      groupId,
+      recipientUids: recipients,
+      title,
+      body,
+      groupName,
+      details: {
+        kind: 'settlement_batch',
+        count: settlements.length,
+        items: settlements.slice(0, 3).map((s) => ({
+          fromName: s.fromMemberName,
+          toName: s.toMemberName,
+          amount: s.amount,
+        })),
+      },
+    })
   } catch (e) {
     logger.error('[SettlementService] Failed to send batch notifications:', e)
   }
@@ -148,6 +176,10 @@ export async function deleteSettlement(groupId: string, settlementId: string, ac
   // Best-effort: if the read fails we still delete but the notification body degrades.
   // Issue #187.
   let settlementDesc = '此筆結算紀錄'
+  let deleteFromName: string | undefined
+  let deleteToName: string | undefined
+  let deleteAmount: number | undefined
+  let deleteDate: Date | undefined
   try {
     const snap = await getDoc(doc(db, 'groups', groupId, 'settlements', settlementId))
     if (snap.exists()) {
@@ -155,7 +187,12 @@ export async function deleteSettlement(groupId: string, settlementId: string, ac
         fromMemberName?: string
         toMemberName?: string
         amount?: number
+        date?: { toDate(): Date }
       }
+      deleteFromName = d.fromMemberName
+      deleteToName = d.toMemberName
+      deleteAmount = d.amount
+      deleteDate = d.date ? d.date.toDate() : undefined
       if (d.fromMemberName && d.toMemberName && typeof d.amount === 'number') {
         settlementDesc = `${d.fromMemberName} → ${d.toMemberName}（${currency(d.amount)}）`
       }
@@ -195,7 +232,23 @@ export async function deleteSettlement(groupId: string, settlementId: string, ac
         addNotification(groupId, { type: 'settlement_deleted', title, body, recipientId: uid, entityId: settlementId }),
       ),
     )
-    await notifyByEmailFanOut({ groupId, recipientUids: recipients, title, body, groupName })
+    await notifyByEmailFanOut({
+      groupId,
+      recipientUids: recipients,
+      title,
+      body,
+      groupName,
+      details:
+        deleteDate && deleteFromName && deleteToName && typeof deleteAmount === 'number'
+          ? {
+              kind: 'settlement',
+              date: deleteDate,
+              fromName: deleteFromName,
+              toName: deleteToName,
+              amount: deleteAmount,
+            }
+          : undefined,
+    })
   } catch (e) {
     logger.error('[SettlementService] Failed to send delete notifications:', e)
   }
