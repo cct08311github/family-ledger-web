@@ -10,7 +10,7 @@ jest.mock('@/lib/logger', () => ({
   logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn(), debug: jest.fn() },
 }))
 
-import { buildEmailPayload, formatEmailDate, buildDeepLinkUrl } from '@/lib/services/email-notification'
+import { buildEmailPayload, formatEmailDate, buildDeepLinkUrl, isValidEntityId } from '@/lib/services/email-notification'
 import type { EmailDetails } from '@/lib/services/email-notification'
 
 describe('buildEmailPayload', () => {
@@ -225,8 +225,8 @@ describe('buildEmailPayload', () => {
 
     it('footer link still present', () => {
       const p = buildEmailPayload({ title: 't', body: 'b', details })
-      // Settlement deep link → /split; both 查看此筆 and 前往首頁 lines appear.
-      expect(p.text).toMatch(/查看此筆|前往查看|前往首頁/)
+      // Settlement deep link → /split; footer now uses "前往結算" label.
+      expect(p.text).toMatch(/前往結算|前往查看|前往首頁/)
     })
   })
 
@@ -550,7 +550,10 @@ describe('buildDeepLinkUrl (Issue #215)', () => {
     expect(url?.replace('https://', '')).not.toContain('//')
   })
 
-  it('applies encodeURIComponent to entityId with special chars', () => {
+  it('rejects entityId with special chars (spaces/&/=) — falls back to /records (isValidEntityId guard)', () => {
+    // isValidEntityId allows only [A-Za-z0-9_-]{1,64}. An id with spaces and
+    // special chars is rejected to prevent oversized or malformed URLs. The
+    // caller would need Firestore write access to inject such an id anyway.
     const details: EmailDetails = {
       kind: 'expense',
       date: new Date(),
@@ -560,10 +563,135 @@ describe('buildDeepLinkUrl (Issue #215)', () => {
       entityId: 'id with spaces & special=chars',
     }
     const url = buildDeepLinkUrl(details, 'https://app.example.com')
-    expect(url).toBe('https://app.example.com/expense/id%20with%20spaces%20%26%20special%3Dchars')
+    expect(url).toBe('https://app.example.com/records')
   })
 
   it('returns null when details is undefined', () => {
     expect(buildDeepLinkUrl(undefined, 'https://app.example.com')).toBeNull()
+  })
+})
+
+// --- Issue #217: reviewer feedback ---
+
+describe('buildDeepLinkUrl — reviewer feedback (Issue #217)', () => {
+  const base = 'https://app.example.com'
+
+  it('empty string entityId falls back to /records (not null)', () => {
+    // Aligns with getNotificationHref: expense_added/updated without entityId → /records
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date(),
+      description: 'x',
+      amount: 1,
+      isShared: false,
+      entityId: '',
+    }
+    expect(buildDeepLinkUrl(details, base)).toBe(`${base}/records`)
+  })
+
+  it('whitespace-only entityId falls back to /records', () => {
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date(),
+      description: 'x',
+      amount: 1,
+      isShared: false,
+      entityId: '   ',
+    }
+    expect(buildDeepLinkUrl(details, base)).toBe(`${base}/records`)
+  })
+
+  it('oversized entityId (70 chars) is rejected → falls back to /records', () => {
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date(),
+      description: 'x',
+      amount: 1,
+      isShared: false,
+      entityId: 'a'.repeat(70),
+    }
+    // isValidEntityId rejects ids longer than 64 chars
+    expect(buildDeepLinkUrl(details, base)).toBe(`${base}/records`)
+  })
+
+  it('entityId with slash (a/b) is rejected → falls back to /records', () => {
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date(),
+      description: 'x',
+      amount: 1,
+      isShared: false,
+      entityId: 'a/b',
+    }
+    expect(buildDeepLinkUrl(details, base)).toBe(`${base}/records`)
+  })
+})
+
+describe('buildEmailPayload footer labels — reviewer feedback (Issue #217)', () => {
+  it('settlement footer contains "前往結算" (not "查看此筆")', () => {
+    const details: EmailDetails = {
+      kind: 'settlement',
+      date: new Date('2026-04-15T00:00:00Z'),
+      fromName: '媽媽',
+      toName: '爸爸',
+      amount: 500,
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('前往結算：')
+    expect(p.text).not.toContain('查看此筆：')
+  })
+
+  it('expense with deleted:true footer contains "查看紀錄" (not "查看此筆")', () => {
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: '午餐',
+      amount: 150,
+      isShared: true,
+      entityId: 'abc123',
+      deleted: true,
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('查看紀錄：')
+    expect(p.text).not.toContain('查看此筆：')
+  })
+
+  it('expense without entityId footer deep link is /records (align with getNotificationHref)', () => {
+    const details: EmailDetails = {
+      kind: 'expense',
+      date: new Date('2026-04-19T00:00:00Z'),
+      description: '午餐',
+      amount: 150,
+      isShared: true,
+      // no entityId
+    }
+    const p = buildEmailPayload({ title: 't', body: 'b', details })
+    expect(p.text).toContain('/records')
+  })
+})
+
+describe('isValidEntityId (Issue #217)', () => {
+  it('accepts a normal Firestore auto-id (alphanumeric + hyphens)', () => {
+    expect(isValidEntityId('abc123-XYZ_456')).toBe(true)
+  })
+
+  it('rejects an empty string', () => {
+    expect(isValidEntityId('')).toBe(false)
+  })
+
+  it('rejects an id longer than 64 chars', () => {
+    expect(isValidEntityId('a'.repeat(65))).toBe(false)
+  })
+
+  it('accepts an id of exactly 64 chars', () => {
+    expect(isValidEntityId('a'.repeat(64))).toBe(true)
+  })
+
+  it('rejects an id containing a slash', () => {
+    expect(isValidEntityId('a/b')).toBe(false)
+  })
+
+  it('rejects an id containing a space', () => {
+    expect(isValidEntityId('a b')).toBe(false)
   })
 })

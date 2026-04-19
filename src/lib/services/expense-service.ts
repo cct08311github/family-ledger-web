@@ -206,6 +206,10 @@ export async function updateExpense(groupId: string, expenseId: string, input: P
           .filter((s) => s.isParticipant && s.shareAmount > 0)
           .map((s) => ({ name: s.memberName, share: s.shareAmount }))
       : prevSplits
+    // input.category ?? prevCategory: prefer the edited value; fall back to
+    // pre-update snapshot when the user didn't change category. Empty string
+    // (user cleared category) is kept as '' — buildExpenseSection will omit
+    // the 類別 row since '' is falsy.
     const notifyCategory = input.category ?? prevCategory
     await notifyMembersAboutExpense(groupId, {
       type: 'expense_updated',

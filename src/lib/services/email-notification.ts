@@ -56,9 +56,13 @@ export type EmailDetails =
       /** Firestore document id — used to build a deep link to the edit page. (Issue #215) */
       entityId?: string
       /**
-       * Set to true when the expense has been deleted.
-       * Deep link routes to /settings/activity-log instead of /expense/:id
-       * because the entity no longer exists. (Issue #215)
+       * Set when this notification is being sent for a DELETE event (the expense
+       * has just been deleted). Controls footer routing — deep link goes to
+       * /settings/activity-log (expense) so the user can still find the audit
+       * trail after the entity is gone.
+       *
+       * This is NOT a soft-delete state flag; it describes the notification event
+       * kind, not the current entity state. (Issue #215)
        */
       deleted?: boolean
     }
@@ -71,8 +75,12 @@ export type EmailDetails =
       /** Firestore document id — used to confirm the entity exists. (Issue #215) */
       entityId?: string
       /**
-       * Set to true when the settlement has been deleted.
-       * Deep link still routes to /split (the settlement history page). (Issue #215)
+       * Set when this notification is being sent for a DELETE event (the
+       * settlement has just been deleted). Deep link still routes to /split
+       * (the settlement history page).
+       *
+       * This is NOT a soft-delete state flag; it describes the notification event
+       * kind, not the current entity state. (Issue #215)
        */
       deleted?: boolean
     }
@@ -236,15 +244,33 @@ function buildDetailsSection(details: EmailDetails): string {
 const UNSUBSCRIBE_HINT = '若不想再收到此類郵件，請到 設定 → 🔔 Email 通知 關閉開關。'
 
 /**
+ * Validate that an entity id looks like a Firestore auto-id before embedding
+ * it in an email URL. Firestore auto-ids are [A-Za-z0-9_-]{1,64} in practice.
+ * Reject anything longer or with unusual chars to prevent oversized URLs in
+ * email bodies. A malicious writer would need Firestore write access anyway, so
+ * this is belt-and-suspenders only — defence in depth, not a primary control.
+ *
+ * Exported for direct test assertions.
+ */
+export function isValidEntityId(id: string): boolean {
+  return /^[A-Za-z0-9_-]{1,64}$/.test(id)
+}
+
+/**
  * Build the entity-specific deep link URL, or null when no meaningful link can
  * be derived. Exported for unit-testability. (Issue #215)
  *
- * Rules:
- * - expense (not deleted) + entityId → /expense/:entityId (edit page)
- * - expense (deleted)               → /settings/activity-log (entity is gone)
- * - settlement (any)                → /split
- * - settlement_batch                → /split
- * - otherwise                       → null
+ * Rules are deliberately aligned with `getNotificationHref` in
+ * `src/lib/notification-navigation.ts` so in-app clicks and email clicks land
+ * on the same page. Keep the two in sync when either changes.
+ *
+ * - expense (not deleted) + valid entityId → /expense/:entityId (edit page)
+ * - expense (not deleted), no entityId     → /records (list fallback, mirrors
+ *                                            getNotificationHref for expense_added/updated)
+ * - expense (deleted)                      → /settings/activity-log (entity gone)
+ * - settlement (any)                       → /split
+ * - settlement_batch                       → /split
+ * - otherwise                              → null
  */
 export function buildDeepLinkUrl(details: EmailDetails | undefined, baseUrl: string): string | null {
   if (!details) return null
@@ -252,12 +278,15 @@ export function buildDeepLinkUrl(details: EmailDetails | undefined, baseUrl: str
   const base = baseUrl.replace(/\/+$/, '')
 
   switch (details.kind) {
-    case 'expense':
+    case 'expense': {
       if (details.deleted) return `${base}/settings/activity-log`
-      if (details.entityId && details.entityId.trim()) {
-        return `${base}/expense/${encodeURIComponent(details.entityId)}`
-      }
-      return null
+      const id = details.entityId?.trim()
+      // Defensive: reject malformed ids before embedding in URL.
+      if (id && isValidEntityId(id)) return `${base}/expense/${encodeURIComponent(id)}`
+      // No entityId (or invalid): fall back to records list, matching
+      // getNotificationHref behaviour for expense_added / expense_updated.
+      return `${base}/records`
+    }
     case 'settlement':
       return `${base}/split`
     case 'settlement_batch':
@@ -266,19 +295,45 @@ export function buildDeepLinkUrl(details: EmailDetails | undefined, baseUrl: str
 }
 
 /**
+ * Pick the footer label for the deep link based on the notification kind.
+ *
+ * - expense (deleted)  → "查看紀錄" (routes to activity log)
+ * - expense (active)   → "查看此筆" (routes to edit page or records list)
+ * - settlement / batch → "前往結算" (routes to /split, a list page — "查看此筆"
+ *                         would be misleading because there is no entity detail page)
+ */
+function pickDeepLinkLabel(details: EmailDetails | undefined): string {
+  if (!details) return '查看此筆'
+  switch (details.kind) {
+    case 'expense':
+      return details.deleted ? '查看紀錄' : '查看此筆'
+    case 'settlement':
+    case 'settlement_batch':
+      return '前往結算'
+  }
+}
+
+/**
  * Build the plain-text email footer with optional deep link. (Issue #215)
  *
  * - When a deep link is available AND differs from the home URL, show both:
- *     查看此筆：{DEEP_LINK}
+ *     {label}：{DEEP_LINK}
  *     前往首頁：{APP_URL}
  * - Otherwise show a single generic "前往查看" line (backward-compat).
+ *
+ * The label is chosen by `pickDeepLinkLabel` so settlement links read
+ * "前往結算" instead of "查看此筆".
  */
 function buildEmailFooter(details: EmailDetails | undefined): string {
   const deepLink = buildDeepLinkUrl(details, APP_URL)
   const homeUrl = APP_URL.replace(/\/+$/, '')
 
-  if (deepLink && deepLink !== homeUrl && deepLink !== APP_URL) {
-    return `—\n查看此筆：${deepLink}\n前往首頁：${APP_URL}\n${UNSUBSCRIBE_HINT}`
+  // `buildDeepLinkUrl` uses `base = APP_URL.replace(/\/+$/, '')` so its output
+  // can never literally equal APP_URL (with trailing slash) unless both are
+  // effectively empty. Comparing against homeUrl is sufficient.
+  if (deepLink && deepLink !== homeUrl) {
+    const label = pickDeepLinkLabel(details)
+    return `—\n${label}：${deepLink}\n前往首頁：${APP_URL}\n${UNSUBSCRIBE_HINT}`
   }
   return `—\n前往查看：${APP_URL}\n${UNSUBSCRIBE_HINT}`
 }
