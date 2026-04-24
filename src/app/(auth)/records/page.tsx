@@ -14,7 +14,10 @@ import { useGroup } from '@/lib/hooks/use-group'
 import { useExpenses } from '@/lib/hooks/use-expenses'
 import { useMembers } from '@/lib/hooks/use-members'
 import { useCategories } from '@/lib/hooks/use-categories'
-import { deleteExpense, loadMoreExpenses } from '@/lib/services/expense-service'
+import { deleteExpense, updateExpense, loadMoreExpenses } from '@/lib/services/expense-service'
+import { recomputeSplitsForAmount } from '@/lib/scale-splits'
+import { InlineExpenseEditRow } from '@/components/inline-expense-edit-row'
+import { logger } from '@/lib/logger'
 import { currency, toDate, fmtDateFull, paymentLabel } from '@/lib/utils'
 import { useAuth, getActor } from '@/lib/auth'
 import { useGroupData } from '@/lib/group-data-context'
@@ -45,6 +48,36 @@ export default function RecordsPage() {
   const { user } = useAuth()
   const { addToast } = useToast()
   const searchParams = useSearchParams()
+
+  // Inline edit (Issue #230). Only one row editable at a time.
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const activeCategories = useMemo(
+    () => categories.filter((c) => c.isActive).map((c) => c.name),
+    [categories],
+  )
+
+  async function handleInlineSave(expense: Expense, next: { amount: number; category: string }) {
+    if (!group?.id) return
+    const newSplits = recomputeSplitsForAmount(expense, next.amount)
+    try {
+      await updateExpense(
+        group.id,
+        expense.id,
+        {
+          amount: next.amount,
+          category: next.category,
+          splits: newSplits,
+        },
+        getActor(user),
+      )
+      addToast('已更新金額／類別', 'success')
+      setEditingId(null)
+    } catch (e) {
+      logger.error('[Records] Inline save failed', e)
+      addToast('儲存失敗，請重試', 'error')
+      throw e // let InlineExpenseEditRow surface inline error too
+    }
+  }
 
   // Extra expenses loaded via pagination beyond the initial 200
   const [extraExpenses, setExtraExpenses] = useState<Expense[]>([])
@@ -516,7 +549,18 @@ export default function RecordsPage() {
                   <span className="text-xs text-[var(--muted-foreground)]">{currency(dayTotal)}</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {items.map((e) => (
+                  {items.map((e) => editingId === e.id ? (
+                    <InlineExpenseEditRow
+                      key={e.id}
+                      expenseId={e.id}
+                      initialAmount={e.amount}
+                      initialCategory={e.category}
+                      availableCategories={activeCategories}
+                      splitIsEqual={!e.isShared || e.splitMethod === 'equal'}
+                      onSave={(next) => handleInlineSave(e, next)}
+                      onCancel={() => setEditingId(null)}
+                    />
+                  ) : (
                     <div key={e.id} className="card p-4 space-y-2 group relative">
                       <div className="flex items-start gap-3">
                         <div
@@ -560,10 +604,18 @@ export default function RecordsPage() {
                         <div className="font-bold text-lg">{currency(e.amount)}</div>
                       </div>
                       <div className="absolute top-3 right-3 flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={() => setEditingId(e.id)}
+                          className="p-1.5 rounded-md hover:bg-[var(--muted)] text-[var(--muted-foreground)]"
+                          title="快速改金額／類別"
+                        >
+                          ⚡
+                        </button>
                         <Link
                           href={`/expense/${e.id}?groupId=${group?.id}`}
                           className="p-1.5 rounded-md hover:bg-[var(--muted)] text-[var(--muted-foreground)]"
-                          title="編輯"
+                          title="完整編輯"
                         >
                           ✏️
                         </Link>
