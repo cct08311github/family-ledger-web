@@ -547,8 +547,13 @@ export default function RecordsPage() {
 
       {/* Content */}
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin h-8 w-8 border-4 border-[var(--primary)] border-t-transparent rounded-full" />
+        <div className="space-y-3 py-4">
+          <div className="animate-pulse bg-[var(--muted)] rounded-md h-5 w-24" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="animate-pulse bg-[var(--muted)] rounded-md h-24" />
+            <div className="animate-pulse bg-[var(--muted)] rounded-md h-24" />
+            <div className="animate-pulse bg-[var(--muted)] rounded-md h-24" />
+          </div>
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12 space-y-3">

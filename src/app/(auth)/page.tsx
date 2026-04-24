@@ -143,8 +143,14 @@ export default function HomePage() {
 
   if (groupLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-[var(--primary)] border-t-transparent rounded-full" />
+      <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-4">
+        <div className="animate-pulse bg-[var(--muted)] rounded-md h-16" />
+        <div className="animate-pulse bg-[var(--muted)] rounded-md h-28" />
+        <div className="animate-pulse bg-[var(--muted)] rounded-md h-24" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="animate-pulse bg-[var(--muted)] rounded-md h-48" />
+          <div className="animate-pulse bg-[var(--muted)] rounded-md h-48" />
+        </div>
       </div>
     )
   }

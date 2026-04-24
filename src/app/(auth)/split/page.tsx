@@ -11,6 +11,7 @@ import { addSettlement, addSettlements, deleteSettlement } from '@/lib/services/
 import { findLastSettlementBetween, formatSettlementAge } from '@/lib/settlement-history'
 import { useToast } from '@/components/toast'
 import { currency, signedCurrency, toDate, fmtDateFull } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth, getActor } from '@/lib/auth'
 import { useCurrentMember } from '@/lib/hooks/use-current-member'
 
@@ -274,8 +275,12 @@ export default function SplitPage() {
 
   if (groupLoading || expLoading || membersLoading || settlementsLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-[var(--primary)] border-t-transparent rounded-full" />
+      <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-3">
+        <Skeleton className="h-12" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-16" />
+        <Skeleton className="h-16" />
+        <Skeleton className="h-16" />
       </div>
     )
   }

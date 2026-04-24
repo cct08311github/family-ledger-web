@@ -11,8 +11,11 @@ export default function ActivityLogPage() {
 
   if (groupLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-[var(--primary)] border-t-transparent rounded-full" />
+      <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-3">
+        <div className="animate-pulse bg-[var(--muted)] rounded-md h-8 w-32" />
+        <div className="animate-pulse bg-[var(--muted)] rounded-md h-16" />
+        <div className="animate-pulse bg-[var(--muted)] rounded-md h-16" />
+        <div className="animate-pulse bg-[var(--muted)] rounded-md h-16" />
       </div>
     )
   }
