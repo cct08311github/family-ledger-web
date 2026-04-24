@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -78,7 +79,14 @@ function TrendChart({ expenses }: { expenses: Expense[] }) {
   )
 }
 
-function CategoryPieChart({ expenses }: { expenses: Expense[] }) {
+function CategoryPieChart({
+  expenses,
+  selectedMonth,
+}: {
+  expenses: Expense[]
+  selectedMonth: { year: number; month: number }
+}) {
+  const router = useRouter()
   const data = useMemo(() => {
     const map: Record<string, number> = {}
     for (const e of expenses) {
@@ -90,12 +98,35 @@ function CategoryPieChart({ expenses }: { expenses: Expense[] }) {
       .slice(0, 10)
   }, [expenses])
 
+  // Month range for drill-down URL (Issue #260)
+  const monthRange = useMemo(() => {
+    const start = new Date(selectedMonth.year, selectedMonth.month, 1)
+    const end = new Date(selectedMonth.year, selectedMonth.month + 1, 0)
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    return { start: fmt(start), end: fmt(end) }
+  }, [selectedMonth])
+
   if (data.length === 0) return <EmptyState message="本月尚無支出資料" />
 
   return (
     <ResponsiveContainer width="100%" height={260}>
       <PieChart>
-        <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="45%" outerRadius={90}
+        <Pie
+          data={data}
+          dataKey="value"
+          nameKey="name"
+          cx="50%"
+          cy="45%"
+          outerRadius={90}
+          style={{ cursor: 'pointer' }}
+          onClick={(entry: unknown) => {
+            const name = (entry as { name?: string } | undefined)?.name
+            if (!name) return
+            router.push(
+              `/records?category=${encodeURIComponent(name)}&start=${monthRange.start}&end=${monthRange.end}`,
+            )
+          }}
           label={(props: PieLabelRenderProps) =>
             (props.percent ?? 0) > 0.04 ? `${props.name ?? ''} ${((props.percent ?? 0) * 100).toFixed(0)}%` : ''}>
           {data.map((_, i) => (
@@ -272,7 +303,10 @@ export default function StatisticsCharts({
             </h2>
           </div>
           <div className="p-5">
-            <CategoryPieChart expenses={monthExpenses} />
+            <CategoryPieChart expenses={monthExpenses} selectedMonth={selectedMonth} />
+          </div>
+          <div className="px-5 pb-3 text-xs text-[var(--muted-foreground)] text-center italic">
+            💡 點擊扇區查看該類別明細
           </div>
         </div>
 
