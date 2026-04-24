@@ -20,6 +20,8 @@ import { useAuth, getActor } from '@/lib/auth'
 import { toDate } from '@/lib/utils'
 import { saveButtonLabel, type UploadProgress } from '@/lib/save-button-label'
 import { findPossibleDuplicate } from '@/lib/duplicate-expense-detector'
+import { evaluateAmountExpression } from '@/lib/amount-expression'
+import { AmountChips } from '@/components/amount-chips'
 import { useSubmitGuard } from '@/lib/hooks/use-submit-guard'
 import { ref as storageRef, getDownloadURL } from 'firebase/storage'
 import { storage } from '@/lib/firebase'
@@ -446,11 +448,14 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
       setError('請填寫必要欄位')
       return
     }
-    const saveAmt = parseFloat(amount)
-    if (!saveAmt || saveAmt <= 0) {
-      setError('金額必須大於 0')
+    const parsedAmount = evaluateAmountExpression(amount)
+    if (!parsedAmount.ok || parsedAmount.value <= 0) {
+      setError('金額無效或必須大於 0')
       return
     }
+    const saveAmt = parsedAmount.value
+    // Sync the field with the canonical number so the user sees what will be saved
+    if (String(saveAmt) !== amount.trim()) setAmount(String(saveAmt))
     const splits = isShared ? buildSplits() : []
     if (isShared && splitMethod !== 'equal') {
       const splitSum = splits.reduce((s, sp) => s + sp.shareAmount, 0)
@@ -647,15 +652,20 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         )}
       </div>
 
-      {/* 金額 */}
+      {/* 金額 — 支援 700+150 四則運算 (Issue #220) */}
       <div>
         <label className="text-sm font-medium mb-1 block">金額</label>
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted-foreground)]">NT$</span>
-          <input type="number" inputMode="decimal" min="1" step="1" value={amount} placeholder="0"
+          <input type="text" inputMode="decimal" value={amount} placeholder="0 或 700+150"
             onChange={(e) => setAmount(e.target.value)}
+            onBlur={() => {
+              const r = evaluateAmountExpression(amount)
+              if (r.ok) setAmount(String(r.value))
+            }}
             className="w-full h-11 rounded-lg border border-[var(--border)] bg-[var(--card)] pl-12 pr-3 text-sm" />
         </div>
+        <AmountChips value={amount} onChange={setAmount} className="mt-2" />
       </div>
 
       {/* Possible-duplicate warning (Issue #211). Shown only when description +
