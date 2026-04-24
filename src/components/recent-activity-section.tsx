@@ -8,6 +8,11 @@ import { getActivityIcon, formatRelativeTime } from '@/lib/activity-format'
 
 const RECENT_LIMIT = 6
 
+interface RecentActivitySectionProps {
+  /** Skip card wrapper + header when embedded (e.g. inside RecentTimelineTabs). */
+  noCard?: boolean
+}
+
 /**
  * Home-page feed of the group's most recent activity log entries.
  * Complements "最近記錄" (personal expense stream) with the group-level
@@ -15,7 +20,7 @@ const RECENT_LIMIT = 6
  * own actions never appear in their own notifications page — actions all
  * appear here regardless of actor. Issue #201.
  */
-export function RecentActivitySection() {
+export function RecentActivitySection({ noCard }: RecentActivitySectionProps = {}) {
   const { group } = useGroup()
   const { logs, loading } = useActivityLog(group?.id, RECENT_LIMIT)
   // `now` is held in state so relative labels re-render each minute without
@@ -28,17 +33,19 @@ export function RecentActivitySection() {
 
   if (!group) return null
 
-  return (
-    <div className="card p-5 md:p-6 space-y-3 animate-fade-up stagger-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 font-semibold">📣 家庭動態</div>
-        <Link
-          href="/settings/activity-log"
-          className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-        >
-          查看全部 →
-        </Link>
-      </div>
+  const body = (
+    <>
+      {!noCard && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 font-semibold">📣 家庭動態</div>
+          <Link
+            href="/settings/activity-log"
+            className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+          >
+            查看全部 →
+          </Link>
+        </div>
+      )}
 
       {loading ? (
         <div className="text-center py-6 text-sm text-[var(--muted-foreground)]">
@@ -72,6 +79,10 @@ export function RecentActivitySection() {
           ))}
         </div>
       )}
-    </div>
+    </>
+  )
+
+  return noCard ? <div className="space-y-3">{body}</div> : (
+    <div className="card p-5 md:p-6 space-y-3 animate-fade-up stagger-3">{body}</div>
   )
 }

@@ -9,11 +9,13 @@ import { useMembers } from '@/lib/hooks/use-members'
 import { simplifyDebts } from '@/lib/services/split-calculator'
 import { TodaySummary } from '@/components/today-summary'
 import { joinGroupByInviteCode } from '@/lib/services/group-service'
-import { currency, toDate, fmtDate } from '@/lib/utils'
+import { currency } from '@/lib/utils'
 import { QuickAddBar } from '@/components/quick-add-bar'
 import { WeeklyDigest } from '@/components/weekly-digest'
 import { BudgetProgress } from '@/components/budget-progress'
 import { RecentActivitySection } from '@/components/recent-activity-section'
+import { SimpleTabs } from '@/components/simple-tabs'
+import { RecentExpensesList } from '@/components/recent-expenses-list'
 import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
 import { logger } from '@/lib/logger'
 import { useToast } from '@/components/toast'
@@ -84,6 +86,12 @@ export default function HomePage() {
   const recent = useRecentExpenses(expenses, 5)
   const nameMap = useMemo(() => Object.fromEntries(members.map((m) => [m.id, m.name])), [members])
   const debts = useMemo(() => simplifyDebts(expenses, settlements, nameMap), [expenses, settlements, nameMap])
+
+  // Home-page tabs (Issue #222). Two sections that each have two sub-views —
+  // kept inline rather than extracted to wrapper components to avoid extra
+  // state-prop plumbing; content selection is just a local conditional.
+  const [summaryTab, setSummaryTab] = useState<'today' | 'week'>('today')
+  const [timelineTab, setTimelineTab] = useState<'expenses' | 'activity'>('expenses')
 
   // Pending confirmation: auto-generated recurring expenses
   const pendingExpenses = useMemo(() => expenses.filter((e) => e.pendingConfirm), [expenses])
@@ -178,11 +186,22 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* 每週回顧（可關閉） */}
-      <WeeklyDigest expenses={expenses} />
-
-      {/* 今日/本週摘要 */}
-      <TodaySummary expenses={expenses} loading={dataLoading} />
+      {/* 今日/本週摘要 — tabs (Issue #222) */}
+      <div className="card p-5 md:p-6 space-y-3 animate-fade-up">
+        <SimpleTabs
+          tabs={[
+            { key: 'today', label: '☀️ 今日 / 本週' },
+            { key: 'week', label: '📅 上週回顧' },
+          ] as const}
+          active={summaryTab}
+          onChange={setSummaryTab}
+        />
+        {summaryTab === 'today' ? (
+          <TodaySummary expenses={expenses} loading={dataLoading} noCard />
+        ) : (
+          <WeeklyDigest expenses={expenses} noCard />
+        )}
+      </div>
 
       {/* 月度預算進度 */}
       <BudgetProgress group={group} expenses={expenses} />
@@ -224,14 +243,11 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* 誰欠誰 — 左欄 */}
+        {/* 誰欠誰 — 左欄；空狀態折疊為單行避免浪費垂直空間 (Issue #222) */}
         <div className="card p-5 md:p-6 space-y-3 animate-fade-up stagger-2">
           <div className="flex items-center gap-2 font-semibold">💰 誰欠誰</div>
           {debts.length === 0 ? (
-            <div className="text-center py-6">
-              <div className="text-3xl mb-2">🎉</div>
-              <p className="text-[var(--muted-foreground)]">目前沒有未結清的債務</p>
-            </div>
+            <p className="text-sm text-[var(--muted-foreground)]">🎉 目前沒有未結清的債務</p>
           ) : (
             <div className="space-y-2.5">
               {debts.map((d, i) => (
@@ -250,44 +266,21 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* 右欄：最近記錄 + 家庭動態並排 */}
-        <div className="space-y-4 md:space-y-6">
+        {/* 右欄：時間軸 tab（記錄 / 動態）(Issue #222) */}
         <div className="card p-5 md:p-6 space-y-3 animate-fade-up stagger-3">
-          <div className="flex items-center gap-2 font-semibold">📝 最近記錄</div>
-          {recent.length === 0 ? (
-            <div className="text-center py-6">
-              <div className="text-3xl mb-2">📭</div>
-              <p className="text-[var(--muted-foreground)]">還沒有任何記錄，點左下「記帳」開始！</p>
-            </div>
+          <SimpleTabs
+            tabs={[
+              { key: 'expenses', label: '📝 最近記錄' },
+              { key: 'activity', label: '📣 家庭動態' },
+            ] as const}
+            active={timelineTab}
+            onChange={setTimelineTab}
+          />
+          {timelineTab === 'expenses' ? (
+            <RecentExpensesList expenses={recent} />
           ) : (
-            <div className="space-y-1">
-              {recent.map((e) => (
-                <div key={e.id} className="group flex items-center gap-3 py-2 rounded-lg hover:bg-[var(--muted)] px-2 -mx-2 transition-colors">
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0" style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 85%)' }}>
-                    {e.isShared ? '👥' : '👤'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">{e.description}</div>
-                    <div className="text-xs text-[var(--muted-foreground)]">
-                      {fmtDate(toDate(e.date))} · {e.category} · {e.payerName}付
-                    </div>
-                  </div>
-                  <div className="font-semibold text-sm">{currency(e.amount)}</div>
-                  <button
-                    onClick={() => router.push(`/expense/new?duplicate=${e.id}`)}
-                    title="複製此筆"
-                    className="md:opacity-0 md:group-hover:opacity-100 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-opacity text-xs flex-shrink-0"
-                  >
-                    📋
-                  </button>
-                </div>
-              ))}
-            </div>
+            <RecentActivitySection noCard />
           )}
-        </div>
-
-        {/* 家庭動態 — 右欄最近記錄之下 */}
-        <RecentActivitySection />
         </div>
 
       </div>

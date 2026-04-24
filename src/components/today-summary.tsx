@@ -8,9 +8,11 @@ import type { Expense } from '@/lib/types'
 interface TodaySummaryProps {
   expenses: Expense[]
   loading?: boolean
+  /** Skip the outer card wrapper when embedded inside another card (e.g. SummaryTabs). */
+  noCard?: boolean
 }
 
-export function TodaySummary({ expenses, loading }: TodaySummaryProps) {
+export function TodaySummary({ expenses, loading, noCard }: TodaySummaryProps) {
   const todayExpenses = useMemo(() => getTodayExpenses(expenses), [expenses])
   const thisWeek = useMemo(() => getWeekExpenses(expenses, 0), [expenses])
   const lastWeekSameRange = useMemo(() => getWeekExpenses(expenses, -1), [expenses])
@@ -54,16 +56,17 @@ export function TodaySummary({ expenses, loading }: TodaySummaryProps) {
   const weekDiff = lastWeekTotal > 0 ? Math.round(((weekTotal - lastWeekTotal) / lastWeekTotal) * 100) : null
 
   if (loading) {
-    return (
-      <div className="card p-5 animate-pulse">
+    const loadingSkeleton = (
+      <div className="animate-pulse">
         <div className="h-4 bg-[var(--muted)] rounded w-24 mb-3" />
         <div className="h-8 bg-[var(--muted)] rounded w-32" />
       </div>
     )
+    return noCard ? loadingSkeleton : <div className="card p-5">{loadingSkeleton}</div>
   }
 
-  return (
-    <div className="card p-5 md:p-6 space-y-3 animate-fade-up">
+  const content = (
+    <div className="space-y-3">
       <div className="grid grid-cols-3 gap-4">
         {/* 今日支出 */}
         <div className="text-center">
@@ -113,5 +116,9 @@ export function TodaySummary({ expenses, loading }: TodaySummaryProps) {
         </div>
       )}
     </div>
+  )
+
+  return noCard ? content : (
+    <div className="card p-5 md:p-6 animate-fade-up">{content}</div>
   )
 }
