@@ -17,7 +17,25 @@ import { buildDraftKey, parseDraft, serializeDraft } from '@/lib/quick-add-draft
 import { buildDuplicateHref } from '@/lib/quick-add-duplicate'
 import { evaluateAmountExpression } from '@/lib/amount-expression'
 import { AmountChips } from '@/components/amount-chips'
+import { useSpeechRecognition, type SpeechErrorCode } from '@/hooks/use-speech-recognition'
 import { logger } from '@/lib/logger'
+
+function speechErrorMessage(code: SpeechErrorCode): string {
+  switch (code) {
+    case 'permission_denied':
+      return '麥克風權限被拒，請到瀏覽器設定允許'
+    case 'no_speech':
+      return '沒聽到任何語音，請再試一次'
+    case 'network':
+      return '語音辨識網路錯誤'
+    case 'aborted':
+      return '' // user cancelled, no toast
+    case 'not_supported':
+      return '此瀏覽器不支援語音辨識'
+    default:
+      return '語音辨識失敗，請改用打字'
+  }
+}
 
 export function QuickAddBar() {
   const { group } = useGroup()
@@ -37,6 +55,28 @@ export function QuickAddBar() {
   const [category, setCategory] = useState('')
   const [autoFilled, setAutoFilled] = useState(false)
   const { inFlight: saving, run: runSubmit } = useSubmitGuard()
+
+  // Voice input (Issue #229). Feature-detected; button hidden on Firefox etc.
+  const speech = useSpeechRecognition('zh-TW')
+  useEffect(() => {
+    if (!speech.transcript) return
+    try {
+      const parsed = parseExpense(speech.transcript)
+      setDescription(parsed.description || speech.transcript)
+      if (parsed.amount > 0) setAmount(String(parsed.amount))
+      if (parsed.category && parsed.category !== '其他') setCategory(parsed.category)
+      setExpanded(true)
+      speech.reset()
+    } catch (e) {
+      logger.error('[QuickAdd] voice parse failed', e)
+    }
+  }, [speech.transcript, speech])
+  useEffect(() => {
+    if (!speech.error) return
+    const msg = speechErrorMessage(speech.error)
+    if (msg) addToast(msg, 'warning')
+    speech.reset()
+  }, [speech.error, speech, addToast])
 
   const activeCategories = useMemo(
     () => categories.filter((c) => c.isActive).map((c) => c.name).slice(0, 6),
@@ -237,6 +277,22 @@ export function QuickAddBar() {
             <span>快速記帳...</span>
           </span>
         </button>
+        {speech.supported && (
+          <button
+            type="button"
+            onClick={() => (speech.listening ? speech.stop() : speech.start())}
+            aria-label={speech.listening ? '停止錄音' : '語音記帳'}
+            title={speech.listening ? '聽取中… 點擊停止' : '語音記帳'}
+            aria-pressed={speech.listening}
+            className={`card px-4 flex items-center justify-center text-lg transition-colors whitespace-nowrap ${
+              speech.listening
+                ? 'bg-[var(--primary)] text-white border-[var(--primary)] animate-pulse'
+                : 'text-[var(--muted-foreground)] hover:border-[var(--primary)] hover:text-[var(--foreground)]'
+            }`}
+          >
+            🎤
+          </button>
+        )}
         {duplicateHref ? (
           <Link
             href={duplicateHref}
