@@ -15,6 +15,7 @@ import {
 } from '@/lib/services/recurring-expense-service'
 import { buildEqualSplits } from '@/lib/services/split-calculator'
 import { currency } from '@/lib/utils'
+import { nextOccurrenceAfter, relativeDaysLabel, formatShortDate } from '@/lib/recurring-next'
 import type { RecurringExpense, RecurringFrequency } from '@/lib/types'
 import { logger } from '@/lib/logger'
 import { useToast } from '@/components/toast'
@@ -258,6 +259,49 @@ export default function RecurringPage() {
                   付款人：{item.payerName}
                 </span>
               </div>
+
+              {/* Next / last generation (Issue #250) */}
+              {(() => {
+                if (item.isPaused) {
+                  return (
+                    <div className="text-xs text-[var(--muted-foreground)] italic">
+                      📅 已暫停，不會自動生成
+                    </div>
+                  )
+                }
+                const now = new Date()
+                const next = nextOccurrenceAfter(item, now)
+                const last = item.lastGeneratedAt
+                  ? (item.lastGeneratedAt instanceof Date
+                      ? item.lastGeneratedAt
+                      : 'toDate' in item.lastGeneratedAt
+                        ? (item.lastGeneratedAt as { toDate: () => Date }).toDate()
+                        : null)
+                  : null
+                return (
+                  <div className="text-xs text-[var(--muted-foreground)] space-y-0.5">
+                    {next && (
+                      <div>
+                        📅 下次：<span className="font-medium text-[var(--foreground)]">{formatShortDate(next)}</span>
+                        <span className="ml-1">（{relativeDaysLabel(next, now)}）</span>
+                      </div>
+                    )}
+                    {!next && (
+                      <div>📅 下次：<span className="italic">無（endDate 已過或設定）</span></div>
+                    )}
+                    <div>
+                      🕓 上次：{last ? (
+                        <>
+                          <span className="font-medium text-[var(--foreground)]">{formatShortDate(last)}</span>
+                          <span className="ml-1">（{relativeDaysLabel(last, now)}）</span>
+                        </>
+                      ) : (
+                        <span className="italic">尚未生成</span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* Actions */}
               <div className="flex items-center gap-2 pt-1">
