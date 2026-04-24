@@ -15,6 +15,8 @@ import { useToast } from '@/components/toast'
 import { useSubmitGuard } from '@/lib/hooks/use-submit-guard'
 import { buildDraftKey, parseDraft, serializeDraft } from '@/lib/quick-add-draft'
 import { buildDuplicateHref } from '@/lib/quick-add-duplicate'
+import { evaluateAmountExpression } from '@/lib/amount-expression'
+import { AmountChips } from '@/components/amount-chips'
 import { logger } from '@/lib/logger'
 
 export function QuickAddBar() {
@@ -139,11 +141,16 @@ export function QuickAddBar() {
 
   async function handleSave() {
     if (!group?.id || !user) return
-    const amt = parseFloat(amount)
-    if (!description.trim() || !Number.isFinite(amt) || amt <= 0) {
-      addToast('請輸入描述和金額', 'warning')
+    if (!description.trim()) {
+      addToast('請輸入描述', 'warning')
       return
     }
+    const parsed = evaluateAmountExpression(amount)
+    if (!parsed.ok || parsed.value <= 0) {
+      addToast('金額無效，請檢查輸入', 'warning')
+      return
+    }
+    const amt = parsed.value
     if (amt >= 100_000_000) {
       addToast('金額不能超過一億', 'warning')
       return
@@ -286,15 +293,21 @@ export function QuickAddBar() {
           className="flex-1 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
         />
         <input
-          type="number"
+          type="text"
           inputMode="decimal"
-          min="1"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
+          onBlur={() => {
+            const r = evaluateAmountExpression(amount)
+            if (r.ok) setAmount(String(r.value))
+          }}
           placeholder="金額"
-          className="w-24 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-sm text-right focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+          className="w-28 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-sm text-right focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
         />
       </div>
+
+      {/* 金額快捷 chips — 允許 700+150 直接輸入也支援 */}
+      <AmountChips value={amount} onChange={setAmount} />
 
       {/* 類別 chips */}
       <div className="flex flex-wrap items-center gap-1.5">
