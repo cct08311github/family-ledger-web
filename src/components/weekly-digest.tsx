@@ -17,9 +17,11 @@ const STORAGE_KEY = 'weekly-digest-dismissed'
 
 interface WeeklyDigestProps {
   expenses: Expense[]
+  /** Skip card wrapper + dismiss button when embedded (e.g. inside SummaryTabs). */
+  noCard?: boolean
 }
 
-export function WeeklyDigest({ expenses }: WeeklyDigestProps) {
+export function WeeklyDigest({ expenses, noCard }: WeeklyDigestProps) {
   const weekId = getISOWeekId()
   const [dismissed, setDismissed] = useState(() => {
     if (typeof window === 'undefined') return true
@@ -57,22 +59,36 @@ export function WeeklyDigest({ expenses }: WeeklyDigestProps) {
     setDismissed(true)
   }
 
-  // Don't show if dismissed, or if no data from last week
-  if (dismissed || lastWeek.length === 0) return null
+  // When embedded (noCard), the dismiss workflow no longer makes sense — the
+  // parent owns visibility via tabs. Skip the localStorage gate in that case.
+  if (!noCard && dismissed) return null
+  if (lastWeek.length === 0) {
+    if (noCard) {
+      return (
+        <div className="text-center py-6">
+          <div className="text-3xl mb-2 opacity-50">📭</div>
+          <p className="text-sm text-[var(--muted-foreground)]">上週還沒有記錄</p>
+        </div>
+      )
+    }
+    return null
+  }
 
   const diff = lastWeekTotal > 0 ? Math.round(((thisWeekTotal - lastWeekTotal) / lastWeekTotal) * 100) : null
 
-  return (
-    <div className="card p-5 space-y-3 animate-fade-up border-l-4 border-l-[var(--primary)]">
-      <div className="flex items-center justify-between">
-        <div className="font-semibold text-sm">📅 上週回顧</div>
-        <button
-          onClick={handleDismiss}
-          className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-        >
-          知道了
-        </button>
-      </div>
+  const content = (
+    <div className="space-y-3">
+      {!noCard && (
+        <div className="flex items-center justify-between">
+          <div className="font-semibold text-sm">📅 上週回顧</div>
+          <button
+            onClick={handleDismiss}
+            className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+          >
+            知道了
+          </button>
+        </div>
+      )}
 
       <div className="flex items-baseline gap-2">
         <div className="text-2xl font-black" style={{ color: 'var(--primary)' }}>
@@ -127,5 +143,9 @@ export function WeeklyDigest({ expenses }: WeeklyDigestProps) {
         </div>
       )}
     </div>
+  )
+
+  return noCard ? content : (
+    <div className="card p-5 animate-fade-up border-l-4 border-l-[var(--primary)]">{content}</div>
   )
 }
