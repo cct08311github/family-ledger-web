@@ -186,7 +186,10 @@ export default function RecordsPage() {
   // Issue #185.
   const isOnCurrentMonth = isCurrentMonth(dateStart, dateEnd)
   const customDateRange = !!(dateStart || dateEnd) && !isOnCurrentMonth
-  const hasAdvancedFilter = customDateRange || !!payerFilter || !!categoryFilter
+  // amountRange belongs in the "active filter" set — when selected, the
+  // filtered summary row should appear so users see the narrowed total.
+  // Was missing when #221 introduced amountRange (Issue #246).
+  const hasAdvancedFilter = customDateRange || !!payerFilter || !!categoryFilter || amountRange !== 'all'
 
   const filtered = useMemo(() => {
     return expenses.filter((e) => {
