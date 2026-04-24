@@ -23,6 +23,8 @@ import { findPossibleDuplicate } from '@/lib/duplicate-expense-detector'
 import { evaluateAmountExpression } from '@/lib/amount-expression'
 import { AmountChips } from '@/components/amount-chips'
 import { hapticFeedback } from '@/lib/haptic'
+import { findLastExpenseByCategory, relativeDays } from '@/lib/last-category-expense'
+import { currency as fmtCurrency } from '@/lib/utils'
 import { useSubmitGuard } from '@/lib/hooks/use-submit-guard'
 import { ref as storageRef, getDownloadURL } from 'firebase/storage'
 import { storage } from '@/lib/firebase'
@@ -749,6 +751,20 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
               : group.children.map((c) => <option key={c} value={c}>{c}</option>)
           })}
         </select>
+        {(() => {
+          // Hint: "上次此類別金額" (Issue #252). Only show when there's a
+          // distinct previous record — exclude the expense currently being
+          // edited so it doesn't cite itself.
+          if (!category) return null
+          const match = findLastExpenseByCategory(expenses, category, existingExpense?.id)
+          if (!match) return null
+          return (
+            <p className="text-xs text-[var(--muted-foreground)] mt-1.5">
+              💡 上次「{category}」：<span className="font-medium text-[var(--foreground)]">{fmtCurrency(match.expense.amount)}</span>
+              <span className="ml-1">（{relativeDays(match.date, new Date())}）</span>
+            </p>
+          )
+        })()}
       </div>
 
       {/* 付款方式 */}
