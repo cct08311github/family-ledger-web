@@ -797,13 +797,29 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         </div>
       </div>
 
-      {/* 付款人 */}
+      {/* 付款人 — chips (Issue #258) */}
       <div>
         <label className="text-sm font-medium mb-1 block">付款人</label>
-        <select value={payerId} onChange={(e) => setPayerId(e.target.value)}
-          className="w-full h-11 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm">
-          {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-        </select>
+        <div className="flex flex-wrap gap-2">
+          {members.map((m) => {
+            const selected = payerId === m.id
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setPayerId(m.id)}
+                aria-pressed={selected}
+                className={`px-3 h-9 rounded-lg text-sm font-medium border transition ${
+                  selected
+                    ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]'
+                    : 'border-[var(--border)] hover:bg-[var(--muted)]'
+                }`}
+              >
+                {m.name}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* 分帳設定 */}
