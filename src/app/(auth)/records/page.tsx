@@ -1,8 +1,15 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import {
+  parseAmountRangeParam,
+  matchesAmountRange,
+  type AmountRangeKey,
+} from '@/lib/amount-range-filter'
+import { AmountRangeChips } from '@/components/amount-range-chips'
+import { useSwipe } from '@/hooks/use-swipe'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useExpenses } from '@/lib/hooks/use-expenses'
 import { useMembers } from '@/lib/hooks/use-members'
@@ -76,6 +83,21 @@ export default function RecordsPage() {
   const [dateEnd, setDateEnd] = useState(() => searchParams.get('end') || currentMonthRange().end)
   const [payerFilter, setPayerFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState(() => searchParams.get('category') ?? '')
+  // Amount-range quick filter (Issue #221). Initial value from URL; sync back
+  // to URL on change so the chip selection persists across reloads and can be
+  // shared via link.
+  const [amountRange, setAmountRange] = useState<AmountRangeKey>(() =>
+    parseAmountRangeParam(searchParams.get('amount')),
+  )
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (amountRange === 'all') params.delete('amount')
+    else params.set('amount', amountRange)
+    const qs = params.toString()
+    const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname
+    window.history.replaceState(null, '', newUrl)
+  }, [amountRange])
 
   // Derived: which month does the current date filter represent?
   // - Exact-month range → show prev/next month navigation
@@ -146,9 +168,12 @@ export default function RecordsPage() {
       // Category filter (match by name since expense stores category name)
       if (categoryFilter && e.category !== categoryFilter) return false
 
+      // Amount range filter (Issue #221)
+      if (!matchesAmountRange(e.amount, amountRange)) return false
+
       return true
     })
-  }, [expenses, filter, searchQuery, dateStart, dateEnd, payerFilter, categoryFilter])
+  }, [expenses, filter, searchQuery, dateStart, dateEnd, payerFilter, categoryFilter, amountRange])
 
   const grouped = useMemo(() => {
     const map = new Map<string, Expense[]>()
@@ -174,6 +199,7 @@ export default function RecordsPage() {
     setDateEnd(curr.end)
     setPayerFilter('')
     setCategoryFilter('')
+    setAmountRange('all')
   }
 
   function handleExportCSV() {
@@ -227,8 +253,21 @@ export default function RecordsPage() {
     }
   }
 
+  // Swipe: left = next month, right = previous month. Only fires when the
+  // view is on an exact month (not a custom range). Touch-only so desktop
+  // mouse users aren't affected.
+  const swipeRef = useRef<HTMLDivElement | null>(null)
+  useSwipe(swipeRef, {
+    onSwipeLeft: () => {
+      if (monthNav.kind === 'month') jumpToMonth(1)
+    },
+    onSwipeRight: () => {
+      if (monthNav.kind === 'month') jumpToMonth(-1)
+    },
+  })
+
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto">
+    <div ref={swipeRef} className="p-4 md:p-8 max-w-5xl mx-auto">
       {/* Header row */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">所有記錄</h1>
@@ -309,6 +348,11 @@ export default function RecordsPage() {
           onDateRangeChange={(s, e) => { setDateStart(s); setDateEnd(e) }}
           onCategoryChange={setCategoryFilter}
         />
+      </div>
+
+      {/* Amount-range chips (Issue #221) */}
+      <div className="mb-3">
+        <AmountRangeChips value={amountRange} onChange={setAmountRange} />
       </div>
 
       {/* Search bar + advanced toggle */}
