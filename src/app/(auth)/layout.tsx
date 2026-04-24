@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { NavShell } from '@/components/nav-shell'
 import { ConnectionBanner } from '@/components/connection-banner'
+import { KeyboardShortcutsProvider } from '@/components/keyboard-shortcuts-provider'
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -30,7 +31,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <GroupProvider>
       <GroupDataProvider>
         <ConnectionBanner />
-        <NavShell>{children}</NavShell>
+        <KeyboardShortcutsProvider>
+          <NavShell>{children}</NavShell>
+        </KeyboardShortcutsProvider>
       </GroupDataProvider>
     </GroupProvider>
   )
