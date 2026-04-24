@@ -134,6 +134,17 @@ export default function RecordsPage() {
     window.history.replaceState(null, '', newUrl)
   }, [amountRange])
 
+  // Category filter URL sync (Issue #244). Shareable deep link + browser back.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (!categoryFilter) params.delete('category')
+    else params.set('category', categoryFilter)
+    const qs = params.toString()
+    const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname
+    window.history.replaceState(null, '', newUrl)
+  }, [categoryFilter])
+
   // Derived: which month does the current date filter represent?
   // - Exact-month range → show prev/next month navigation
   // - Custom or all-time → show "自訂區間" and a "回本月" shortcut
@@ -598,14 +609,21 @@ export default function RecordsPage() {
                       <div className="flex items-start gap-3">
                         {(() => {
                           const color = categoryColor(e.category)
+                          const isSelected = categoryFilter === e.category
                           return (
-                            <div
-                              className="w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0"
+                            <button
+                              type="button"
+                              onClick={() => setCategoryFilter(isSelected ? '' : e.category)}
+                              aria-pressed={isSelected}
+                              aria-label={isSelected ? `清除類別篩選：${e.category}` : `篩選類別：${e.category}`}
+                              className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0 transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] ${
+                                isSelected ? 'ring-2 ring-[var(--primary)]' : ''
+                              }`}
                               style={{ backgroundColor: color.bg, color: color.fg }}
-                              title={e.category}
+                              title={isSelected ? `正在篩選：${e.category}（點擊清除）` : `點擊篩選類別：${e.category}`}
                             >
                               {e.isShared ? '👥' : '👤'}
-                            </div>
+                            </button>
                           )
                         })()}
                         <div className="flex-1 min-w-0">
