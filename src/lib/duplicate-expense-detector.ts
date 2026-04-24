@@ -10,6 +10,7 @@
  */
 
 export const DEFAULT_WINDOW_MINUTES = 5
+export const DEFAULT_SELF_WINDOW_MINUTES = 60
 // Descriptions of 1 character match too eagerly (e.g. "x") — require at
 // least MIN_DESCRIPTION_LENGTH chars of signal.
 const MIN_DESCRIPTION_LENGTH = 2
@@ -19,6 +20,13 @@ export interface DuplicateCandidate {
   amount: number
   /** When editing an existing expense, pass its id so it's not a self-match. */
   isEditingId?: string
+  /**
+   * Current user's uid. When provided AND a candidate's `createdBy` matches,
+   * the detector widens the time window from `windowMinutes` to
+   * `selfWindowMinutes` (Issue #227). If omitted, only "other" matches fire
+   * (prior behaviour).
+   */
+  selfUserId?: string
 }
 
 export interface RecentExpenseLike {
@@ -28,10 +36,16 @@ export interface RecentExpenseLike {
   payerName: string
   /** Firestore Timestamp or Date — coerceDate handles the duck type. */
   createdAt: unknown
+  /** Optional: the uid of the user who created the record. Used to widen the
+   * match window for self-duplicates (Issue #227). */
+  createdBy?: string
 }
 
 interface Options {
+  /** Time window (minutes) for matches against OTHER members' records. Default 5. */
   windowMinutes?: number
+  /** Time window (minutes) for matches against the current user's OWN records. Default 60. */
+  selfWindowMinutes?: number
 }
 
 function coerceDate(d: unknown): Date | null {
@@ -70,11 +84,12 @@ export function findPossibleDuplicate(
   now: number,
   opts: Options = {},
 ): RecentExpenseLike | null {
-  const { description, amount, isEditingId } = candidate
+  const { description, amount, isEditingId, selfUserId } = candidate
   if (!description || !description.trim()) return null
   if (!amount || amount <= 0) return null
 
-  const window = (opts.windowMinutes ?? DEFAULT_WINDOW_MINUTES) * 60_000
+  const otherWindow = (opts.windowMinutes ?? DEFAULT_WINDOW_MINUTES) * 60_000
+  const selfWindow = (opts.selfWindowMinutes ?? DEFAULT_SELF_WINDOW_MINUTES) * 60_000
 
   let best: { record: RecentExpenseLike; at: number } | null = null
   for (const r of recent) {
@@ -84,6 +99,8 @@ export function findPossibleDuplicate(
     const d = coerceDate(r.createdAt)
     if (!d) continue
     const at = d.getTime()
+    const isSelf = !!selfUserId && r.createdBy === selfUserId
+    const window = isSelf ? selfWindow : otherWindow
     if (now - at > window) continue
     if (!best || at > best.at) best = { record: r, at }
   }
