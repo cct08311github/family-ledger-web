@@ -10,6 +10,7 @@ import {
 } from '@/lib/amount-range-filter'
 import { AmountRangeChips } from '@/components/amount-range-chips'
 import { useSwipe } from '@/hooks/use-swipe'
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useExpenses } from '@/lib/hooks/use-expenses'
 import { useMembers } from '@/lib/hooks/use-members'
@@ -299,8 +300,34 @@ export default function RecordsPage() {
     },
   })
 
+  // Pull-to-refresh: reset pagination so the Firestore subscription re-emits
+  // the first page, and confirm with a toast (Issue #237). Firestore realtime
+  // listener reconnects automatically — no explicit refetch needed.
+  const pullState = usePullToRefresh(swipeRef, {
+    onRefresh: async () => {
+      setExtraExpenses([])
+      setHasMore(contextHasMore)
+      setLastDoc(contextLastDoc)
+      await new Promise((r) => setTimeout(r, 300))
+      addToast('已更新', 'success')
+    },
+  })
+
   return (
-    <div ref={swipeRef} className="p-4 md:p-8 max-w-5xl mx-auto">
+    <div ref={swipeRef} className="p-4 md:p-8 max-w-5xl mx-auto" style={{ transform: pullState.offset > 0 ? `translateY(${pullState.offset}px)` : undefined, transition: pullState.offset === 0 ? 'transform 200ms ease-out' : undefined }}>
+      {(pullState.offset > 0 || pullState.refreshing) && (
+        <div
+          className="flex items-center justify-center text-xs text-[var(--muted-foreground)] -mt-2 mb-2"
+          style={{ height: Math.min(pullState.offset, 64) }}
+          aria-live="polite"
+        >
+          {pullState.refreshing
+            ? '🔄 重新整理中…'
+            : pullState.armed
+              ? '放開以重新整理'
+              : '⬇ 下拉可重新整理'}
+        </div>
+      )}
       {/* Header row */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">所有記錄</h1>
