@@ -18,6 +18,7 @@ import { buildDuplicateHref } from '@/lib/quick-add-duplicate'
 import { evaluateAmountExpression } from '@/lib/amount-expression'
 import { AmountChips } from '@/components/amount-chips'
 import { useSpeechRecognition, type SpeechErrorCode } from '@/hooks/use-speech-recognition'
+import { hapticFeedback } from '@/lib/haptic'
 import { logger } from '@/lib/logger'
 
 function speechErrorMessage(code: SpeechErrorCode): string {
@@ -250,6 +251,7 @@ export function QuickAddBar() {
           }
         })
         addToast(`已記錄 ${description.trim()} $${amt}`, 'success')
+        hapticFeedback('success')
         clearDraft()
         setDescription('')
         setAmount('')
@@ -259,6 +261,7 @@ export function QuickAddBar() {
       } catch (e) {
         logger.error('[QuickAdd] Failed:', e)
         addToast('記帳失敗，請重試', 'error')
+        hapticFeedback('error')
       }
     })
   }
