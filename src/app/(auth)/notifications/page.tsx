@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useNotifications } from '@/lib/hooks/use-notifications'
@@ -9,6 +9,7 @@ import { markAllNotificationsRead, markNotificationRead } from '@/lib/services/n
 import { toDate, fmtDateFull } from '@/lib/utils'
 import { useToast } from '@/components/toast'
 import { getNotificationHref } from '@/lib/notification-navigation'
+import { formatRelativeTime } from '@/lib/activity-format'
 
 import { logger } from '@/lib/logger'
 
@@ -41,6 +42,13 @@ export default function NotificationsPage() {
   const { addToast } = useToast()
   // Unread-only toggle (Issue #254). Not URL-persisted — transient filter.
   const [unreadOnly, setUnreadOnly] = useState(false)
+  // Relative-time ticker (Issue #256) — update label every minute so "剛剛"
+  // turns into "1 分鐘前" without refreshing the page.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(t)
+  }, [])
   const visibleNotifications = unreadOnly
     ? notifications.filter((n) => !n.isRead)
     : notifications
@@ -137,8 +145,11 @@ export default function NotificationsPage() {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium">{notif.title}</div>
                   <div className="text-xs text-[var(--muted-foreground)] mt-0.5">{notif.body}</div>
-                  <div className="text-xs text-[var(--muted-foreground)] mt-1">
-                    {fmtDateFull(toDate(notif.createdAt))}
+                  <div
+                    className="text-xs text-[var(--muted-foreground)] mt-1"
+                    title={fmtDateFull(toDate(notif.createdAt))}
+                  >
+                    {formatRelativeTime(notif.createdAt, now)}
                   </div>
                 </div>
                 {!notif.isRead && (
