@@ -12,6 +12,7 @@ import { findLastSettlementBetween, formatSettlementAge } from '@/lib/settlement
 import { useToast } from '@/components/toast'
 import { currency, signedCurrency, toDate, fmtDateFull } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
+import { hapticFeedback } from '@/lib/haptic'
 import { useAuth, getActor } from '@/lib/auth'
 import { useCurrentMember } from '@/lib/hooks/use-current-member'
 
@@ -158,9 +159,11 @@ export default function SplitPage() {
         amount: d.amount,
       })), actor)
       addToast(`已結清 ${debts.length} 筆債務`, 'success')
+      hapticFeedback('success')
     } catch (e) {
       logger.error('[SplitPage] Failed to settle all:', e)
       addToast('批次結清失敗', 'error')
+      hapticFeedback('error')
     } finally {
       setSettlingAll(false)
     }
@@ -226,6 +229,7 @@ export default function SplitPage() {
     }, getActor(user))
     setSettling(null)
     addToast('已記錄轉帳', 'success')
+    hapticFeedback('success')
   }
 
   function buildShareText() {

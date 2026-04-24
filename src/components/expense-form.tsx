@@ -22,6 +22,7 @@ import { saveButtonLabel, type UploadProgress } from '@/lib/save-button-label'
 import { findPossibleDuplicate } from '@/lib/duplicate-expense-detector'
 import { evaluateAmountExpression } from '@/lib/amount-expression'
 import { AmountChips } from '@/components/amount-chips'
+import { hapticFeedback } from '@/lib/haptic'
 import { useSubmitGuard } from '@/lib/hooks/use-submit-guard'
 import { ref as storageRef, getDownloadURL } from 'firebase/storage'
 import { storage } from '@/lib/firebase'
@@ -576,10 +577,12 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         if (draftKey && typeof window !== 'undefined') {
           sessionStorage.removeItem(draftKey)
         }
+        hapticFeedback('success')
         onSaved()
       } catch (e: unknown) {
         if (e instanceof ReceiptUploadError) setError(`圖片上傳失敗：${e.message}`)
         else setError(e instanceof Error ? e.message : '儲存失敗')
+        hapticFeedback('error')
       } finally {
         setUploadProgress({ current: 0, total: 0 })
       }
