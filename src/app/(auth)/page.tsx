@@ -17,6 +17,7 @@ import { RecentActivitySection } from '@/components/recent-activity-section'
 import { SimpleTabs } from '@/components/simple-tabs'
 import { RecentExpensesList } from '@/components/recent-expenses-list'
 import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
+import { maybeSendBudgetAlert } from '@/lib/services/budget-alert-service'
 import { logger } from '@/lib/logger'
 import { useToast } from '@/components/toast'
 import {
@@ -140,6 +141,19 @@ export default function HomePage() {
   const monthLabel = `${now.getFullYear()}年 ${now.getMonth() + 1}月`
   const total = useMemo(() => monthly.reduce((s, e) => s + e.amount, 0), [monthly])
   const sharedTotal = useMemo(() => monthly.filter((e) => e.isShared).reduce((s, e) => s + e.amount, 0), [monthly])
+
+  // Budget-alert check (Issue #236). Fires fire-and-forget whenever the
+  // monthly total changes; transaction handles dedup across tabs.
+  useEffect(() => {
+    if (!group?.id || !group.monthlyBudget || total <= 0) return
+    const d = new Date()
+    maybeSendBudgetAlert({
+      groupId: group.id,
+      currentTotal: total,
+      year: d.getFullYear(),
+      month: d.getMonth() + 1,
+    })
+  }, [group?.id, group?.monthlyBudget, total])
 
   if (groupLoading) {
     return (
