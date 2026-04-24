@@ -6,6 +6,7 @@ import { useGroup } from '@/lib/hooks/use-group'
 import { useMembers } from '@/lib/hooks/use-members'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { useCurrentMember } from '@/lib/hooks/use-current-member'
+import { useExpenses, useRecentExpenses } from '@/lib/hooks/use-expenses'
 import { useAuth } from '@/lib/auth'
 import { addExpense, type ExpenseInput } from '@/lib/services/expense-service'
 import { parseExpense } from '@/lib/services/local-expense-parser'
@@ -13,6 +14,7 @@ import { learnFromExpense, suggestCategory, isAuthError } from '@/lib/services/t
 import { useToast } from '@/components/toast'
 import { useSubmitGuard } from '@/lib/hooks/use-submit-guard'
 import { buildDraftKey, parseDraft, serializeDraft } from '@/lib/quick-add-draft'
+import { buildDuplicateHref } from '@/lib/quick-add-duplicate'
 import { logger } from '@/lib/logger'
 
 export function QuickAddBar() {
@@ -20,8 +22,12 @@ export function QuickAddBar() {
   const { members } = useMembers()
   const { categories } = useCategories()
   const { currentMemberId } = useCurrentMember(group?.id)
+  const { expenses } = useExpenses()
   const { user } = useAuth()
   const { addToast } = useToast()
+
+  const [lastExpense] = useRecentExpenses(expenses, 1)
+  const duplicateHref = buildDuplicateHref(lastExpense?.id)
 
   const [expanded, setExpanded] = useState(false)
   const [description, setDescription] = useState('')
@@ -214,15 +220,37 @@ export function QuickAddBar() {
 
   if (!expanded) {
     return (
-      <button
-        onClick={() => setExpanded(true)}
-        className="w-full card p-4 text-left text-[var(--muted-foreground)] hover:border-[var(--primary)] transition-colors cursor-text"
-      >
-        <span className="flex items-center gap-2">
-          <span>⚡</span>
-          <span>快速記帳...</span>
-        </span>
-      </button>
+      <div className="flex gap-2">
+        <button
+          onClick={() => setExpanded(true)}
+          className="flex-1 card p-4 text-left text-[var(--muted-foreground)] hover:border-[var(--primary)] transition-colors cursor-text"
+        >
+          <span className="flex items-center gap-2">
+            <span>⚡</span>
+            <span>快速記帳...</span>
+          </span>
+        </button>
+        {duplicateHref ? (
+          <Link
+            href={duplicateHref}
+            aria-label="複製最近一筆支出"
+            title="複製最近一筆支出"
+            className="card px-4 flex items-center justify-center text-sm text-[var(--muted-foreground)] hover:border-[var(--primary)] hover:text-[var(--foreground)] transition-colors whitespace-nowrap"
+          >
+            ↺ 同上筆
+          </Link>
+        ) : (
+          <button
+            type="button"
+            disabled
+            aria-label="尚無可複製的支出"
+            title="尚無可複製的支出"
+            className="card px-4 flex items-center justify-center text-sm text-[var(--muted-foreground)] opacity-40 cursor-not-allowed whitespace-nowrap"
+          >
+            ↺ 同上筆
+          </button>
+        )}
+      </div>
     )
   }
 
