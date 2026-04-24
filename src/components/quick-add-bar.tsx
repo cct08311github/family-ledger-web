@@ -17,6 +17,8 @@ import { buildDraftKey, parseDraft, serializeDraft } from '@/lib/quick-add-draft
 import { buildDuplicateHref } from '@/lib/quick-add-duplicate'
 import { evaluateAmountExpression } from '@/lib/amount-expression'
 import { AmountChips } from '@/components/amount-chips'
+import { findLastExpenseByCategory, relativeDays } from '@/lib/last-category-expense'
+import { currency } from '@/lib/utils'
 import { useSpeechRecognition, type SpeechErrorCode } from '@/hooks/use-speech-recognition'
 import { hapticFeedback } from '@/lib/haptic'
 import { logger } from '@/lib/logger'
@@ -367,6 +369,19 @@ export function QuickAddBar() {
 
       {/* 金額快捷 chips — 允許 700+150 直接輸入也支援 */}
       <AmountChips value={amount} onChange={setAmount} />
+
+      {/* 上次此類別金額提示 (Issue #252) */}
+      {(() => {
+        if (!category) return null
+        const match = findLastExpenseByCategory(expenses, category)
+        if (!match) return null
+        return (
+          <p className="text-xs text-[var(--muted-foreground)]">
+            💡 上次「{category}」：<span className="font-medium text-[var(--foreground)]">{currency(match.expense.amount)}</span>
+            <span className="ml-1">（{relativeDays(match.date, new Date())}）</span>
+          </p>
+        )
+      })()}
 
       {/* 類別 chips */}
       <div className="flex flex-wrap items-center gap-1.5">
