@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useNotifications } from '@/lib/hooks/use-notifications'
@@ -38,6 +39,11 @@ export default function NotificationsPage() {
   const { user } = useAuth()
   const { notifications, unreadCount } = useNotifications()
   const { addToast } = useToast()
+  // Unread-only toggle (Issue #254). Not URL-persisted — transient filter.
+  const [unreadOnly, setUnreadOnly] = useState(false)
+  const visibleNotifications = unreadOnly
+    ? notifications.filter((n) => !n.isRead)
+    : notifications
 
   async function handleMarkAllRead() {
     if (!group || !user) return
@@ -60,26 +66,54 @@ export default function NotificationsPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-4 md:space-y-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-xl font-bold">通知</h1>
-        {unreadCount > 0 && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={handleMarkAllRead}
-            className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition"
+            type="button"
+            onClick={() => setUnreadOnly((v) => !v)}
+            aria-pressed={unreadOnly}
+            className={`text-xs px-3 py-1 rounded-full transition ${
+              unreadOnly
+                ? 'bg-[var(--primary)] text-white'
+                : 'bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]'
+            }`}
           >
-            全部標為已讀
+            {unreadOnly ? '✓ 只看未讀' : '只看未讀'}
+            {unreadCount > 0 && (
+              <span className="ml-1 opacity-80">({unreadCount})</span>
+            )}
           </button>
-        )}
+          {unreadCount > 0 && (
+            <button
+              onClick={handleMarkAllRead}
+              className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition"
+            >
+              全部標為已讀
+            </button>
+          )}
+        </div>
       </div>
 
-      {notifications.length === 0 ? (
+      {visibleNotifications.length === 0 ? (
         <div className="text-center py-12 space-y-2">
           <div className="text-4xl opacity-30">🔔</div>
-          <p className="text-[var(--muted-foreground)]">沒有通知</p>
+          <p className="text-[var(--muted-foreground)]">
+            {unreadOnly && notifications.length > 0 ? '🎉 沒有未讀通知' : '沒有通知'}
+          </p>
+          {unreadOnly && notifications.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setUnreadOnly(false)}
+              className="text-xs text-[var(--primary)] hover:underline"
+            >
+              顯示全部通知
+            </button>
+          )}
         </div>
       ) : (
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
-          {notifications.map((notif) => {
+          {visibleNotifications.map((notif) => {
             const href = getNotificationHref(notif)
             // Fire-and-forget mark-read. Firestore SDK immediately commits to
             // the local write buffer (optimistic update), so navigation
