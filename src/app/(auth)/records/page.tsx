@@ -18,6 +18,7 @@ import { useCategories } from '@/lib/hooks/use-categories'
 import { deleteExpense, updateExpense, loadMoreExpenses } from '@/lib/services/expense-service'
 import { recomputeSplitsForAmount } from '@/lib/scale-splits'
 import { InlineExpenseEditRow } from '@/components/inline-expense-edit-row'
+import { categoryColor } from '@/lib/category-color'
 import { logger } from '@/lib/logger'
 import { currency, toDate, fmtDateFull, paymentLabel } from '@/lib/utils'
 import { useAuth, getActor } from '@/lib/auth'
@@ -595,12 +596,18 @@ export default function RecordsPage() {
                   ) : (
                     <div key={e.id} className="card p-4 space-y-2 group relative">
                       <div className="flex items-start gap-3">
-                        <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0"
-                          style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 85%)' }}
-                        >
-                          {e.isShared ? '👥' : '👤'}
-                        </div>
+                        {(() => {
+                          const color = categoryColor(e.category)
+                          return (
+                            <div
+                              className="w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0"
+                              style={{ backgroundColor: color.bg, color: color.fg }}
+                              title={e.category}
+                            >
+                              {e.isShared ? '👥' : '👤'}
+                            </div>
+                          )
+                        })()}
                         <div className="flex-1 min-w-0">
                           <div className="font-medium truncate">{e.description}</div>
                           <div className="text-xs text-[var(--muted-foreground)] mt-0.5">

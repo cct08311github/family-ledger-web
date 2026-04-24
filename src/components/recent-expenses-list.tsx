@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { currency, toDate, fmtDate } from '@/lib/utils'
+import { categoryColor } from '@/lib/category-color'
 import type { Expense } from '@/lib/types'
 
 interface RecentExpensesListProps {
@@ -27,14 +28,17 @@ export function RecentExpensesList({ expenses }: RecentExpensesListProps) {
 
   return (
     <div className="space-y-1">
-      {expenses.map((e) => (
+      {expenses.map((e) => {
+        const color = categoryColor(e.category)
+        return (
         <div
           key={e.id}
           className="group flex items-center gap-3 py-2 rounded-lg hover:bg-[var(--muted)] px-2 -mx-2 transition-colors"
         >
           <div
             className="w-9 h-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0"
-            style={{ backgroundColor: 'color-mix(in oklch, var(--primary), transparent 85%)' }}
+            style={{ backgroundColor: color.bg, color: color.fg }}
+            title={e.category}
           >
             {e.isShared ? '👥' : '👤'}
           </div>
@@ -54,7 +58,8 @@ export function RecentExpensesList({ expenses }: RecentExpensesListProps) {
             📋
           </button>
         </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
