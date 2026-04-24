@@ -380,6 +380,9 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         // Exclude both edit-target and duplicate-source so the banner doesn't
         // point at "this very record" in either flow.
         isEditingId: existingExpense?.id ?? duplicateFrom?.id,
+        // Enable self-duplicate detection (Issue #227). When the same user
+        // just recorded the same description+amount, warn — 60 min window.
+        selfUserId: user?.uid,
       },
       expenses.map((e) => ({
         id: e.id,
@@ -387,10 +390,11 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
         amount: e.amount,
         payerName: e.payerName,
         createdAt: e.createdAt,
+        createdBy: e.createdBy,
       })),
       nowTick,
     )
-  }, [description, amount, expenses, existingExpense?.id, duplicateFrom?.id, nowTick])
+  }, [description, amount, expenses, existingExpense?.id, duplicateFrom?.id, nowTick, user?.uid])
   // Key includes amount + trimmed description so a dismiss only sticks for
   // the exact (id, amount, desc) combo — editing description reveals a fresh
   // banner rather than silently staying dismissed.
@@ -685,9 +689,19 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
           <div className="flex-1 min-w-0">
             <div className="font-medium">似乎重複了？</div>
             <div className="text-[var(--muted-foreground)] mt-0.5">
-              <span className="font-medium text-[var(--foreground)]">{possibleDuplicate.payerName}</span> 剛剛記了
-              <span className="font-medium text-[var(--foreground)]"> 「{possibleDuplicate.description}」</span>
-              （NT$ {possibleDuplicate.amount.toLocaleString()}），確定要再記一筆？
+              {possibleDuplicate.createdBy && possibleDuplicate.createdBy === user?.uid ? (
+                <>
+                  你先前已記過
+                  <span className="font-medium text-[var(--foreground)]"> 「{possibleDuplicate.description}」</span>
+                  （NT$ {possibleDuplicate.amount.toLocaleString()}），確定要再記一筆？
+                </>
+              ) : (
+                <>
+                  <span className="font-medium text-[var(--foreground)]">{possibleDuplicate.payerName}</span> 剛剛記了
+                  <span className="font-medium text-[var(--foreground)]"> 「{possibleDuplicate.description}」</span>
+                  （NT$ {possibleDuplicate.amount.toLocaleString()}），確定要再記一筆？
+                </>
+              )}
             </div>
           </div>
           <button
