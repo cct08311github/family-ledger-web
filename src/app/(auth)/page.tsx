@@ -32,6 +32,7 @@ import { TodayInPastYears } from '@/components/today-in-past-years'
 import { SameMonthLastYear } from '@/components/same-month-last-year'
 import { NextMonthLockedIn } from '@/components/next-month-locked-in'
 import { BudgetOverrunAlert } from '@/components/budget-overrun-alert'
+import { WowAccelerationAlert } from '@/components/wow-acceleration-alert'
 import { useRecurringExpenses } from '@/lib/hooks/use-recurring-expenses'
 import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
 import { maybeSendBudgetAlert } from '@/lib/services/budget-alert-service'
@@ -201,6 +202,9 @@ export default function HomePage() {
 
       {/* 預算超支預警 (Issue #321) — 預估月底超預算時主動 banner */}
       <BudgetOverrunAlert expenses={expenses} group={group} />
+
+      {/* 週對週加速預警 (Issue #331) — 本週支出 >= 1.5× 上週 */}
+      <WowAccelerationAlert expenses={expenses} />
 
       {/* Catch-up 提醒 (Issue #288) — 超過 3 天沒記時溫和提示 */}
       <CatchupNudge expenses={expenses} />
