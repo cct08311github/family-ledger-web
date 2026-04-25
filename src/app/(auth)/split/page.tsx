@@ -206,6 +206,17 @@ export default function SplitPage() {
     return map
   }, [debts, settlements])
 
+  // Stale debts (≥30d unsettled) — used by banner to nudge user (Issue #266).
+  // Only flag debts that have a prior settlement aged out — completely-new
+  // pairs without history aren't "stale", they're just new.
+  const staleDebts = useMemo(() => {
+    return debts.filter((d) => {
+      const age = debtAges.get(`${d.from}-${d.to}`)
+      return age?.isStale === true
+    })
+  }, [debts, debtAges])
+  const [staleExpanded, setStaleExpanded] = useState(false)
+
   // 所有出現過的成員 ID（union of members and expense splits）
   const expenseMemberIds = Array.from(new Set(expenses.flatMap((e) => e.splits.map((s) => s.memberId))))
   const memberIds = members.length > 0
@@ -312,7 +323,68 @@ export default function SplitPage() {
         />
       )}
 
-      <div className="p-4 md:p-8 max-w-5xl mx-auto">
+      <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-4">
+        {/* 老化債務提醒 banner (Issue #266) */}
+        {staleDebts.length > 0 && (
+          <div
+            className="rounded-2xl border p-4 space-y-2 animate-fade-up"
+            style={{
+              borderColor: 'color-mix(in oklch, oklch(0.80 0.15 75), var(--card) 60%)',
+              backgroundColor: 'color-mix(in oklch, oklch(0.85 0.10 75), var(--card) 80%)',
+            }}
+            role="alert"
+            aria-live="polite"
+          >
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <span aria-hidden>⏰</span>
+              <span>
+                有 {staleDebts.length} 筆債務超過 30 天未結算
+              </span>
+              {staleDebts.length > 3 && (
+                <button
+                  type="button"
+                  onClick={() => setStaleExpanded((v) => !v)}
+                  className="ml-auto text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                >
+                  {staleExpanded ? '收起' : '展開全部'}
+                </button>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              {(staleDebts.length <= 3 || staleExpanded
+                ? staleDebts
+                : staleDebts.slice(0, 3)
+              ).map((d) => {
+                const age = debtAges.get(`${d.from}-${d.to}`)
+                const days = age?.daysAgo ?? null
+                return (
+                  <div
+                    key={`${d.from}-${d.to}`}
+                    className="flex items-center gap-2 text-sm bg-[var(--card)] rounded-lg p-2"
+                  >
+                    <span className="font-medium">{d.fromName}</span>
+                    <span className="text-[var(--muted-foreground)]">→</span>
+                    <span className="font-medium">{d.toName}</span>
+                    <span className="font-bold tabular-nums">{currency(d.amount)}</span>
+                    <span className="text-xs text-[var(--muted-foreground)] flex-1">
+                      {days !== null ? `已 ${days} 天未結算` : ''}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSettling({ fromId: d.from, toId: d.to, amount: d.amount })
+                      }
+                      className="text-xs px-3 py-1 rounded-lg btn-primary btn-press"
+                    >
+                      處理
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* 操作按鈕 */}
         <div className="flex gap-2 animate-fade-up">
           <button
