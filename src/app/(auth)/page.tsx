@@ -33,6 +33,7 @@ import { SameMonthLastYear } from '@/components/same-month-last-year'
 import { NextMonthLockedIn } from '@/components/next-month-locked-in'
 import { BudgetOverrunAlert } from '@/components/budget-overrun-alert'
 import { WowAccelerationAlert } from '@/components/wow-acceleration-alert'
+import { SmartQuickAddSuggestion } from '@/components/smart-quick-add-suggestion'
 import { useRecurringExpenses } from '@/lib/hooks/use-recurring-expenses'
 import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
 import { maybeSendBudgetAlert } from '@/lib/services/budget-alert-service'
@@ -197,6 +198,9 @@ export default function HomePage() {
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-4 md:space-y-6">
+      {/* 智慧建議下一筆支出 (Issue #334) */}
+      <SmartQuickAddSuggestion expenses={expenses} />
+
       {/* 快速記帳 */}
       <QuickAddBar />
 
