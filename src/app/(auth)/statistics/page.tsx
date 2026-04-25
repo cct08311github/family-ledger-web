@@ -5,7 +5,8 @@ import dynamic from 'next/dynamic'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useMembers } from '@/lib/hooks/use-members'
 import { useExpenses } from '@/lib/hooks/use-expenses'
-import { toDate, fmtDateFull } from '@/lib/utils'
+import { toDate, fmtDateFull, currency } from '@/lib/utils'
+import { aggregateYearStats } from '@/lib/year-stats'
 import type { Expense } from '@/lib/types'
 import type { StatisticsChartsProps } from '@/components/statistics-charts'
 
@@ -203,6 +204,9 @@ export default function StatisticsPage() {
     )
   }
 
+  // YTD summary (Issue #276) — computed for the year of the selected month
+  const ytd = aggregateYearStats(expenses, selectedMonth.year, new Date())
+
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-4 md:space-y-6">
       <div className="flex items-center justify-between">
@@ -213,6 +217,35 @@ export default function StatisticsPage() {
           truncatedBefore={oldestLoadedDate}
         />
       </div>
+
+      {/* YTD summary card (Issue #276) */}
+      {ytd.monthsElapsed > 0 && (
+        <div className="card p-5 md:p-6 space-y-3 animate-fade-up">
+          <div className="text-xs text-[var(--muted-foreground)] font-medium">
+            📊 {ytd.year} 年累計
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <div className="text-xs text-[var(--muted-foreground)] mb-1">累計支出</div>
+              <div className="text-2xl font-black tabular-nums" style={{ color: 'var(--primary)' }}>
+                {currency(ytd.total)}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-[var(--muted-foreground)] mb-1">平均月支出</div>
+              <div className="text-lg font-bold tabular-nums">
+                {currency(ytd.averagePerMonth)}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-[var(--muted-foreground)] mb-1">已過月份</div>
+              <div className="text-lg font-bold tabular-nums">
+                {ytd.monthsElapsed} <span className="text-sm font-normal text-[var(--muted-foreground)]">/ 12</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Truncation warning — only surfaces when the shared expense subscription hit
           its limit AND the selected month predates the oldest record we have. */}
