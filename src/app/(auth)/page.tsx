@@ -25,6 +25,7 @@ import { RecordingStreak } from '@/components/recording-streak'
 import { MonthProjection } from '@/components/month-projection'
 import { CategoryMoM } from '@/components/category-mom'
 import { MostFrequentItems } from '@/components/most-frequent-items'
+import { BiggestExpenseSpotlight } from '@/components/biggest-expense-spotlight'
 import { useRecurringExpenses } from '@/lib/hooks/use-recurring-expenses'
 import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
 import { maybeSendBudgetAlert } from '@/lib/services/budget-alert-service'
@@ -257,6 +258,9 @@ export default function HomePage() {
 
       {/* 最常買 Top 5 (Issue #301) — 90 天 description 維度習慣 */}
       <MostFrequentItems expenses={expenses} />
+
+      {/* 本月最大筆 spotlight (Issue #303) — 單筆極值 + pctile 排名 */}
+      <BiggestExpenseSpotlight expenses={expenses} />
 
       {/* 30 天每日花費熱力圖 (Issue #290) */}
       <SpendingHeatmap expenses={expenses} />
