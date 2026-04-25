@@ -13,6 +13,7 @@ import { useSwipe } from '@/hooks/use-swipe'
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useExpenses } from '@/lib/hooks/use-expenses'
+import { useCurrentMember } from '@/lib/hooks/use-current-member'
 import { useMembers } from '@/lib/hooks/use-members'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { deleteExpense, updateExpense, loadMoreExpenses } from '@/lib/services/expense-service'
@@ -48,6 +49,7 @@ export default function RecordsPage() {
   const { members } = useMembers()
   const { categories } = useCategories()
   const { user } = useAuth()
+  const { currentMemberId } = useCurrentMember(group?.id)
   const { addToast } = useToast()
   const searchParams = useSearchParams()
 
@@ -632,7 +634,12 @@ export default function RecordsPage() {
                         <div className="flex-1 min-w-0">
                           <div className="font-medium truncate">{e.description}</div>
                           <div className="text-xs text-[var(--muted-foreground)] mt-0.5">
-                            {e.category} · {e.payerName}付
+                            {e.category} ·{' '}
+                            {currentMemberId && e.payerId === currentMemberId ? (
+                              <span className="font-semibold text-[var(--foreground)]">我付</span>
+                            ) : (
+                              <>{e.payerName}付</>
+                            )}
                           </div>
                         </div>
                       </div>

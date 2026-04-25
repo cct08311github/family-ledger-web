@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation'
 import { currency, toDate, fmtDate } from '@/lib/utils'
 import { categoryColor } from '@/lib/category-color'
+import { useGroup } from '@/lib/hooks/use-group'
+import { useCurrentMember } from '@/lib/hooks/use-current-member'
 import type { Expense } from '@/lib/types'
 
 interface RecentExpensesListProps {
@@ -16,6 +18,8 @@ interface RecentExpensesListProps {
  */
 export function RecentExpensesList({ expenses }: RecentExpensesListProps) {
   const router = useRouter()
+  const { group } = useGroup()
+  const { currentMemberId } = useCurrentMember(group?.id)
 
   if (expenses.length === 0) {
     return (
@@ -45,7 +49,12 @@ export function RecentExpensesList({ expenses }: RecentExpensesListProps) {
           <div className="flex-1 min-w-0">
             <div className="font-medium text-sm truncate">{e.description}</div>
             <div className="text-xs text-[var(--muted-foreground)]">
-              {fmtDate(toDate(e.date))} · {e.category} · {e.payerName}付
+              {fmtDate(toDate(e.date))} · {e.category} ·{' '}
+              {currentMemberId && e.payerId === currentMemberId ? (
+                <span className="font-semibold text-[var(--foreground)]">我付</span>
+              ) : (
+                <>{e.payerName}付</>
+              )}
             </div>
           </div>
           <div className="font-semibold text-sm">{currency(e.amount)}</div>
