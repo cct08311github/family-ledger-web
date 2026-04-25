@@ -39,13 +39,15 @@ const FALLBACK_CATEGORIES = ['餐飲', '交通', '購物', '房租', '水電', '
 interface Props {
   existingExpense?: Expense
   duplicateFrom?: Expense
+  /** Pre-fill date in YYYY-MM-DD format (catch-up nudge backfill, Issue #288). Only used when there's no source. */
+  initialDate?: string
   onSaved: () => void
   /** Ref to register a setter for voice-parsed results. Parent passes ref, form fills it on mount. */
   onVoiceParsedRef?: RefObject<((_result: ParsedExpense) => void) | null>
 }
 
 
-export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoiceParsedRef }: Props) {
+export function ExpenseForm({ existingExpense, duplicateFrom, initialDate, onSaved, onVoiceParsedRef }: Props) {
   const { group } = useGroup()
   const { members } = useMembers()
   const { expenses } = useExpenses()
@@ -81,6 +83,9 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
 
   const [date, setDate] = useState(() => {
     if (source && !duplicateFrom) return toDate(source.date).toISOString().split('T')[0]
+    // Initial date from prop (e.g. catchup-nudge backfill, Issue #288).
+    // Format YYYY-MM-DD; only used when there's no source to copy from.
+    if (initialDate && /^\d{4}-\d{2}-\d{2}$/.test(initialDate)) return initialDate
     return new Date().toISOString().split('T')[0]
   })
   const [description, setDescription] = useState(source?.description ?? '')
