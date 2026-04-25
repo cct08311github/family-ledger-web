@@ -29,6 +29,7 @@ import { BiggestExpenseSpotlight } from '@/components/biggest-expense-spotlight'
 import { YearRecap } from '@/components/year-recap'
 import { TodayInPastYears } from '@/components/today-in-past-years'
 import { NextMonthLockedIn } from '@/components/next-month-locked-in'
+import { BudgetOverrunAlert } from '@/components/budget-overrun-alert'
 import { useRecurringExpenses } from '@/lib/hooks/use-recurring-expenses'
 import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
 import { maybeSendBudgetAlert } from '@/lib/services/budget-alert-service'
@@ -195,6 +196,9 @@ export default function HomePage() {
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-4 md:space-y-6">
       {/* 快速記帳 */}
       <QuickAddBar />
+
+      {/* 預算超支預警 (Issue #321) — 預估月底超預算時主動 banner */}
+      <BudgetOverrunAlert expenses={expenses} group={group} />
 
       {/* Catch-up 提醒 (Issue #288) — 超過 3 天沒記時溫和提示 */}
       <CatchupNudge expenses={expenses} />
