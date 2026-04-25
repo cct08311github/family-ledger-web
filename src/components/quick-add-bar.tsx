@@ -362,6 +362,15 @@ export function QuickAddBar() {
             const r = evaluateAmountExpression(amount)
             if (r.ok) setAmount(String(r.value))
           }}
+          onKeyDown={(e) => {
+            // Enter on amount field → save (Issue #272). Description and
+            // amount must both be non-empty; the save handler validates the
+            // rest. Other keys pass through normally.
+            if (e.key === 'Enter' && description.trim() && amount.trim() && !saving) {
+              e.preventDefault()
+              handleSave()
+            }
+          }}
           placeholder="金額"
           className="w-28 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-sm text-right focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
         />
