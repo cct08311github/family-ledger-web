@@ -12,6 +12,13 @@ import { AmountRangeChips } from '@/components/amount-range-chips'
 import { DescriptionPriceTrend } from '@/components/description-price-trend'
 import { computeFilterStats } from '@/lib/filter-stats'
 import { HighlightedText } from '@/components/highlighted-text'
+import {
+  getRangePreset,
+  matchActivePreset,
+  presetLabel,
+  PRESET_KEYS,
+  type DateRangePresetKey,
+} from '@/lib/date-range-presets'
 import { useSwipe } from '@/hooks/use-swipe'
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh'
 import { useGroup } from '@/lib/hooks/use-group'
@@ -483,6 +490,38 @@ export default function RecordsPage() {
       {/* Advanced filter panel */}
       {showAdvanced && (
         <div className="card p-4 mb-3 space-y-3">
+          {/* 日期範圍快速 chips (Issue #342) */}
+          {(() => {
+            const active = matchActivePreset(dateStart, dateEnd)
+            return (
+              <div className="flex flex-wrap gap-1.5">
+                <span className="text-[11px] text-[var(--muted-foreground)] self-center mr-1">
+                  快速選擇：
+                </span>
+                {PRESET_KEYS.map((key: DateRangePresetKey) => {
+                  const isActive = active === key
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => {
+                        const r = getRangePreset(key)
+                        setDateStart(r.start)
+                        setDateEnd(r.end)
+                      }}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                        isActive
+                          ? 'bg-[var(--primary)] text-[var(--primary-foreground,_white)]'
+                          : 'bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]'
+                      }`}
+                    >
+                      {presetLabel(key)}
+                    </button>
+                  )
+                })}
+              </div>
+            )
+          })()}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-medium text-[var(--muted-foreground)]">開始日期</label>
