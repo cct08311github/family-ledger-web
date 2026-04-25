@@ -18,6 +18,7 @@ import { SimpleTabs } from '@/components/simple-tabs'
 import { RecentExpensesList } from '@/components/recent-expenses-list'
 import { MemberSpendingBreakdown } from '@/components/member-spending-breakdown'
 import { SubscriptionSuggestions } from '@/components/subscription-suggestions'
+import { CatchupNudge } from '@/components/catchup-nudge'
 import { useRecurringExpenses } from '@/lib/hooks/use-recurring-expenses'
 import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
 import { maybeSendBudgetAlert } from '@/lib/services/budget-alert-service'
@@ -184,6 +185,9 @@ export default function HomePage() {
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-4 md:space-y-6">
       {/* 快速記帳 */}
       <QuickAddBar />
+
+      {/* Catch-up 提醒 (Issue #288) — 超過 3 天沒記時溫和提示 */}
+      <CatchupNudge expenses={expenses} />
 
       {/* 隱藏訂閱建議 (Issue #286) */}
       <SubscriptionSuggestions

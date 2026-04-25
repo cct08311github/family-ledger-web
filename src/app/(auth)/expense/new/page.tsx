@@ -17,6 +17,8 @@ export default function NewExpensePage() {
 
   const duplicateId = searchParams.get('duplicate')
   const duplicateSource = duplicateId ? expenses.find((e) => e.id === duplicateId) : undefined
+  // Initial date from ?date=YYYY-MM-DD param (catch-up nudge, Issue #288).
+  const initialDate = searchParams.get('date') ?? undefined
 
   // Expose a setter that ExpenseForm can call back to us via ref
   const onVoiceParsedRef = useRef<((_result: ParsedExpense) => void) | null>(null)
@@ -36,6 +38,7 @@ export default function NewExpensePage() {
       </div>
       <ExpenseForm
         duplicateFrom={duplicateSource}
+        initialDate={initialDate}
         onSaved={() => router.push('/records')}
         onVoiceParsedRef={onVoiceParsedRef}
       />
