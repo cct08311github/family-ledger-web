@@ -11,6 +11,7 @@ import {
 import { AmountRangeChips } from '@/components/amount-range-chips'
 import { DescriptionPriceTrend } from '@/components/description-price-trend'
 import { computeFilterStats } from '@/lib/filter-stats'
+import { HighlightedText } from '@/components/highlighted-text'
 import { useSwipe } from '@/hooks/use-swipe'
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh'
 import { useGroup } from '@/lib/hooks/use-group'
@@ -664,13 +665,17 @@ export default function RecordsPage() {
                           )
                         })()}
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate">{e.description}</div>
+                          <div className="font-medium truncate">
+                            <HighlightedText text={e.description} query={searchQuery} />
+                          </div>
                           <div className="text-xs text-[var(--muted-foreground)] mt-0.5">
-                            {e.category} ·{' '}
+                            <HighlightedText text={e.category} query={searchQuery} /> ·{' '}
                             {currentMemberId && e.payerId === currentMemberId ? (
                               <span className="font-semibold text-[var(--foreground)]">我付</span>
                             ) : (
-                              <>{e.payerName}付</>
+                              <>
+                                <HighlightedText text={e.payerName} query={searchQuery} />付
+                              </>
                             )}
                           </div>
                         </div>
