@@ -11,6 +11,7 @@ import { TopExpensesCard } from '@/components/top-expenses-card'
 import { MoneyDiary } from '@/components/money-diary'
 import { YearHeatmap } from '@/components/year-heatmap'
 import { MonthlyReportShare } from '@/components/monthly-report-share'
+import { CumulativeMonthCurve } from '@/components/cumulative-month-curve'
 import type { Expense } from '@/lib/types'
 import type { StatisticsChartsProps } from '@/components/statistics-charts'
 
@@ -311,6 +312,9 @@ export default function StatisticsPage() {
           previousMonthTotal={previousMonthTotal > 0 ? previousMonthTotal : null}
         />
       </div>
+
+      {/* 每日累計支出曲線 (Issue #348) — 本月 vs 上月 pace 對比 */}
+      <CumulativeMonthCurve expenses={expenses} selectedMonth={selectedMonth} />
 
       {/* 全年熱力圖 (Issue #313) — 7×52 GitHub-style 年度視窗 */}
       <YearHeatmap expenses={expenses} year={selectedMonth.year} />
