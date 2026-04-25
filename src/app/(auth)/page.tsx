@@ -27,6 +27,7 @@ import { CategoryMoM } from '@/components/category-mom'
 import { MostFrequentItems } from '@/components/most-frequent-items'
 import { BiggestExpenseSpotlight } from '@/components/biggest-expense-spotlight'
 import { YearRecap } from '@/components/year-recap'
+import { TodayInPastYears } from '@/components/today-in-past-years'
 import { useRecurringExpenses } from '@/lib/hooks/use-recurring-expenses'
 import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
 import { maybeSendBudgetAlert } from '@/lib/services/budget-alert-service'
@@ -265,6 +266,9 @@ export default function HomePage() {
 
       {/* 年度回顧 mini (Issue #305) — YTD 累計 + 預估全年 + 對比去年同期 */}
       <YearRecap expenses={expenses} />
+
+      {/* X 年前的今天 (Issue #315) — Facebook Memories 式時間旅行 */}
+      <TodayInPastYears expenses={expenses} />
 
       {/* 30 天每日花費熱力圖 (Issue #290) */}
       <SpendingHeatmap expenses={expenses} />
