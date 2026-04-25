@@ -17,6 +17,8 @@ import { BudgetSection } from '@/components/budget-section'
 import { OrphanCleanupSection } from '@/components/orphan-cleanup-section'
 import { RuleCleanupSection } from '@/components/rule-cleanup-section'
 import { EmailPreferenceSection } from '@/components/email-preference-section'
+import { LifetimeAchievements } from '@/components/lifetime-achievements'
+import { useExpenses } from '@/lib/hooks/use-expenses'
 import type { FamilyMember, Category } from '@/lib/types'
 
 import { useToast } from '@/components/toast'
@@ -640,6 +642,7 @@ function GroupManagementSection() {
 export default function SettingsPage() {
   const { user, signOut } = useAuth()
   const { group, loading } = useGroup()
+  const { expenses } = useExpenses()
   const router = useRouter()
 
   async function handleSignOut() {
@@ -662,6 +665,9 @@ export default function SettingsPage() {
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-4">
       <h1 className="text-xl font-bold">⚙️ 設定</h1>
+
+      {/* Lifetime Achievements (Issue #327) — emotional 自我紀念 */}
+      <LifetimeAchievements expenses={expenses} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <Section title="📂 群組管理">
