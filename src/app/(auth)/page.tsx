@@ -16,6 +16,7 @@ import { BudgetProgress } from '@/components/budget-progress'
 import { RecentActivitySection } from '@/components/recent-activity-section'
 import { SimpleTabs } from '@/components/simple-tabs'
 import { RecentExpensesList } from '@/components/recent-expenses-list'
+import { MemberSpendingBreakdown } from '@/components/member-spending-breakdown'
 import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
 import { maybeSendBudgetAlert } from '@/lib/services/budget-alert-service'
 import { logger } from '@/lib/logger'
@@ -261,6 +262,22 @@ export default function HomePage() {
               <div className="text-lg font-bold mt-1">{debts.length} 筆</div>
             </div>
           </div>
+
+          {/* 成員花費分布 (Issue #264) */}
+          {(() => {
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+            const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+            const fmt = (d: Date) =>
+              `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+            return (
+              <MemberSpendingBreakdown
+                expenses={monthly}
+                members={members}
+                monthStart={fmt(monthStart)}
+                monthEnd={fmt(monthEnd)}
+              />
+            )
+          })()}
         </div>
 
         {/* 誰欠誰 — 左欄；空狀態折疊為單行避免浪費垂直空間 (Issue #222) */}
