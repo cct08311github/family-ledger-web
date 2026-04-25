@@ -118,7 +118,8 @@ export default function RecordsPage() {
   // "all time"). Issue #185.
   const [dateStart, setDateStart] = useState(() => searchParams.get('start') || currentMonthRange().start)
   const [dateEnd, setDateEnd] = useState(() => searchParams.get('end') || currentMonthRange().end)
-  const [payerFilter, setPayerFilter] = useState('')
+  // Init from URL ?payer=<id> for home-page drill-downs (Issue #264).
+  const [payerFilter, setPayerFilter] = useState(() => searchParams.get('payer') ?? '')
   const [categoryFilter, setCategoryFilter] = useState(() => searchParams.get('category') ?? '')
   // Amount-range quick filter (Issue #221). Initial value from URL; sync back
   // to URL on change so the chip selection persists across reloads and can be
