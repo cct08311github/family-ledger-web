@@ -28,6 +28,7 @@ import { MostFrequentItems } from '@/components/most-frequent-items'
 import { BiggestExpenseSpotlight } from '@/components/biggest-expense-spotlight'
 import { YearRecap } from '@/components/year-recap'
 import { TodayInPastYears } from '@/components/today-in-past-years'
+import { SameMonthLastYear } from '@/components/same-month-last-year'
 import { NextMonthLockedIn } from '@/components/next-month-locked-in'
 import { BudgetOverrunAlert } from '@/components/budget-overrun-alert'
 import { useRecurringExpenses } from '@/lib/hooks/use-recurring-expenses'
@@ -274,6 +275,9 @@ export default function HomePage() {
 
       {/* 年度回顧 mini (Issue #305) — YTD 累計 + 預估全年 + 對比去年同期 */}
       <YearRecap expenses={expenses} />
+
+      {/* 同月去年對比 (Issue #323) — 季節性消費模式對比 */}
+      <SameMonthLastYear expenses={expenses} />
 
       {/* X 年前的今天 (Issue #315) — Facebook Memories 式時間旅行 */}
       <TodayInPastYears expenses={expenses} />
