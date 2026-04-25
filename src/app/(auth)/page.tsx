@@ -17,6 +17,8 @@ import { RecentActivitySection } from '@/components/recent-activity-section'
 import { SimpleTabs } from '@/components/simple-tabs'
 import { RecentExpensesList } from '@/components/recent-expenses-list'
 import { MemberSpendingBreakdown } from '@/components/member-spending-breakdown'
+import { SubscriptionSuggestions } from '@/components/subscription-suggestions'
+import { useRecurringExpenses } from '@/lib/hooks/use-recurring-expenses'
 import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
 import { maybeSendBudgetAlert } from '@/lib/services/budget-alert-service'
 import { logger } from '@/lib/logger'
@@ -81,6 +83,7 @@ export default function HomePage() {
   const { expenses, loading: expLoading } = useExpenses()
   const { settlements } = useSettlements()
   const { members, loading: membersLoading } = useMembers()
+  const { recurringExpenses: recurringTemplates } = useRecurringExpenses()
   const { addToast } = useToast()
   const [confirmingPending, setConfirmingPending] = useState(false)
 
@@ -181,6 +184,12 @@ export default function HomePage() {
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-4 md:space-y-6">
       {/* 快速記帳 */}
       <QuickAddBar />
+
+      {/* 隱藏訂閱建議 (Issue #286) */}
+      <SubscriptionSuggestions
+        expenses={expenses}
+        recurringTemplates={recurringTemplates}
+      />
 
       {/* 定期支出待確認 */}
       {pendingExpenses.length > 0 && (
