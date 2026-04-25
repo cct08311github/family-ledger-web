@@ -26,6 +26,7 @@ import { MonthProjection } from '@/components/month-projection'
 import { CategoryMoM } from '@/components/category-mom'
 import { MostFrequentItems } from '@/components/most-frequent-items'
 import { BiggestExpenseSpotlight } from '@/components/biggest-expense-spotlight'
+import { YearRecap } from '@/components/year-recap'
 import { useRecurringExpenses } from '@/lib/hooks/use-recurring-expenses'
 import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
 import { maybeSendBudgetAlert } from '@/lib/services/budget-alert-service'
@@ -261,6 +262,9 @@ export default function HomePage() {
 
       {/* 本月最大筆 spotlight (Issue #303) — 單筆極值 + pctile 排名 */}
       <BiggestExpenseSpotlight expenses={expenses} />
+
+      {/* 年度回顧 mini (Issue #305) — YTD 累計 + 預估全年 + 對比去年同期 */}
+      <YearRecap expenses={expenses} />
 
       {/* 30 天每日花費熱力圖 (Issue #290) */}
       <SpendingHeatmap expenses={expenses} />
