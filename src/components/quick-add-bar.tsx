@@ -324,21 +324,22 @@ export function QuickAddBar() {
     )
   }
 
+  // Close & discard draft (Issue #280). Shared between ✕ button and ESC key.
+  function handleClose() {
+    clearDraft()
+    setDescription('')
+    setAmount('')
+    setCategory('')
+    setAutoFilled(false)
+    setExpanded(false)
+  }
+
   return (
     <div className="card p-4 space-y-3 animate-fade-up">
       <div className="flex items-center gap-2 text-sm font-semibold">
         ⚡ 快速記帳
         <button
-          onClick={() => {
-            // Close and discard the draft; user's intent is to abandon this
-            // entry. (Auto-restore on next mount would otherwise re-open the bar.)
-            clearDraft()
-            setDescription('')
-            setAmount('')
-            setCategory('')
-            setAutoFilled(false)
-            setExpanded(false)
-          }}
+          onClick={handleClose}
           aria-label="關閉快速記帳"
           className="ml-auto text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
         >
@@ -356,6 +357,10 @@ export function QuickAddBar() {
             if (e.key === 'Enter') {
               e.preventDefault()
               amountInputRef.current?.focus()
+            } else if (e.key === 'Escape') {
+              // ESC closes & discards (Issue #280)
+              e.preventDefault()
+              handleClose()
             }
           }}
           placeholder="午餐 150、交通 50..."
@@ -379,6 +384,10 @@ export function QuickAddBar() {
             if (e.key === 'Enter' && description.trim() && amount.trim() && !saving) {
               e.preventDefault()
               handleSave()
+            } else if (e.key === 'Escape') {
+              // ESC closes & discards (Issue #280)
+              e.preventDefault()
+              handleClose()
             }
           }}
           placeholder="金額"
