@@ -24,6 +24,7 @@ import { DowInsight } from '@/components/dow-insight'
 import { RecordingStreak } from '@/components/recording-streak'
 import { MonthProjection } from '@/components/month-projection'
 import { CategoryMoM } from '@/components/category-mom'
+import { MostFrequentItems } from '@/components/most-frequent-items'
 import { useRecurringExpenses } from '@/lib/hooks/use-recurring-expenses'
 import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
 import { maybeSendBudgetAlert } from '@/lib/services/budget-alert-service'
@@ -253,6 +254,9 @@ export default function HomePage() {
 
       {/* 類別月變化 (Issue #298) — 哪類比上個月顯著成長/縮減 */}
       <CategoryMoM expenses={expenses} />
+
+      {/* 最常買 Top 5 (Issue #301) — 90 天 description 維度習慣 */}
+      <MostFrequentItems expenses={expenses} />
 
       {/* 30 天每日花費熱力圖 (Issue #290) */}
       <SpendingHeatmap expenses={expenses} />
