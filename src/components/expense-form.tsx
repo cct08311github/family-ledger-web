@@ -23,6 +23,7 @@ import { findPossibleDuplicate } from '@/lib/duplicate-expense-detector'
 import { detectAmountOutlier } from '@/lib/amount-outlier'
 import { evaluateAmountExpression } from '@/lib/amount-expression'
 import { AmountChips } from '@/components/amount-chips'
+import { toChineseNumeral } from '@/lib/chinese-numeral'
 import { hapticFeedback } from '@/lib/haptic'
 import { findLastExpenseByCategory, relativeDays } from '@/lib/last-category-expense'
 import { currency as fmtCurrency } from '@/lib/utils'
@@ -709,6 +710,21 @@ export function ExpenseForm({ existingExpense, duplicateFrom, initialDate, onSav
             className="w-full h-11 rounded-lg border border-[var(--border)] bg-[var(--card)] pl-12 pr-3 text-sm" />
         </div>
         <AmountChips value={amount} onChange={setAmount} className="mt-2" />
+        {/* 中文大寫提示 (Issue #338) — 大金額正式記錄用 */}
+        {(() => {
+          const evaluated = parseFloat(amount)
+          if (!Number.isFinite(evaluated) || evaluated < 1000) return null
+          const chinese = toChineseNumeral(evaluated)
+          if (!chinese) return null
+          return (
+            <p
+              className="mt-1.5 text-xs text-[var(--muted-foreground)] italic"
+              title="中文大寫（紅包/支票格式）"
+            >
+              大寫：{chinese}
+            </p>
+          )
+        })()}
       </div>
 
       {/* Possible-duplicate warning (Issue #211). Shown only when description +
