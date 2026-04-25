@@ -7,6 +7,7 @@ import { useMembers } from '@/lib/hooks/use-members'
 import { useExpenses } from '@/lib/hooks/use-expenses'
 import { toDate, fmtDateFull, currency } from '@/lib/utils'
 import { aggregateYearStats } from '@/lib/year-stats'
+import { TopExpensesCard } from '@/components/top-expenses-card'
 import type { Expense } from '@/lib/types'
 import type { StatisticsChartsProps } from '@/components/statistics-charts'
 
@@ -155,7 +156,7 @@ function SummaryCards({ expenses, prevExpenses }: { expenses: Expense[]; prevExp
 // ── Page ───────────────────────────────────────────────────────
 
 export default function StatisticsPage() {
-  const { loading: groupLoading } = useGroup()
+  const { group, loading: groupLoading } = useGroup()
   const { expenses, loading: expLoading } = useExpenses()
   const { members, loading: membersLoading } = useMembers()
 
@@ -269,6 +270,9 @@ export default function StatisticsPage() {
 
       {/* Summary */}
       <SummaryCards expenses={monthExpenses} prevExpenses={prevMonthExpenses} />
+
+      {/* Top 3 expenses (Issue #278) */}
+      <TopExpensesCard expenses={monthExpenses} groupId={group?.id} />
 
       {/* Charts — lazily loaded to avoid including recharts in initial bundle */}
       <StatisticsCharts
