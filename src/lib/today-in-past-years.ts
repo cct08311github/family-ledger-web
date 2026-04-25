@@ -70,7 +70,7 @@ export function findTodayInPastYears({
   for (let i = 1; i <= maxYears; i++) {
     const targetYear = todayYear - i
     let targetDay = todayDate
-    let targetMonth = todayMonth
+    const targetMonth = todayMonth
 
     // Feb 29 fallback: if today is Feb 29 but target year not leap, try Feb 28.
     if (targetMonth === 1 && targetDay === 29) {
