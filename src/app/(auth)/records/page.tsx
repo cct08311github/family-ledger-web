@@ -214,7 +214,7 @@ export default function RecordsPage() {
 
       // Keyword search
       if (searchQuery) {
-        const haystack = `${e.description} ${e.category} ${e.payerName}`.toLowerCase()
+        const haystack = `${e.description} ${e.category} ${e.payerName} ${e.note ?? ''}`.toLowerCase()
         if (!haystack.includes(searchQuery)) return false
       }
 
