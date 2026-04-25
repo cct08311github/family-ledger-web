@@ -21,6 +21,7 @@ import { SubscriptionSuggestions } from '@/components/subscription-suggestions'
 import { CatchupNudge } from '@/components/catchup-nudge'
 import { SpendingHeatmap } from '@/components/spending-heatmap'
 import { DowInsight } from '@/components/dow-insight'
+import { RecordingStreak } from '@/components/recording-streak'
 import { useRecurringExpenses } from '@/lib/hooks/use-recurring-expenses'
 import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
 import { maybeSendBudgetAlert } from '@/lib/services/budget-alert-service'
@@ -190,6 +191,9 @@ export default function HomePage() {
 
       {/* Catch-up 提醒 (Issue #288) — 超過 3 天沒記時溫和提示 */}
       <CatchupNudge expenses={expenses} />
+
+      {/* 連續記帳 streak (Issue #294) — 鼓勵性 gamification */}
+      <RecordingStreak expenses={expenses} />
 
       {/* 隱藏訂閱建議 (Issue #286) */}
       <SubscriptionSuggestions
