@@ -19,6 +19,7 @@ import { RecentExpensesList } from '@/components/recent-expenses-list'
 import { MemberSpendingBreakdown } from '@/components/member-spending-breakdown'
 import { SubscriptionSuggestions } from '@/components/subscription-suggestions'
 import { CatchupNudge } from '@/components/catchup-nudge'
+import { SpendingHeatmap } from '@/components/spending-heatmap'
 import { useRecurringExpenses } from '@/lib/hooks/use-recurring-expenses'
 import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
 import { maybeSendBudgetAlert } from '@/lib/services/budget-alert-service'
@@ -239,6 +240,9 @@ export default function HomePage() {
 
       {/* 月度預算進度 */}
       <BudgetProgress group={group} expenses={expenses} />
+
+      {/* 30 天每日花費熱力圖 (Issue #290) */}
+      <SpendingHeatmap expenses={expenses} />
 
       {/* Dashboard grid: 桌面版 2 欄，手機版單欄 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-4 md:mt-6">
