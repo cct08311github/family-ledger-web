@@ -34,6 +34,7 @@ import { NextMonthLockedIn } from '@/components/next-month-locked-in'
 import { BudgetOverrunAlert } from '@/components/budget-overrun-alert'
 import { WowAccelerationAlert } from '@/components/wow-acceleration-alert'
 import { SmartQuickAddSuggestion } from '@/components/smart-quick-add-suggestion'
+import { EmptyStateWelcome } from '@/components/empty-state-welcome'
 import { useRecurringExpenses } from '@/lib/hooks/use-recurring-expenses'
 import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
 import { maybeSendBudgetAlert } from '@/lib/services/budget-alert-service'
@@ -203,6 +204,9 @@ export default function HomePage() {
 
       {/* 快速記帳 */}
       <QuickAddBar />
+
+      {/* 新使用者歡迎 empty state */}
+      <EmptyStateWelcome expenses={expenses} />
 
       {/* 預算超支預警 (Issue #321) — 預估月底超預算時主動 banner */}
       <BudgetOverrunAlert expenses={expenses} group={group} />
