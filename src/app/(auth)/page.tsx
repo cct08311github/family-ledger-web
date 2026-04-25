@@ -21,6 +21,7 @@ import { SubscriptionSuggestions } from '@/components/subscription-suggestions'
 import { CatchupNudge } from '@/components/catchup-nudge'
 import { SpendingHeatmap } from '@/components/spending-heatmap'
 import { DowInsight } from '@/components/dow-insight'
+import { HourOfDayPattern } from '@/components/hour-of-day-pattern'
 import { RecordingStreak } from '@/components/recording-streak'
 import { MonthProjection } from '@/components/month-projection'
 import { CategoryMoM } from '@/components/category-mom'
@@ -287,6 +288,9 @@ export default function HomePage() {
 
       {/* 週幾花費模式洞察 (Issue #292) */}
       <DowInsight expenses={expenses} />
+
+      {/* 一天花費高峰 (Issue #329) — hour-of-day pattern */}
+      <HourOfDayPattern expenses={expenses} />
 
       {/* Dashboard grid: 桌面版 2 欄，手機版單欄 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-4 md:mt-6">
