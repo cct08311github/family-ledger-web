@@ -9,6 +9,7 @@ import {
   type AmountRangeKey,
 } from '@/lib/amount-range-filter'
 import { AmountRangeChips } from '@/components/amount-range-chips'
+import { DescriptionPriceTrend } from '@/components/description-price-trend'
 import { useSwipe } from '@/hooks/use-swipe'
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh'
 import { useGroup } from '@/lib/hooks/use-group'
@@ -571,6 +572,14 @@ export default function RecordsPage() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* 同名描述價格走勢 (Issue #309) */}
+      {!loading && searchQuery && (
+        <DescriptionPriceTrend
+          expenses={filtered}
+          description={searchQuery}
+        />
       )}
 
       {/* Content */}
