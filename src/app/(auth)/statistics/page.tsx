@@ -8,6 +8,7 @@ import { useExpenses } from '@/lib/hooks/use-expenses'
 import { toDate, fmtDateFull, currency } from '@/lib/utils'
 import { aggregateYearStats } from '@/lib/year-stats'
 import { TopExpensesCard } from '@/components/top-expenses-card'
+import { MoneyDiary } from '@/components/money-diary'
 import type { Expense } from '@/lib/types'
 import type { StatisticsChartsProps } from '@/components/statistics-charts'
 
@@ -180,6 +181,24 @@ export default function StatisticsPage() {
     return filterByMonth(expenses, prev.getFullYear(), prev.getMonth())
   }, [expenses, selectedMonth])
 
+  // For Money Diary (Issue #282) — needs all expenses BEFORE the selected
+  // month to detect "first-time" categories.
+  const earlierExpenses = useMemo(() => {
+    const monthStart = new Date(selectedMonth.year, selectedMonth.month, 1).getTime()
+    return expenses.filter((e) => {
+      try {
+        const d = toDate(e.date)
+        return Number.isFinite(d.getTime()) && d.getTime() < monthStart
+      } catch {
+        return false
+      }
+    })
+  }, [expenses, selectedMonth])
+  const previousMonthTotal = useMemo(
+    () => prevMonthExpenses.reduce((s, e) => (typeof e.amount === 'number' && Number.isFinite(e.amount) ? s + e.amount : s), 0),
+    [prevMonthExpenses],
+  )
+
   // The shared expenses subscription is capped at EXPENSE_LIMIT. When we hit the cap,
   // the oldest record we have is a hard floor for any month that predates it.
   // expenses are ordered by date desc, so the last item is the oldest loaded.
@@ -273,6 +292,14 @@ export default function StatisticsPage() {
 
       {/* Top 3 expenses (Issue #278) */}
       <TopExpensesCard expenses={monthExpenses} groupId={group?.id} />
+
+      {/* Money Diary — narrative summary (Issue #282) */}
+      <MoneyDiary
+        monthExpenses={monthExpenses}
+        earlierExpenses={earlierExpenses}
+        previousMonthTotal={previousMonthTotal > 0 ? previousMonthTotal : null}
+        selectedMonth={selectedMonth}
+      />
 
       {/* Charts — lazily loaded to avoid including recharts in initial bundle */}
       <StatisticsCharts
