@@ -31,6 +31,7 @@ import { ref as storageRef, getDownloadURL } from 'firebase/storage'
 import { storage } from '@/lib/firebase'
 import { logger } from '@/lib/logger'
 import { ReceiptGallery } from '@/components/receipt-gallery'
+import { DescriptionPriceHistory } from '@/components/description-price-history'
 import type { Expense, SplitMethod, PaymentMethod, SplitDetail } from '@/lib/types'
 import type { ParsedExpense } from '@/lib/services/local-expense-parser'
 
@@ -686,6 +687,12 @@ export function ExpenseForm({ existingExpense, duplicateFrom, initialDate, onSav
             ))}
           </div>
         )}
+        {/* 同名歷史價格 inline 提示 (Issue #307) */}
+        <DescriptionPriceHistory
+          description={description}
+          expenses={expenses}
+          currentExpenseId={existingExpense?.id}
+        />
       </div>
 
       {/* 金額 — 支援 700+150 四則運算 (Issue #220) */}
