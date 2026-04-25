@@ -443,6 +443,14 @@ export default function RecordsPage() {
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => {
+              // ESC clears the search and unfocuses (Issue #270)
+              if (e.key === 'Escape' && searchInput) {
+                e.preventDefault()
+                setSearchInput('')
+                e.currentTarget.blur()
+              }
+            }}
             placeholder="搜尋描述、分類、付款人…"
             className="w-full h-11 pl-9 pr-4 rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition"
           />
