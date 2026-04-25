@@ -38,7 +38,29 @@
     {
       "name": "新增支出",
       "short_name": "記帳",
+      "description": "立即記錄一筆支出",
       "url": "/family-ledger-web/expense/new",
+      "icons": [{ "src": "/family-ledger-web/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "結算",
+      "short_name": "結算",
+      "description": "查看誰欠誰、記錄轉帳",
+      "url": "/family-ledger-web/split",
+      "icons": [{ "src": "/family-ledger-web/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "統計",
+      "short_name": "統計",
+      "description": "本月支出分布與趨勢",
+      "url": "/family-ledger-web/statistics",
+      "icons": [{ "src": "/family-ledger-web/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "通知",
+      "short_name": "通知",
+      "description": "查看群組成員的最新動態",
+      "url": "/family-ledger-web/notifications",
       "icons": [{ "src": "/family-ledger-web/icons/icon-192.png", "sizes": "192x192" }]
     }
   ],
