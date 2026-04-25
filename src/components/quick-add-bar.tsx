@@ -7,6 +7,7 @@ import { useMembers } from '@/lib/hooks/use-members'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { useCurrentMember } from '@/lib/hooks/use-current-member'
 import { useExpenses, useRecentExpenses } from '@/lib/hooks/use-expenses'
+import { sortCategoriesByFrequency } from '@/lib/category-order'
 import { useAuth } from '@/lib/auth'
 import { addExpense, type ExpenseInput } from '@/lib/services/expense-service'
 import { parseExpense } from '@/lib/services/local-expense-parser'
@@ -83,10 +84,11 @@ export function QuickAddBar() {
     speech.reset()
   }, [speech.error, speech, addToast])
 
-  const activeCategories = useMemo(
-    () => categories.filter((c) => c.isActive).map((c) => c.name).slice(0, 6),
-    [categories],
-  )
+  const activeCategories = useMemo(() => {
+    const active = categories.filter((c) => c.isActive).map((c) => c.name)
+    const sorted = sortCategoriesByFrequency({ categories: active, expenses })
+    return sorted.slice(0, 6)
+  }, [categories, expenses])
 
   const draftKey = buildDraftKey(group?.id, user?.uid)
 
