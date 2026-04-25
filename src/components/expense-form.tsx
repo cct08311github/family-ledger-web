@@ -20,6 +20,7 @@ import { useAuth, getActor } from '@/lib/auth'
 import { toDate } from '@/lib/utils'
 import { saveButtonLabel, type UploadProgress } from '@/lib/save-button-label'
 import { findPossibleDuplicate } from '@/lib/duplicate-expense-detector'
+import { detectAmountOutlier } from '@/lib/amount-outlier'
 import { evaluateAmountExpression } from '@/lib/amount-expression'
 import { AmountChips } from '@/components/amount-chips'
 import { hapticFeedback } from '@/lib/haptic'
@@ -364,6 +365,8 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
   // last 5 minutes. Skip when user explicitly dismissed this candidate.
   // Issue #211.
   const [dismissedDuplicateKey, setDismissedDuplicateKey] = useState<string | null>(null)
+  // Amount outlier dismiss key (Issue #284). Same per-candidate dismiss pattern.
+  const [dismissedOutlierKey, setDismissedOutlierKey] = useState<string | null>(null)
   // 1-min tick so the banner self-clears once the 5-min window expires
   // without requiring any field change (reviewer flagged that Date.now()
   // inside useMemo was a hidden dep).
@@ -405,6 +408,25 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
     ? `${possibleDuplicate.id}-${possibleDuplicate.amount}-${description.trim().toLowerCase()}`
     : null
   const showDuplicateWarning = !!possibleDuplicate && duplicateKey !== dismissedDuplicateKey
+
+  // Amount outlier check (Issue #284): uses parsed expression value + selected
+  // category against last ~90 days of same-category history.
+  const outlierResult = useMemo(() => {
+    if (!category) return null
+    const parsed = evaluateAmountExpression(amount)
+    if (!parsed.ok || parsed.value <= 0) return null
+    return detectAmountOutlier({
+      amount: parsed.value,
+      category,
+      expenses,
+      excludeId: existingExpense?.id,
+    })
+  }, [amount, category, expenses, existingExpense?.id])
+  const outlierKey = outlierResult?.isOutlier
+    ? `${category}-${outlierResult.kind}-${amount}`
+    : null
+  const showOutlierWarning =
+    !!outlierResult?.isOutlier && outlierKey !== dismissedOutlierKey
 
   const buildSplits = (): SplitDetail[] => {
     const amt = parseFloat(amount) || 0
@@ -713,6 +735,54 @@ export function ExpenseForm({ existingExpense, duplicateFrom, onSaved, onVoicePa
             type="button"
             onClick={() => setDismissedDuplicateKey(duplicateKey)}
             aria-label="忽略重複提醒"
+            className="shrink-0 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition px-1"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Amount outlier warning (Issue #284) — heuristic typo detection
+          based on this group's history of the same category. */}
+      {showOutlierWarning && outlierResult && (
+        <div
+          className="rounded-lg border p-3 flex items-start gap-3 text-xs"
+          style={{
+            borderColor: 'color-mix(in oklch, oklch(0.80 0.15 75), var(--card) 40%)',
+            backgroundColor: 'color-mix(in oklch, oklch(0.85 0.10 75), var(--card) 80%)',
+          }}
+          role="alert"
+          aria-live="polite"
+        >
+          <span className="text-lg">⚠️</span>
+          <div className="flex-1 min-w-0">
+            <div className="font-medium">金額看起來不太一樣</div>
+            <div className="text-[var(--muted-foreground)] mt-0.5">
+              {outlierResult.kind === 'digit_jump' ? (
+                <>
+                  「{category}」過去通常在
+                  <span className="font-medium text-[var(--foreground)]">
+                    {' '}NT${' '}
+                    {outlierResult.historicalMedian?.toLocaleString() ?? ''}{' '}
+                  </span>
+                  左右，這筆是不是多打了 0？
+                </>
+              ) : (
+                <>
+                  「{category}」過去中位數是
+                  <span className="font-medium text-[var(--foreground)]">
+                    {' '}NT${' '}
+                    {outlierResult.historicalMedian?.toLocaleString() ?? ''}
+                  </span>
+                  ，這筆比平常高 5 倍以上，確定金額正確？
+                </>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDismissedOutlierKey(outlierKey)}
+            aria-label="忽略金額提醒"
             className="shrink-0 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition px-1"
           >
             ✕
