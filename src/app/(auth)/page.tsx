@@ -28,6 +28,7 @@ import { MostFrequentItems } from '@/components/most-frequent-items'
 import { BiggestExpenseSpotlight } from '@/components/biggest-expense-spotlight'
 import { YearRecap } from '@/components/year-recap'
 import { TodayInPastYears } from '@/components/today-in-past-years'
+import { NextMonthLockedIn } from '@/components/next-month-locked-in'
 import { useRecurringExpenses } from '@/lib/hooks/use-recurring-expenses'
 import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
 import { maybeSendBudgetAlert } from '@/lib/services/budget-alert-service'
@@ -254,6 +255,9 @@ export default function HomePage() {
 
       {/* 月底支出預估 (Issue #296) — 依目前速度 + 歷史對比 */}
       <MonthProjection expenses={expenses} />
+
+      {/* 下個月固定支出 forecast (Issue #317) */}
+      <NextMonthLockedIn recurringTemplates={recurringTemplates} />
 
       {/* 類別月變化 (Issue #298) — 哪類比上個月顯著成長/縮減 */}
       <CategoryMoM expenses={expenses} />
