@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useMembers } from '@/lib/hooks/use-members'
@@ -55,6 +55,8 @@ export function QuickAddBar() {
   const [expanded, setExpanded] = useState(false)
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
+  // Ref to amount field so Enter on description can move focus there (Issue #274)
+  const amountInputRef = useRef<HTMLInputElement | null>(null)
   const [category, setCategory] = useState('')
   const [autoFilled, setAutoFilled] = useState(false)
   const { inFlight: saving, run: runSubmit } = useSubmitGuard()
@@ -349,11 +351,19 @@ export function QuickAddBar() {
           type="text"
           value={description}
           onChange={(e) => handleDescriptionChange(e.target.value)}
+          onKeyDown={(e) => {
+            // Enter in description → move focus to amount (Issue #274)
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              amountInputRef.current?.focus()
+            }
+          }}
           placeholder="午餐 150、交通 50..."
           autoFocus
           className="flex-1 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
         />
         <input
+          ref={amountInputRef}
           type="text"
           inputMode="decimal"
           value={amount}
