@@ -10,6 +10,7 @@ import {
 } from '@/lib/amount-range-filter'
 import { AmountRangeChips } from '@/components/amount-range-chips'
 import { DescriptionPriceTrend } from '@/components/description-price-trend'
+import { computeFilterStats } from '@/lib/filter-stats'
 import { useSwipe } from '@/hooks/use-swipe'
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh'
 import { useGroup } from '@/lib/hooks/use-group'
@@ -241,6 +242,7 @@ export default function RecordsPage() {
   }, [filtered])
 
   const totalFiltered = useMemo(() => filtered.reduce((s, e) => s + e.amount, 0), [filtered])
+  const filterStats = useMemo(() => computeFilterStats({ expenses: filtered }), [filtered])
   const isFiltering = searchQuery || hasAdvancedFilter
 
   function clearFilters() {
@@ -541,7 +543,8 @@ export default function RecordsPage() {
 
       {/* Filter summary + export */}
       {!loading && filtered.length > 0 && (
-        <div className="text-sm text-[var(--muted-foreground)] mb-3 flex items-center justify-between flex-wrap gap-2">
+        <div className="mb-3 space-y-1">
+        <div className="text-sm text-[var(--muted-foreground)] flex items-center justify-between flex-wrap gap-2">
           {isFiltering ? (
             <span>
               顯示 <span className="font-semibold text-[var(--foreground)]">{filtered.length}</span> 筆
@@ -571,6 +574,15 @@ export default function RecordsPage() {
               ⤓ 匯出 CSV
             </button>
           </div>
+        </div>
+        {filterStats && (
+          <div className="text-xs text-[var(--muted-foreground)] flex items-center flex-wrap gap-x-3 gap-y-0.5">
+            <span>avg <span className="text-[var(--foreground)] font-medium">{currency(filterStats.average)}</span></span>
+            <span>median <span className="text-[var(--foreground)] font-medium">{currency(filterStats.median)}</span></span>
+            <span>max <span className="text-[var(--foreground)] font-medium">{currency(filterStats.max)}</span></span>
+            <span>min <span className="text-[var(--foreground)] font-medium">{currency(filterStats.min)}</span></span>
+          </div>
+        )}
         </div>
       )}
 
