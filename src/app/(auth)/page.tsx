@@ -22,6 +22,7 @@ import { CatchupNudge } from '@/components/catchup-nudge'
 import { SpendingHeatmap } from '@/components/spending-heatmap'
 import { DowInsight } from '@/components/dow-insight'
 import { RecordingStreak } from '@/components/recording-streak'
+import { MonthProjection } from '@/components/month-projection'
 import { useRecurringExpenses } from '@/lib/hooks/use-recurring-expenses'
 import { generatePendingRecurring, confirmPendingExpense } from '@/lib/services/recurring-generator'
 import { maybeSendBudgetAlert } from '@/lib/services/budget-alert-service'
@@ -245,6 +246,9 @@ export default function HomePage() {
 
       {/* 月度預算進度 */}
       <BudgetProgress group={group} expenses={expenses} />
+
+      {/* 月底支出預估 (Issue #296) — 依目前速度 + 歷史對比 */}
+      <MonthProjection expenses={expenses} />
 
       {/* 30 天每日花費熱力圖 (Issue #290) */}
       <SpendingHeatmap expenses={expenses} />
