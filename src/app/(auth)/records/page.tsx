@@ -108,8 +108,10 @@ export default function RecordsPage() {
 
   const [galleryPaths, setGalleryPaths] = useState<string[] | null>(null)
   const [filter, setFilter] = useState<FilterType>('全部')
-  const [searchInput, setSearchInput] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchInput, setSearchInput] = useState(() => searchParams.get('q') ?? '')
+  const [searchQuery, setSearchQuery] = useState(() =>
+    (searchParams.get('q') ?? '').trim().toLowerCase(),
+  )
   const [showAdvanced, setShowAdvanced] = useState(false)
   // Default to current month for efficiency — families mostly care about the
   // current monthly summary. URL params (`?start=&end=`) override for deep
