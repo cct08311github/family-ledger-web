@@ -10,6 +10,7 @@ import { aggregateYearStats } from '@/lib/year-stats'
 import { TopExpensesCard } from '@/components/top-expenses-card'
 import { MoneyDiary } from '@/components/money-diary'
 import { YearHeatmap } from '@/components/year-heatmap'
+import { MonthlyReportShare } from '@/components/monthly-report-share'
 import type { Expense } from '@/lib/types'
 import type { StatisticsChartsProps } from '@/components/statistics-charts'
 
@@ -301,6 +302,15 @@ export default function StatisticsPage() {
         previousMonthTotal={previousMonthTotal > 0 ? previousMonthTotal : null}
         selectedMonth={selectedMonth}
       />
+
+      {/* 分享月報 (Issue #345) */}
+      <div className="flex justify-end">
+        <MonthlyReportShare
+          expenses={monthExpenses}
+          selectedMonth={selectedMonth}
+          previousMonthTotal={previousMonthTotal > 0 ? previousMonthTotal : null}
+        />
+      </div>
 
       {/* 全年熱力圖 (Issue #313) — 7×52 GitHub-style 年度視窗 */}
       <YearHeatmap expenses={expenses} year={selectedMonth.year} />
