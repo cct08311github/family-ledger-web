@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { hapticFeedback } from '@/lib/haptic'
 import { useAuth, getActor } from '@/lib/auth'
 import { useCurrentMember } from '@/lib/hooks/use-current-member'
+import { SettlementCadence } from '@/components/settlement-cadence'
 
 import { logger } from '@/lib/logger'
 
@@ -324,6 +325,9 @@ export default function SplitPage() {
       )}
 
       <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-4">
+        {/* 結算節奏統計卡 (Issue #311) */}
+        <SettlementCadence settlements={settlements} />
+
         {/* 老化債務提醒 banner (Issue #266) */}
         {staleDebts.length > 0 && (
           <div
