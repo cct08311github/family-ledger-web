@@ -331,7 +331,7 @@ export default function RecurringPage() {
 
       {/* Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50">
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50">
           <div className="w-full max-w-md mx-0 sm:mx-4 rounded-t-3xl sm:rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xl p-6 space-y-4 max-h-[90dvh] overflow-y-auto">
             <h2 className="text-lg font-bold sticky top-0 bg-[var(--card)] pb-1">
               {editing ? '編輯定期支出' : '新增定期支出'}
