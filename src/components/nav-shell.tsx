@@ -178,6 +178,14 @@ export function NavShell({ children }: { children: React.ReactNode }) {
           >
             <span>🔄</span> 記錄轉帳
           </Link>
+          <Link
+            href="/settings/recurring?action=new"
+            onClick={() => setFabOpen(false)}
+            className="flex items-center gap-2.5 px-4 py-2.5 rounded-full text-sm font-semibold bg-[var(--card)] border border-[var(--border)] btn-press animate-slide-up"
+            style={{ boxShadow: 'var(--card-shadow-hover)' }}
+          >
+            <span>🔁</span> 新增定期支出
+          </Link>
         </div>
       )}
       <button
