@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useGroup } from '@/lib/hooks/use-group'
 import { useMembers } from '@/lib/hooks/use-members'
 import { useCategories } from '@/lib/hooks/use-categories'
@@ -43,11 +44,12 @@ interface FormState {
   monthOfYear: number
   payerId: string
   isShared: boolean
+  participantIds: string[]
   startDate: string
   endDate: string
 }
 
-function defaultForm(firstMemberId = ''): FormState {
+function defaultForm(firstMemberId = '', allMemberIds: string[] = []): FormState {
   const today = new Date().toISOString().split('T')[0]
   return {
     description: '',
@@ -59,6 +61,7 @@ function defaultForm(firstMemberId = ''): FormState {
     monthOfYear: 1,
     payerId: firstMemberId,
     isShared: true,
+    participantIds: allMemberIds,
     startDate: today,
     endDate: '',
   }
@@ -83,22 +86,39 @@ export default function RecurringPage() {
   const { recurringExpenses: items } = useRecurringExpenses()
   const { user } = useAuth()
   const { addToast } = useToast()
+  const searchParams = useSearchParams()
+  const autoOpenedRef = useRef(false)
 
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<RecurringExpense | null>(null)
   const [form, setForm] = useState<FormState>(defaultForm())
   const [saving, setSaving] = useState(false)
 
-  // Set default payerId when members load
+  // Seed payerId + participantIds when members first load
   useEffect(() => {
-    if (members.length > 0) {
-      setForm((f) => f.payerId ? f : { ...f, payerId: members[0].id })
-    }
+    if (members.length === 0) return
+    setForm((f) => {
+      let next = f
+      if (!next.payerId) next = { ...next, payerId: members[0].id }
+      if (next.participantIds.length === 0) next = { ...next, participantIds: members.map((m) => m.id) }
+      return next
+    })
   }, [members])
+
+  // Auto-open new form when navigated with ?action=new (Issue #354 — once only)
+  useEffect(() => {
+    if (autoOpenedRef.current) return
+    if (searchParams.get('action') !== 'new') return
+    if (members.length === 0) return
+    autoOpenedRef.current = true
+    setEditing(null)
+    setForm(defaultForm(members[0]?.id ?? '', members.map((m) => m.id)))
+    setShowForm(true)
+  }, [searchParams, members])
 
   function openAdd() {
     setEditing(null)
-    setForm(defaultForm(members[0]?.id ?? ''))
+    setForm(defaultForm(members[0]?.id ?? '', members.map((m) => m.id)))
     setShowForm(true)
   }
 
@@ -106,6 +126,8 @@ export default function RecurringPage() {
     setEditing(item)
     const startStr = item.startDate?.toDate().toISOString().split('T')[0] ?? new Date().toISOString().split('T')[0]
     const endStr = item.endDate ? item.endDate.toDate().toISOString().split('T')[0] : ''
+    const loadedParticipants = item.splits?.filter((s) => s.isParticipant).map((s) => s.memberId) ?? []
+    const participantIds = loadedParticipants.length > 0 ? loadedParticipants : members.map((m) => m.id)
     setForm({
       description: item.description,
       amount: item.amount !== null ? String(item.amount) : '',
@@ -116,6 +138,7 @@ export default function RecurringPage() {
       monthOfYear: item.monthOfYear ?? 1,
       payerId: item.payerId,
       isShared: item.isShared,
+      participantIds,
       startDate: startStr,
       endDate: endStr,
     })
@@ -124,8 +147,10 @@ export default function RecurringPage() {
 
   function buildSplits(payerId: string) {
     if (!form.isShared || members.length === 0) return []
+    const participants = members.filter((m) => form.participantIds.includes(m.id))
+    if (participants.length === 0) return []
     const amount = form.amount ? Number(form.amount) : 0
-    return buildEqualSplits(amount, members, payerId)
+    return buildEqualSplits(amount, participants, payerId)
   }
 
   function getPayerName(payerId: string): string {
@@ -496,6 +521,41 @@ export default function RecurringPage() {
                 />
               </button>
             </div>
+
+            {/* Participants — chip selection (Issue #353) */}
+            {form.isShared && members.length > 0 && (
+              <div>
+                <label className="text-xs text-[var(--muted-foreground)] mb-1 block">
+                  分攤對象（至少 1 人，付款人可不分攤）
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {members.map((m) => {
+                    const selected = form.participantIds.includes(m.id)
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          if (selected && form.participantIds.length === 1) return
+                          const next = selected
+                            ? form.participantIds.filter((id) => id !== m.id)
+                            : [...form.participantIds, m.id]
+                          setForm({ ...form, participantIds: next })
+                        }}
+                        aria-pressed={selected}
+                        className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                          selected
+                            ? 'border-[var(--primary)] bg-[var(--primary)] text-white'
+                            : 'border-[var(--border)] hover:bg-[var(--muted)]'
+                        }`}
+                      >
+                        {m.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Start date */}
             <div>
